@@ -77,6 +77,20 @@ CoreWLAN.CWWiFiClient.shared().interface()?.ssid()
 | T-108 | SSID-based profile management | T-002 |
 | T-109 | SQLite storage for usage history | T-001 |
 | T-110 | DNS display + preset changer | T-001 |
+| T-111 | **Settings menu** (UserDefaults): col3 total column show/hide toggle, quota GB input, quota unit reset | T-106 |
+| T-112 | **SettingsView** SwiftUI popover/window with toggles and number fields | T-111 |
+
+### Settings Feature Details (T-111, T-112)
+
+- **Storage**: `UserDefaults` (simple, no DB needed for settings)
+  - `bool("showTotalColumn")` → col3 숨김/표시, default `true`
+  - `double("quotaGB")` → 사용자 할당량 GB, default `3.0`
+  - `bool("quotaEnabled")` → QoS 색상 사용 여부, default `false`
+- **col3 total data**: 현재 `totalUpload`/`totalDownload`는 실제 시스템 getifaddrs() 누적값. QoS quota 비율(`totalUsedGB = 2.7`, `totalQuotaGB = 3.0`)은 **하드코딩된 임시 데이터** — T-107에서 SettingsView로 대체
+- **col3 hide 동작**:
+  1. `update()`에서 `showTotalColumn`이 false면 col3 서브뷰 숨김, `statusItem.length` 재계산
+  2. `totalRatio < 0`이면 col3 숨김 (toggle off 시 `totalRatio = -1` 전달)
+- **SettingsView 위치**: PopoverView 하단 설정 버튼 → sheet 또는 별도 Preferences 윈도우
 
 ### Phase 2 — Advanced (4-6 weeks)
 
