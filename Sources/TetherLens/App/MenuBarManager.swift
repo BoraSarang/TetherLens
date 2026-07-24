@@ -144,7 +144,7 @@ class MenuBarView: NSView {
 
     private static let col2FixedW: CGFloat = {
         let f = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)
-        return ceil(NSString(string: "999.99 MB/s").size(withAttributes: [.font: f]).width) + 2
+        return ceil(NSString(string: "99.99 MB/s").size(withAttributes: [.font: f]).width) + 2
     }()
     private static let col3FixedW: CGFloat = {
         let f = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
