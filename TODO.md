@@ -5,29 +5,29 @@
 
 ---
 
-## Phase 0 — PoC (1-2주)
+## Phase 0 — PoC ✅ (2026-07-24)
 
 목표: 핵심 기술 검증
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
-| 1 | Xcode 프로젝트 생성 + 기본 구조 설정 | P0 | Pending |
-| 2 | CoreWLAN SSID/BSSID 획득 (CoreLocation 권한) | P0 | Pending |
-| 3 | getifaddrs() 네트워크 속도 측정 | P0 | Pending |
-| 4 | NWPathMonitor 핫스팟 감지 + 게이트웨이 IP 분석 | P0 | Pending |
-| 5 | 기본 NSStatusItem + SwiftUI Popover | P0 | Pending |
-| 6 | 갤럭시 S22 / iPad mini 6 실기기 검증 | P0 | Pending |
+| 1 | Xcode 프로젝트 생성 + 기본 구조 설정 | P0 | ✅ Completed |
+| 2 | CoreWLAN SSID/BSSID 획득 (CoreLocation 권한) | P0 | ✅ Completed |
+| 3 | getifaddrs() 네트워크 속도 측정 | P0 | ✅ Completed |
+| 4 | NWPathMonitor 핫스팟 감지 + 게이트웨이 IP 분석 | P0 | ✅ Completed |
+| 5 | 기본 NSStatusItem + SwiftUI Popover | P0 | ✅ Completed |
+| 6 | 갤럭시 S22 / iPad mini 6 실기기 검증 | P0 | ⬜ Pending (Phase 1 진행 중 테스트)
 
 ## Phase 1 — Core App (4-6주)
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
-| 7 | 메뉴바 UI 완성 (2줄 속도 + 오늘 사용량) | P0 | Pending |
-| 8 | 연결 상세 정보 팝오버 | P0 | Pending |
-| 9 | 핫스팟 iOS/Android OS 구분 | P0 | Pending |
-| 10 | 외부 IP + GeoIP 조회 | P0 | Pending |
-| 11 | Ping 품질 모니터링 (8.8.8.8 + 게이트웨이) | P0 | Pending |
-| 12 | QoS 방지 게이지 (초록/노랑/빨강) | P0 | Pending |
+| 7 | 메뉴바 UI 완성 (2줄 속도 + 오늘 사용량) | P0 | ✅ Completed |
+| 8 | 연결 상세 정보 팝오버 | P0 | ✅ Completed |
+| 9 | 핫스팟 iOS/Android OS 구분 | P0 | ✅ Completed |
+| 10 | 외부 IP + GeoIP 조회 | P0 | ✅ Completed |
+| 11 | Ping 품질 모니터링 (8.8.8.8 + 게이트웨이) | P0 | ✅ Completed |
+| 12 | QoS 방지 게이지 (초록/노랑/빨강) | P0 | ✅ Completed |
 | 13 | 데이터 할당량 설정 + 경고 알림 | P0 | Pending |
 | 14 | SSID 기반 프로필 관리 | P0 | Pending |
 | 15 | SQLite 데이터 저장소 | P0 | Pending |

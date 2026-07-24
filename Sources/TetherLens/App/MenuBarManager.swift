@@ -10,6 +10,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private let networkMonitor = NetworkMonitor()
     private let hotspotDetector = HotspotDetector()
     private let pingMonitor = PingMonitor()
+    private let ipResolver = IPResolver()
     private let locationManager: LocationManager
 
     private let menuBarView = MenuBarView()
@@ -35,6 +36,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             guard let self else { return }
             hotspotDetector.refreshNow()
             updateMenuBarText()
+            Task { await self.ipResolver.refresh() }
             NotificationCenter.default.post(name: connectionChanged, object: nil)
         }
     }
@@ -49,7 +51,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         let contentView = PopoverView(
             networkMonitor: networkMonitor,
             hotspotDetector: hotspotDetector,
-            pingMonitor: pingMonitor
+            pingMonitor: pingMonitor,
+            ipResolver: ipResolver,
+            locationManager: locationManager
         )
         popover.contentViewController = NSHostingController(rootView: contentView)
     }
@@ -58,6 +62,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         networkMonitor.start()
         hotspotDetector.start()
         pingMonitor.start()
+
+        Task { await ipResolver.refresh() }
 
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
@@ -85,53 +91,15 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         let upTotalStr = formatBytes(totalUpload)
         let dnTotalStr = formatBytes(totalDownload)
 
-        let style = NSMutableParagraphStyle()
-        let tab1 = NSTextTab(textAlignment: .right, location: 80, options: [:])
-        let tab2 = NSTextTab(textAlignment: .right, location: 130, options: [:])
-        style.tabStops = [tab1, tab2]
-        style.lineSpacing = 0
-        style.maximumLineHeight = 10
+        let totalUsedGB = 2.7
+        let totalQuotaGB = 3.0
+        let quotaRatio = min(totalUsedGB / totalQuotaGB, 1.0)
 
-        let text = NSMutableAttributedString()
-
-        let line1 = NSMutableAttributedString()
-        line1.append(NSAttributedString(string: "▲", attributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
-            .foregroundColor: NSColor.systemOrange,
-            .paragraphStyle: style
-        ]))
-        line1.append(NSAttributedString(string: "\t\(uploadStr)", attributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
-            .foregroundColor: NSColor.white,
-            .paragraphStyle: style
-        ]))
-        line1.append(NSAttributedString(string: "\t\(upTotalStr)", attributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
-            .foregroundColor: NSColor.systemGray,
-            .paragraphStyle: style
-        ]))
-        text.append(line1)
-        text.append(NSAttributedString(string: "\n"))
-
-        let line2 = NSMutableAttributedString()
-        line2.append(NSAttributedString(string: "▼", attributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
-            .foregroundColor: NSColor.systemBlue,
-            .paragraphStyle: style
-        ]))
-        line2.append(NSAttributedString(string: "\t\(downloadStr)", attributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
-            .foregroundColor: NSColor.white,
-            .paragraphStyle: style
-        ]))
-        line2.append(NSAttributedString(string: "\t\(dnTotalStr)", attributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
-            .foregroundColor: NSColor.systemGray,
-            .paragraphStyle: style
-        ]))
-        text.append(line2)
-
-        menuBarView.setAttributedText(text)
+        menuBarView.update(
+            upSpeed: uploadStr, downSpeed: downloadStr,
+            upTotal: upTotalStr, downTotal: dnTotalStr,
+            totalRatio: quotaRatio
+        )
         statusItem.length = menuBarView.frame.width
     }
 
@@ -167,37 +135,89 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 }
 
 class MenuBarView: NSView {
-    private var attrString: NSAttributedString?
-    var onClick: (() -> Void)?
+    private let upArrow = NSTextField(labelWithString: "▲")
+    private let downArrow = NSTextField(labelWithString: "▼")
+    private let upSpeed = NSTextField(labelWithString: "")
+    private let downSpeed = NSTextField(labelWithString: "")
+    private let upTotal = NSTextField(labelWithString: "")
+    private let downTotal = NSTextField(labelWithString: "")
 
-    var textWidth: CGFloat {
-        guard let attr = attrString else { return 40 }
-        return attr.size().width + 12
-    }
+    private static let col2FixedW: CGFloat = {
+        let f = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)
+        return ceil(NSString(string: "999.99 MB/s").size(withAttributes: [.font: f]).width) + 2
+    }()
+    private static let col3FixedW: CGFloat = {
+        let f = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
+        return ceil(NSString(string: "999.99 MB").size(withAttributes: [.font: f]).width) + 2
+    }()
+
+    var onClick: (() -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
+        [upArrow, downArrow, upSpeed, downSpeed, upTotal, downTotal].forEach { field in
+            field.isEditable = false
+            field.isSelectable = false
+            field.isBordered = false
+            field.backgroundColor = .clear
+            addSubview(field)
+        }
+        upSpeed.alignment = .right
+        downSpeed.alignment = .right
+        upTotal.alignment = .right
+        downTotal.alignment = .right
     }
 
     required init?(coder: NSCoder) { nil }
 
-    func setAttributedText(_ attr: NSAttributedString) {
-        attrString = attr
-        let w = textWidth
-        let h = NSStatusBar.system.thickness
-        frame.size = NSSize(width: w, height: h)
-        needsDisplay = true
-    }
+    func update(upSpeed s1: String, downSpeed s2: String, upTotal t1: String, downTotal t2: String, totalRatio: Double = 0) {
+        let bold9 = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
+        let reg9 = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)
+        let rightStyle = NSMutableParagraphStyle()
+        rightStyle.alignment = .right
 
-    override func draw(_ dirtyRect: NSRect) {
-        guard let attr = attrString else { return }
-        let textSize = attr.size()
-        let x = (bounds.width - textSize.width) / 2
-        let y = (bounds.height - textSize.height) / 2
-        attr.draw(at: NSPoint(x: x, y: y))
+        let totalColor = colorForRatio(totalRatio)
+
+        upArrow.attributedStringValue = NSAttributedString(string: "▲", attributes: [.font: bold9, .foregroundColor: NSColor.systemOrange])
+        downArrow.attributedStringValue = NSAttributedString(string: "▼", attributes: [.font: bold9, .foregroundColor: NSColor.systemBlue])
+        upSpeed.attributedStringValue = NSAttributedString(string: s1, attributes: [.font: reg9, .foregroundColor: NSColor.white, .paragraphStyle: rightStyle])
+        downSpeed.attributedStringValue = NSAttributedString(string: s2, attributes: [.font: reg9, .foregroundColor: NSColor.white, .paragraphStyle: rightStyle])
+        upTotal.attributedStringValue = NSAttributedString(string: t1, attributes: [.font: bold9, .foregroundColor: totalColor, .paragraphStyle: rightStyle])
+        downTotal.attributedStringValue = NSAttributedString(string: t2, attributes: [.font: bold9, .foregroundColor: totalColor, .paragraphStyle: rightStyle])
+
+        [upArrow, downArrow, upSpeed, downSpeed, upTotal, downTotal].forEach { $0.sizeToFit() }
+
+        let col1X: CGFloat = 4
+        let col2X = col1X + upArrow.frame.width + 4
+        let col3X = col2X + Self.col2FixedW + 4
+        let w = col3X + Self.col3FixedW + 4
+
+        let h = NSStatusBar.system.thickness
+        let lineHeight = max(upArrow.frame.height, upSpeed.frame.height, upTotal.frame.height)
+        let totalH = lineHeight * 2
+        let baseY = (h - totalH) / 2
+
+        upArrow.setFrameOrigin(NSPoint(x: col1X, y: baseY + lineHeight))
+        downArrow.setFrameOrigin(NSPoint(x: col1X, y: baseY))
+        upSpeed.frame = NSRect(x: col2X, y: baseY + lineHeight, width: Self.col2FixedW, height: lineHeight)
+        downSpeed.frame = NSRect(x: col2X, y: baseY, width: Self.col2FixedW, height: lineHeight)
+        upTotal.frame = NSRect(x: col3X, y: baseY + lineHeight, width: Self.col3FixedW, height: lineHeight)
+        downTotal.frame = NSRect(x: col3X, y: baseY, width: Self.col3FixedW, height: lineHeight)
+
+        frame.size = NSSize(width: w, height: h)
     }
 
     override func mouseDown(with event: NSEvent) {
         onClick?()
+    }
+
+    private func colorForRatio(_ ratio: Double) -> NSColor {
+        if ratio < 0.6 {
+            return .systemGreen
+        } else if ratio < 0.85 {
+            return .systemOrange
+        } else {
+            return .systemRed
+        }
     }
 }

@@ -4,6 +4,8 @@ struct PopoverView: View {
     let networkMonitor: NetworkMonitor
     let hotspotDetector: HotspotDetector
     let pingMonitor: PingMonitor
+    let ipResolver: IPResolver
+    let locationManager: LocationManager
 
     @State private var refreshID = UUID()
 
@@ -115,18 +117,22 @@ struct PopoverView: View {
                 }()
                 detailRow(label: "네트워크", value: "\(ssid)\(rssiSuffix)")
             } else if usesWiFi {
-                HStack(spacing: 4) {
-                    Image(systemName: "location.slash")
-                        .font(.caption2)
-                        .foregroundColor(.orange)
-                    Text("시스템 설정 > 개인정보 보호 > 위치 서비스에서\nTetherLens를 활성화하고 앱 재실행")
-                        .font(.system(size: 9, weight: .regular))
-                        .foregroundColor(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                let rssiSuffix: String = {
+                    guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
+                    return " (\(r)dBm)"
+                }()
+                detailRow(label: "네트워크", value: "알 수 없음\(rssiSuffix)")
             }
             if let bssid = bssidString {
                 detailRow(label: "BSSID", value: bssid)
+            }
+            if let phy = hotspotDetector.currentConnection?.phyMode {
+                detailRow(label: "규격", value: phy)
+            }
+            if let ch = hotspotDetector.currentConnection?.channel,
+               let band = hotspotDetector.currentConnection?.channelBand {
+                let width = hotspotDetector.currentConnection?.channelWidth ?? 0
+                detailRow(label: "채널", value: width > 0 ? "\(ch) (\(band), \(width)MHz)" : "\(ch) (\(band))")
             }
             if let speed = hotspotDetector.currentConnection?.linkSpeed {
                 detailRow(label: "속도", value: String(format: "%.0f Mbps", speed))
@@ -137,7 +143,14 @@ struct PopoverView: View {
             if let ip = hotspotDetector.currentConnection?.localIP {
                 detailRow(label: "로컬 IP", value: ip)
             }
+            if let extIP = ipResolver.externalIP {
+                let country = ipResolver.geoInfo?.countryCode.map { " (\(flag(from: $0)))" } ?? ""
+                detailRow(label: "외부 IP", value: "\(extIP)\(country)")
+            }
             detailRow(label: "Ping", value: pingString)
+            if usesWiFi && ssidString == nil {
+                locationWarningView
+            }
         }
     }
 
@@ -163,6 +176,64 @@ struct PopoverView: View {
             return "\(ms)ms (8.8.8.8)"
         }
         return "측정 중..."
+    }
+
+    private var locationWarningView: some View {
+        HStack(alignment: .top, spacing: 4) {
+            Image(systemName: "location.slash")
+                .font(.caption2)
+                .foregroundColor(.orange)
+                .padding(.top, 2)
+            if !LocationManager.systemLocationServicesEnabled {
+                Text("시스템 설정 > 개인정보 보호 및 보안 >\n위치 서비스를 켜주세요")
+                    .font(.system(size: 9))
+                    .foregroundColor(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Button("설정 열기") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(.orange)
+            } else if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
+                Text("시스템 설정 > 개인정보 보호 및 보안 >\n위치 서비스 > TetherLens를 허용해주세요")
+                    .font(.system(size: 9))
+                    .foregroundColor(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Button("설정 열기") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(.orange)
+            } else if !locationManager.isAuthorized {
+                Text("TetherLens가 Wi-Fi 정보를 읽기 위해\n위치 접근 권한이 필요합니다")
+                    .font(.system(size: 9))
+                    .foregroundColor(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Button("권한 요청") {
+                    locationManager.requestAuthorization()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(.orange)
+            } else {
+                Text("Wi-Fi 정보(SSID)를 읽을 수 없습니다.\nApple Developer 프로비저닝이 필요합니다")
+                    .font(.system(size: 9))
+                    .foregroundColor(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Button("설정 열기") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .tint(.orange)
+            }
+        }
     }
 
     private var qosGaugeView: some View {
@@ -218,25 +289,26 @@ struct PopoverView: View {
     private func detailRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 11, weight: .regular))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.secondary)
                 .frame(width: 64, alignment: .leading)
             Text(value)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.primary)
-            Spacer()
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 
     private func formatSpeed(_ bps: Double) -> String {
-        if bps >= 1_000_000_000 {
-            return String(format: "%.1f Gbps", bps / 1_000_000_000)
-        } else if bps >= 1_000_000 {
-            return String(format: "%.1f Mbps", bps / 1_000_000)
-        } else if bps >= 1_000 {
-            return String(format: "%.1f Kbps", bps / 1_000)
+        let Bps = bps / 8
+        if Bps >= 1_000_000_000 {
+            return String(format: "%.2f GB/s", Bps / 1_000_000_000)
+        } else if Bps >= 1_000_000 {
+            return String(format: "%.2f MB/s", Bps / 1_000_000)
+        } else if Bps >= 1_000 {
+            return String(format: "%.2f KB/s", Bps / 1_000)
         } else {
-            return String(format: "%.0f bps", bps)
+            return String(format: "%.0f B/s", Bps)
         }
     }
 
@@ -250,5 +322,13 @@ struct PopoverView: View {
     }
 
     private func openSavingMode() {
+    }
+
+    private func flag(from countryCode: String) -> String {
+        let base: UInt32 = 127_397
+        return countryCode
+            .unicodeScalars
+            .map { String(UnicodeScalar(base + $0.value)!) }
+            .joined()
     }
 }

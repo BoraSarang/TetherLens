@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!--
+    HotSpot Monitor — Menu Bar Icon (Template / Monochrome) v2
+    ─────────────────────────────────────────────────────────
+    Rebuilt as three separate, generously-thick shapes instead of
+    one shape with a thin seam — thin seams are exactly what
+    disappears first at 16px on a real display. Each shape here
+    reads on its own even if anti-aliasing softens its edges.
+
+    The signature idea stays the same: the outer ring is broken
+    into an open arc with one bar riding the gap, so the glyph
+    reads as WiFi first, then as a signal meter with a needle on
+    second look. Everything is simplified toward thicker, blunter
+    forms — no sharp needle tip, no near-touching paths.
+
+    macOS menu bar rules:
+    - Solid black on transparent → macOS applies template tinting
+      automatically (white on dark bar, black on light bar).
+    - Single fill color throughout, no gradients/shadows.
+    - Stroke widths equivalent kept ≥ ~10 units on a 200-unit grid,
+      i.e. thick enough to survive downscale to 16px (≈0.8pt).
+  -->
+  <g fill="#000000">
+
+    <!-- Outer arc: ~250° open ring, thick stroke, rounded caps so
+         the two open ends read as deliberate terminals, not breaks. -->
+    <path d="M100 30
+             A 70 70 0 1 1 32.5 87"
+             fill="none" stroke="#000000" stroke-width="16"
+             stroke-linecap="round"/>
+
+    <!-- Meter bar: sits in the open gap at upper-right, angled like
+         a gauge needle. Short, blunt, thick — reads as a signal bar
+         from a distance and as a needle up close. -->
+    <path d="M136 42 L108 74"
+          fill="none" stroke="#000000" stroke-width="16"
+          stroke-linecap="round"/>
+
+    <!-- Inner arc: simple, closed, calm wifi arc — no gimmick here,
+         it exists to balance the composition and complete the
+         "WiFi" read at a glance. -->
+    <path d="M76 118
+             A 34 34 0 0 1 124 118"
+          fill="none" stroke="#000000" stroke-width="16"
+          stroke-linecap="round"/>
+
+    <!-- Base node: the connected dot. Slightly larger than a typical
+         wifi dot so it holds its weight against the two arcs above. -->
+    <circle cx="100" cy="150" r="13"/>
+
+  </g>
+</svg>

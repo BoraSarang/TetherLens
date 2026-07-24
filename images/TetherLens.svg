@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    HotSpot Monitor — App Icon (Color / Dock)
+    ─────────────────────────────────────────────────────────
+    This is NOT the menu bar icon — macOS menu bar icons must be
+    monochrome template images (see menubar_template_v2.svg).
+    This color version is for: Dock, Finder, About window, App
+    Store / marketing, README badges.
+
+    Palette rationale (named, not defaulted):
+    - Background: deep graphite-navy (#1B2430 → #0F1620 gradient),
+      not pure black — reads as "network infrastructure at night"
+      rather than a generic dark-mode default.
+    - Signature glyph: warm amber (#FFB454) for the meter/needle
+      element specifically — the one piece that means "usage,
+      moving, watch this" — while the calm wifi arcs stay a cool
+      steady blue-white (#EAF2FF at low opacity) so the amber has
+      something quiet to stand against.
+    - This mirrors the product logic: most of the UI is calm status,
+      one element (the quota gauge) is the thing you're watching.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#212C3A"/>
+      <stop offset="100%" stop-color="#0E141C"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFC773"/>
+      <stop offset="100%" stop-color="#FF9F40"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="38%" r="60%">
+      <stop offset="0%" stop-color="#3A4A5E" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#3A4A5E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- macOS Big Sur+ style rounded-square base -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="url(#glow)"/>
+
+  <g transform="translate(512 512)">
+
+    <!-- calm outer wifi arc, cool tone, slightly translucent -->
+    <path d="M0 -215
+             A 355 355 0 1 1 -344 -105"
+          fill="none" stroke="#DCE8FA" stroke-opacity="0.9"
+          stroke-width="70" stroke-linecap="round"/>
+
+    <!-- the meter bar / needle — the one warm, saturated element -->
+    <path d="M182 -370 L60 -215"
+          fill="none" stroke="url(#amber)"
+          stroke-width="76" stroke-linecap="round"/>
+
+    <!-- inner calm arc -->
+    <path d="M-122 88
+             A 173 173 0 0 1 122 88"
+          fill="none" stroke="#DCE8FA" stroke-opacity="0.9"
+          stroke-width="70" stroke-linecap="round"/>
+
+    <!-- base node, amber to tie back to the needle — "this is what
+         the needle is measuring, arriving here" -->
+    <circle cx="0" cy="205" r="58" fill="url(#amber)"/>
+
+  </g>
+
+</svg>
