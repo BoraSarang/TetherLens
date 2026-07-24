@@ -12,7 +12,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private let pingMonitor = PingMonitor()
     private let locationManager: LocationManager
 
-    private var isPopoverShown = false
+    private let menuBarView = MenuBarView()
 
     let connectionChanged = Notification.Name("connectionChanged")
 
@@ -40,12 +40,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     }
 
     private func setupMenuBar() {
-        if let button = statusItem.button {
-            button.action = #selector(togglePopover)
-            button.target = self
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            updateMenuBarText()
-        }
+        menuBarView.onClick = { [weak self] in self?.togglePopover() }
+        statusItem.view = menuBarView
+        updateMenuBarText()
     }
 
     private func setupPopover() {
@@ -78,8 +75,6 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     }
 
     private func updateMenuBarText() {
-        guard let button = statusItem.button else { return }
-
         let upload = networkMonitor.currentUploadSpeed
         let download = networkMonitor.currentDownloadSpeed
         let totalUpload = networkMonitor.totalUpload
@@ -136,17 +131,15 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         ]))
         text.append(line2)
 
-        button.attributedTitle = text
-        button.sizeToFit()
+        menuBarView.setAttributedText(text)
+        statusItem.length = menuBarView.frame.width
     }
 
-    @objc private func togglePopover() {
-        guard let button = statusItem.button else { return }
-
+    private func togglePopover() {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            popover.show(relativeTo: menuBarView.bounds, of: menuBarView, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
     }
@@ -170,5 +163,41 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         formatter.includesUnit = true
         formatter.allowsNonnumericFormatting = false
         return formatter.string(fromByteCount: bytes)
+    }
+}
+
+class MenuBarView: NSView {
+    private var attrString: NSAttributedString?
+    var onClick: (() -> Void)?
+
+    var textWidth: CGFloat {
+        guard let attr = attrString else { return 40 }
+        return attr.size().width + 12
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    func setAttributedText(_ attr: NSAttributedString) {
+        attrString = attr
+        let w = textWidth
+        let h = NSStatusBar.system.thickness
+        frame.size = NSSize(width: w, height: h)
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let attr = attrString else { return }
+        let textSize = attr.size()
+        let x = (bounds.width - textSize.width) / 2
+        let y = (bounds.height - textSize.height) / 2
+        attr.draw(at: NSPoint(x: x, y: y))
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onClick?()
     }
 }
