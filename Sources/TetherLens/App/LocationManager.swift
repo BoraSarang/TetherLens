@@ -5,6 +5,7 @@ import AppKit
 class LocationManager: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var authorizationContinuation: CheckedContinuation<Bool, Never>?
+    var onAuthorizationChange: ((Bool) -> Void)?
 
     override init() {
         super.init()
@@ -30,8 +31,10 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
-            authorizationContinuation?.resume(returning: isAuthorized)
+            let authorized = isAuthorized
+            authorizationContinuation?.resume(returning: authorized)
             authorizationContinuation = nil
+            onAuthorizationChange?(authorized)
         }
     }
 }

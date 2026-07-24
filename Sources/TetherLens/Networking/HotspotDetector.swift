@@ -18,6 +18,11 @@ struct ConnectionInfo {
     let gatewayIP: String?
     let isExpensive: Bool
     let isConstrained: Bool
+    let rssi: Int?
+    let noise: Int?
+    let linkSpeed: Double?
+    let channel: Int?
+    let channelWidth: Int?
 }
 
 class HotspotDetector: @unchecked Sendable {
@@ -39,19 +44,55 @@ class HotspotDetector: @unchecked Sendable {
         monitor.cancel()
     }
 
-    func refreshWifiInfo() -> (ssid: String?, bssid: String?) {
+    func refreshNow() {
+        let path = monitor.currentPath
+        updateConnection(path: path)
+    }
+
+    func refreshWifiInfo() -> (ssid: String?, bssid: String?, rssi: Int?, noise: Int?, linkSpeed: Double?, channel: Int?, channelWidth: Int?) {
         guard CLLocationManager.locationServicesEnabled() else {
-            return (nil, nil)
+            return (nil, nil, nil, nil, nil, nil, nil)
         }
 
         let client = CWWiFiClient.shared()
         guard let interface = client.interface() else {
-            return (nil, nil)
+            return (nil, nil, nil, nil, nil, nil, nil)
         }
 
         let ssid = interface.ssid()
         let bssid = interface.bssid()
-        return (ssid, bssid)
+        let rssi = interface.rssiValue()
+        let noise = interface.noiseMeasurement()
+        let linkSpeed = interface.transmitRate()
+        return (ssid, bssid, rssi, noise, linkSpeed, nil, nil)
+    }
+
+    private func makeInfo(type: ConnectionType, interfaceName: String?, localIP: String?, gatewayIP: String?, isExpensive: Bool, isConstrained: Bool) -> ConnectionInfo {
+        ConnectionInfo(
+            type: type,
+            interfaceName: interfaceName,
+            localIP: localIP,
+            gatewayIP: gatewayIP,
+            isExpensive: isExpensive,
+            isConstrained: isConstrained,
+            rssi: nil, noise: nil, linkSpeed: nil, channel: nil, channelWidth: nil
+        )
+    }
+
+    private func makeWiFiInfo(type: ConnectionType, interfaceName: String?, localIP: String?, gatewayIP: String?, isExpensive: Bool, isConstrained: Bool, wifi: (ssid: String?, bssid: String?, rssi: Int?, noise: Int?, linkSpeed: Double?, channel: Int?, channelWidth: Int?)) -> ConnectionInfo {
+        ConnectionInfo(
+            type: type,
+            interfaceName: interfaceName,
+            localIP: localIP,
+            gatewayIP: gatewayIP,
+            isExpensive: isExpensive,
+            isConstrained: isConstrained,
+            rssi: wifi.rssi,
+            noise: wifi.noise,
+            linkSpeed: wifi.linkSpeed,
+            channel: wifi.channel,
+            channelWidth: wifi.channelWidth
+        )
     }
 
     private func updateConnection(path: NWPath) {
@@ -65,74 +106,45 @@ class HotspotDetector: @unchecked Sendable {
         let gatewayIP = getGatewayIP()
 
         if usesEthernet {
-            currentConnection = ConnectionInfo(
+            currentConnection = makeInfo(
                 type: .ethernet,
                 interfaceName: interfaceName,
-                localIP: localIP,
-                gatewayIP: gatewayIP,
-                isExpensive: isExpensive,
-                isConstrained: isConstrained
+                localIP: localIP, gatewayIP: gatewayIP,
+                isExpensive: isExpensive, isConstrained: isConstrained
             )
             return
         }
 
         if usesWiFi {
-            let (ssid, bssid) = refreshWifiInfo()
+            let wifi = refreshWifiInfo()
 
-            if isExpensive {
-                if let gw = gatewayIP, gw.hasPrefix("192.168.43.") {
-                    currentConnection = ConnectionInfo(
-                        type: .androidHotspot(ssid: ssid),
-                        interfaceName: interfaceName,
-                        localIP: localIP,
-                        gatewayIP: gatewayIP,
-                        isExpensive: isExpensive,
-                        isConstrained: isConstrained
-                    )
-                    return
-                }
+            let detectedType: ConnectionType
 
-                if let gw = gatewayIP, gw.hasPrefix("172.20.10.") {
-                    currentConnection = ConnectionInfo(
-                        type: .iOSPersonalHotspot(ssid: ssid),
-                        interfaceName: interfaceName,
-                        localIP: localIP,
-                        gatewayIP: gatewayIP,
-                        isExpensive: isExpensive,
-                        isConstrained: isConstrained
-                    )
-                    return
-                }
-
-                currentConnection = ConnectionInfo(
-                    type: .iOSPersonalHotspot(ssid: ssid),
-                    interfaceName: interfaceName,
-                    localIP: localIP,
-                    gatewayIP: gatewayIP,
-                    isExpensive: isExpensive,
-                    isConstrained: isConstrained
-                )
-                return
+            if let gw = gatewayIP, gw.hasPrefix("192.168.43.") {
+                detectedType = .androidHotspot(ssid: wifi.ssid)
+            } else if let gw = gatewayIP, gw.hasPrefix("172.20.10.") {
+                detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
+            } else if isExpensive {
+                detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
+            } else {
+                detectedType = .normalWiFi(ssid: wifi.ssid, bssid: wifi.bssid)
             }
 
-            currentConnection = ConnectionInfo(
-                type: .normalWiFi(ssid: ssid, bssid: bssid),
+            currentConnection = makeWiFiInfo(
+                type: detectedType,
                 interfaceName: interfaceName,
-                localIP: localIP,
-                gatewayIP: gatewayIP,
-                isExpensive: isExpensive,
-                isConstrained: isConstrained
+                localIP: localIP, gatewayIP: gatewayIP,
+                isExpensive: isExpensive, isConstrained: isConstrained,
+                wifi: wifi
             )
             return
         }
 
-        currentConnection = ConnectionInfo(
+        currentConnection = makeInfo(
             type: .unknown,
             interfaceName: interfaceName,
-            localIP: localIP,
-            gatewayIP: gatewayIP,
-            isExpensive: isExpensive,
-            isConstrained: isConstrained
+            localIP: localIP, gatewayIP: gatewayIP,
+            isExpensive: isExpensive, isConstrained: isConstrained
         )
     }
 
