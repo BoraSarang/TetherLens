@@ -5,6 +5,8 @@ struct PopoverView: View {
     let hotspotDetector: HotspotDetector
     let pingMonitor: PingMonitor
 
+    @State private var refreshID = UUID()
+
     var body: some View {
         VStack(spacing: 12) {
             headerView
@@ -17,8 +19,16 @@ struct PopoverView: View {
             Divider()
             bottomButtons
         }
+        .id(refreshID)
         .padding(16)
         .frame(width: 280)
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+            refreshID = UUID()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("connectionChanged"))) { _ in
+            hotspotDetector.refreshNow()
+            refreshID = UUID()
+        }
     }
 
     private var headerView: some View {
@@ -69,9 +79,58 @@ struct PopoverView: View {
             .frame(width: 10, height: 10)
     }
 
+    private var ssidString: String? {
+        guard let conn = hotspotDetector.currentConnection else { return nil }
+        switch conn.type {
+        case .normalWiFi(let ssid, _): return ssid
+        case .iOSPersonalHotspot(let ssid): return ssid
+        case .androidHotspot(let ssid): return ssid
+        default: return nil
+        }
+    }
+
+    private var bssidString: String? {
+        guard let conn = hotspotDetector.currentConnection else { return nil }
+        switch conn.type {
+        case .normalWiFi(_, let bssid): return bssid
+        default: return nil
+        }
+    }
+
+    private var usesWiFi: Bool {
+        guard let conn = hotspotDetector.currentConnection else { return false }
+        switch conn.type {
+        case .normalWiFi, .iOSPersonalHotspot, .androidHotspot: return true
+        default: return false
+        }
+    }
+
     private var connectionDetailView: some View {
         VStack(alignment: .leading, spacing: 6) {
             detailRow(label: "유형", value: connectionTypeString)
+            if let ssid = ssidString {
+                let rssiSuffix: String = {
+                    guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
+                    return " (\(r)dBm)"
+                }()
+                detailRow(label: "네트워크", value: "\(ssid)\(rssiSuffix)")
+            } else if usesWiFi {
+                HStack(spacing: 4) {
+                    Image(systemName: "location.slash")
+                        .font(.caption2)
+                        .foregroundColor(.orange)
+                    Text("시스템 설정 > 개인정보 보호 > 위치 서비스에서\nTetherLens를 활성화하고 앱 재실행")
+                        .font(.system(size: 9, weight: .regular))
+                        .foregroundColor(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if let bssid = bssidString {
+                detailRow(label: "BSSID", value: bssid)
+            }
+            if let speed = hotspotDetector.currentConnection?.linkSpeed {
+                detailRow(label: "속도", value: String(format: "%.0f Mbps", speed))
+            }
             if let gw = hotspotDetector.currentConnection?.gatewayIP {
                 detailRow(label: "게이트웨이", value: gw)
             }
@@ -80,7 +139,6 @@ struct PopoverView: View {
             }
             detailRow(label: "Ping", value: pingString)
         }
-        .font(.caption)
     }
 
     private var connectionTypeString: String {
@@ -160,9 +218,11 @@ struct PopoverView: View {
     private func detailRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
+                .font(.system(size: 11, weight: .regular))
                 .foregroundColor(.secondary)
-                .frame(width: 60, alignment: .leading)
+                .frame(width: 64, alignment: .leading)
             Text(value)
+                .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.primary)
             Spacer()
         }

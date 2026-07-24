@@ -14,6 +14,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
     private var isPopoverShown = false
 
+    let connectionChanged = Notification.Name("connectionChanged")
+
     init(locationManager: LocationManager) {
         self.locationManager = locationManager
 
@@ -25,6 +27,16 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
         setupMenuBar()
         setupPopover()
+        setupLocationCallback()
+    }
+
+    private func setupLocationCallback() {
+        locationManager.onAuthorizationChange = { [weak self] authorized in
+            guard let self else { return }
+            hotspotDetector.refreshNow()
+            updateMenuBarText()
+            NotificationCenter.default.post(name: connectionChanged, object: nil)
+        }
     }
 
     private func setupMenuBar() {
@@ -70,36 +82,58 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
         let upload = networkMonitor.currentUploadSpeed
         let download = networkMonitor.currentDownloadSpeed
-        let todayUsage = networkMonitor.todayUsage
+        let totalUpload = networkMonitor.totalUpload
+        let totalDownload = networkMonitor.totalDownload
 
         let uploadStr = formatSpeed(upload)
         let downloadStr = formatSpeed(download)
-        let usageStr = formatBytes(todayUsage)
+        let upTotalStr = formatBytes(totalUpload)
+        let dnTotalStr = formatBytes(totalDownload)
 
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.alignment = .right
-        paragraphStyle.lineSpacing = 0
-        paragraphStyle.maximumLineHeight = 10
+        let style = NSMutableParagraphStyle()
+        let tab1 = NSTextTab(textAlignment: .right, location: 80, options: [:])
+        let tab2 = NSTextTab(textAlignment: .right, location: 130, options: [:])
+        style.tabStops = [tab1, tab2]
+        style.lineSpacing = 0
+        style.maximumLineHeight = 10
 
         let text = NSMutableAttributedString()
-        let line1 = NSAttributedString(
-            string: "▲ \(uploadStr)  ▼ \(downloadStr)",
-            attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
-                .foregroundColor: NSColor.white,
-                .paragraphStyle: paragraphStyle
-            ]
-        )
+
+        let line1 = NSMutableAttributedString()
+        line1.append(NSAttributedString(string: "▲", attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
+            .foregroundColor: NSColor.systemOrange,
+            .paragraphStyle: style
+        ]))
+        line1.append(NSAttributedString(string: "\t\(uploadStr)", attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
+            .foregroundColor: NSColor.white,
+            .paragraphStyle: style
+        ]))
+        line1.append(NSAttributedString(string: "\t\(upTotalStr)", attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
+            .foregroundColor: NSColor.systemGray,
+            .paragraphStyle: style
+        ]))
         text.append(line1)
         text.append(NSAttributedString(string: "\n"))
-        let line2 = NSAttributedString(
-            string: usageStr,
-            attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
-                .foregroundColor: NSColor.systemGreen,
-                .paragraphStyle: paragraphStyle
-            ]
-        )
+
+        let line2 = NSMutableAttributedString()
+        line2.append(NSAttributedString(string: "▼", attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
+            .foregroundColor: NSColor.systemBlue,
+            .paragraphStyle: style
+        ]))
+        line2.append(NSAttributedString(string: "\t\(downloadStr)", attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular),
+            .foregroundColor: NSColor.white,
+            .paragraphStyle: style
+        ]))
+        line2.append(NSAttributedString(string: "\t\(dnTotalStr)", attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold),
+            .foregroundColor: NSColor.systemGray,
+            .paragraphStyle: style
+        ]))
         text.append(line2)
 
         button.attributedTitle = text
@@ -118,20 +152,23 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     }
 
     private func formatSpeed(_ bps: Double) -> String {
-        if bps >= 1_000_000_000 {
-            return String(format: "%.1fGbps", bps / 1_000_000_000)
-        } else if bps >= 1_000_000 {
-            return String(format: "%.1fMbps", bps / 1_000_000)
-        } else if bps >= 1_000 {
-            return String(format: "%.1fKbps", bps / 1_000)
+        let Bps = bps / 8
+        if Bps >= 1_000_000_000 {
+            return String(format: "%.2f GB/s", Bps / 1_000_000_000)
+        } else if Bps >= 1_000_000 {
+            return String(format: "%.2f MB/s", Bps / 1_000_000)
+        } else if Bps >= 1_000 {
+            return String(format: "%.2f KB/s", Bps / 1_000)
         } else {
-            return String(format: "%.0fbps", bps)
+            return String(format: "%.0f B/s", Bps)
         }
     }
 
     private func formatBytes(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .binary
+        formatter.includesUnit = true
+        formatter.allowsNonnumericFormatting = false
         return formatter.string(fromByteCount: bytes)
     }
 }
