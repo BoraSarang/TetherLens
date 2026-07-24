@@ -12,10 +12,12 @@ struct PopoverView: View {
     var body: some View {
         VStack(spacing: 12) {
             headerView
-            Divider()
-            connectionDetailView
-            Divider()
-            qosGaugeView
+            sectionDivider("연결 정보")
+            connectionInfoView
+            sectionDivider("연결 주소")
+            connectionAddressView
+            sectionDivider("QoS 방지 게이지")
+            qosGaugeBody
             Divider()
             speedView
             Divider()
@@ -107,7 +109,7 @@ struct PopoverView: View {
         }
     }
 
-    private var connectionDetailView: some View {
+    private var connectionInfoView: some View {
         VStack(alignment: .leading, spacing: 6) {
             detailRow(label: "유형", value: connectionTypeString)
             if let ssid = ssidString {
@@ -137,6 +139,11 @@ struct PopoverView: View {
             if let speed = hotspotDetector.currentConnection?.linkSpeed {
                 detailRow(label: "속도", value: String(format: "%.0f Mbps", speed))
             }
+        }
+    }
+
+    private var connectionAddressView: some View {
+        VStack(alignment: .leading, spacing: 6) {
             if let gw = hotspotDetector.currentConnection?.gatewayIP {
                 detailRow(label: "게이트웨이", value: gw)
             }
@@ -146,6 +153,9 @@ struct PopoverView: View {
             if let extIP = ipResolver.externalIP {
                 let country = ipResolver.geoInfo?.countryCode.map { " (\(flag(from: $0)))" } ?? ""
                 detailRow(label: "외부 IP", value: "\(extIP)\(country)")
+            }
+            if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {
+                detailRow(label: "DNS", value: dns.joined(separator: ", "))
             }
             detailRow(label: "Ping", value: pingString)
             if usesWiFi && ssidString == nil {
@@ -236,13 +246,8 @@ struct PopoverView: View {
         }
     }
 
-    private var qosGaugeView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("QoS 방지 게이지")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            QoSGauge(used: 2.7, total: 3.0)
-        }
+    private var qosGaugeBody: some View {
+        QoSGauge(used: 2.7, total: 3.0)
     }
 
     private var speedView: some View {
@@ -296,6 +301,14 @@ struct PopoverView: View {
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+
+    private func sectionDivider(_ title: String) -> some View {
+        HStack(spacing: 6) {
+            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+            Text(title).font(.caption2).foregroundColor(.secondary).fixedSize()
+            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
         }
     }
 

@@ -25,6 +25,7 @@ struct ConnectionInfo {
     let channelWidth: Int?
     let channelBand: String?
     let phyMode: String?
+    let dnsServers: [String]
 }
 
 class HotspotDetector: @unchecked Sendable {
@@ -102,7 +103,8 @@ class HotspotDetector: @unchecked Sendable {
             isExpensive: isExpensive,
             isConstrained: isConstrained,
             rssi: nil, noise: nil, linkSpeed: nil, channel: nil, channelWidth: nil,
-            channelBand: nil, phyMode: nil
+            channelBand: nil, phyMode: nil,
+            dnsServers: getDNSServers()
         )
     }
 
@@ -120,7 +122,8 @@ class HotspotDetector: @unchecked Sendable {
             channel: wifi.channel,
             channelWidth: wifi.channelWidth,
             channelBand: wifi.channelBand,
-            phyMode: wifi.phyMode
+            phyMode: wifi.phyMode,
+            dnsServers: getDNSServers()
         )
     }
 
@@ -278,6 +281,14 @@ class HotspotDetector: @unchecked Sendable {
         let keywords = ["galaxy", "android", "sm-", "samsung", "oneplus", "xiaomi",
                         "redmi", "huawei", "pixel", "motog", "asus", "tplink"]
         return keywords.contains { ssid.contains($0) }
+    }
+
+    private func getDNSServers() -> [String] {
+        guard let content = try? String(contentsOfFile: "/etc/resolv.conf") else { return [] }
+        return content.components(separatedBy: .newlines)
+            .filter { $0.hasPrefix("nameserver") }
+            .compactMap { $0.components(separatedBy: .whitespaces).last }
+            .filter { !$0.isEmpty }
     }
 }
 
