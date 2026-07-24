@@ -76,14 +76,14 @@ CoreWLAN.CWWiFiClient.shared().interface()?.ssid()
 | T-107 | Data quota settings + alerts | T-001 |
 | T-108 | SSID-based profile management | T-002 |
 | T-109 | SQLite storage for usage history | T-001 |
-| T-110 | DNS display + preset changer | T-001 |
+| T-110 | DNS display + preset changer | T-001 | ✅ |
 
 ### DNS Display ↔ Changer Connection
 
 팝오버 "연결 주소" 섹션의 DNS 표시는 T-110 DNS 프리셋 변경기와 연결됨:
 - PopoverView `connectionAddressView`에 `detailRow(label: "DNS", value: dnsString)` 추가
 - DNS 표시 탭 → 프리셋 선택 UI로 연결 (Phase 1 T-110에서 구현)
-- 프리셋 변경 시 `ConnectionInfo.dnsServers` 업데이트 + 시스템 DNS 설정 반영
+- 프리셋 변경 시 `ConnectionInfo.dnsServers` 업데이트 + 시스템 DNS 설정 반영 (`networksetup` via `osascript`, 관리자 권한 필요)
 
 | T-111 | **Settings menu** (UserDefaults): col3 total column show/hide toggle, quota GB input, quota unit reset | T-106 |
 | T-112 | **SettingsView** SwiftUI popover/window with toggles and number fields | T-111 |
