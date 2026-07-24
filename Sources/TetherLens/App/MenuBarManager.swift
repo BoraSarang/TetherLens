@@ -115,22 +115,27 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private func formatSpeed(_ bps: Double) -> String {
         let Bps = bps / 8
         if Bps >= 1_000_000_000 {
-            return String(format: "%.2f GB/s", Bps / 1_000_000_000)
+            return String(format: "%.1f GB/s", Bps / 1_000_000_000)
         } else if Bps >= 1_000_000 {
-            return String(format: "%.2f MB/s", Bps / 1_000_000)
+            return String(format: "%.1f MB/s", Bps / 1_000_000)
         } else if Bps >= 1_000 {
-            return String(format: "%.2f KB/s", Bps / 1_000)
+            return String(format: "%.1f KB/s", Bps / 1_000)
         } else {
             return String(format: "%.0f B/s", Bps)
         }
     }
 
     private func formatBytes(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .binary
-        formatter.includesUnit = true
-        formatter.allowsNonnumericFormatting = false
-        return formatter.string(fromByteCount: bytes)
+        let B = Double(bytes)
+        if B >= 1_000_000_000 {
+            return String(format: "%.1f GB", B / 1_000_000_000)
+        } else if B >= 1_000_000 {
+            return String(format: "%.1f MB", B / 1_000_000)
+        } else if B >= 1_000 {
+            return String(format: "%.1f KB", B / 1_000)
+        } else {
+            return "\(bytes) B"
+        }
     }
 }
 
@@ -144,11 +149,11 @@ class MenuBarView: NSView {
 
     private static let col2FixedW: CGFloat = {
         let f = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)
-        return ceil(NSString(string: "99.99 MB/s").size(withAttributes: [.font: f]).width) + 2
+        return ceil(NSString(string: "999.0 MB/s").size(withAttributes: [.font: f]).width) + 2
     }()
     private static let col3FixedW: CGFloat = {
         let f = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
-        return ceil(NSString(string: "999.99 MB").size(withAttributes: [.font: f]).width) + 2
+        return ceil(NSString(string: "999.9 GB").size(withAttributes: [.font: f]).width) + 5
     }()
 
     var onClick: (() -> Void)?
@@ -187,10 +192,10 @@ class MenuBarView: NSView {
 
         [upArrow, downArrow, upSpeed, downSpeed, upTotal, downTotal].forEach { $0.sizeToFit() }
 
-        let col1X: CGFloat = 4
-        let col2X = col1X + upArrow.frame.width + 4
-        let col3X = col2X + Self.col2FixedW + 4
-        let w = col3X + Self.col3FixedW + 4
+        let col1X: CGFloat = 1
+        let col2X = col1X + upArrow.frame.width + 2
+        let col3X = col2X + Self.col2FixedW + 3
+        let w = col3X + Self.col3FixedW + 1
 
         let h = NSStatusBar.system.thickness
         let lineHeight = max(upArrow.frame.height, upSpeed.frame.height, upTotal.frame.height)
