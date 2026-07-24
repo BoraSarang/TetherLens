@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "TetherLens",
+  "project_id": "00004207-da82-4c28-8f5c-3081e9fbe0ca"
+}
