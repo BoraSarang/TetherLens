@@ -224,8 +224,13 @@ class HotspotDetector: @unchecked Sendable {
     }
 
     private func getGatewayIP() -> String? {
+        let paths = ["/sbin/route", "/usr/sbin/route"]
+        guard let routePath = paths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else {
+            return nil
+        }
+
         let task = Process()
-        task.launchPath = "/usr/sbin/route"
+        task.launchPath = routePath
         task.arguments = ["-n", "get", "default"]
 
         let pipe = Pipe()
