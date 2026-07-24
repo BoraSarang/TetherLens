@@ -302,11 +302,11 @@ struct PopoverView: View {
     private func formatSpeed(_ bps: Double) -> String {
         let Bps = bps / 8
         if Bps >= 1_000_000_000 {
-            return String(format: "%.2f GB/s", Bps / 1_000_000_000)
+            return String(format: "%.1f GB/s", Bps / 1_000_000_000)
         } else if Bps >= 1_000_000 {
-            return String(format: "%.2f MB/s", Bps / 1_000_000)
+            return String(format: "%.1f MB/s", Bps / 1_000_000)
         } else if Bps >= 1_000 {
-            return String(format: "%.2f KB/s", Bps / 1_000)
+            return String(format: "%.1f KB/s", Bps / 1_000)
         } else {
             return String(format: "%.0f B/s", Bps)
         }
