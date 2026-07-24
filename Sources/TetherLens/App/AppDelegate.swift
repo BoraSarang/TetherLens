@@ -6,10 +6,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var locationManager: LocationManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
-
         locationManager = LocationManager()
         locationManager?.requestAuthorization()
+
+        NSApp.setActivationPolicy(.accessory)
 
         menuBarManager = MenuBarManager(locationManager: locationManager!)
 

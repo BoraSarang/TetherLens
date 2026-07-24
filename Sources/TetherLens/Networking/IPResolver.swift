@@ -6,6 +6,7 @@ struct GeoIPInfo: Codable {
     let countryCode: String?
 }
 
+@MainActor
 class IPResolver {
     private(set) var externalIP: String?
     private(set) var geoInfo: GeoIPInfo?

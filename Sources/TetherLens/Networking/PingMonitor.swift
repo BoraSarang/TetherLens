@@ -43,7 +43,7 @@ class PingMonitor: @unchecked Sendable {
         return await withCheckedContinuation { continuation in
             let task = Process()
             task.launchPath = "/sbin/ping"
-            task.arguments = ["-c", "1", "-t", "2", "-q", host]
+            task.arguments = ["-c", "1", "-W", "2000", host]
 
             let pipe = Pipe()
             task.standardOutput = pipe
@@ -56,14 +56,12 @@ class PingMonitor: @unchecked Sendable {
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 let output = String(data: data, encoding: .utf8) ?? ""
 
-                if task.terminationStatus == 0 {
-                    if let rttLine = output.components(separatedBy: "\n").first(where: { $0.contains("time=") }),
-                       let timePart = rttLine.components(separatedBy: "time=").last,
-                       let msPart = timePart.components(separatedBy: " ").first,
-                       let ms = Double(msPart) {
-                        continuation.resume(returning: ms / 1000.0)
-                        return
-                    }
+                if task.terminationStatus == 0,
+                   let line = output.components(separatedBy: "\n").first(where: { $0.contains("time=") }),
+                   let msPart = line.components(separatedBy: "time=").last?.components(separatedBy: " ").first,
+                   let ms = Double(msPart) {
+                    continuation.resume(returning: ms / 1000.0)
+                    return
                 }
                 continuation.resume(returning: nil)
             } catch {

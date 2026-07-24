@@ -16,6 +16,14 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         manager.requestWhenInUseAuthorization()
     }
 
+    var authorizationStatus: CLAuthorizationStatus {
+        manager.authorizationStatus
+    }
+
+    static var systemLocationServicesEnabled: Bool {
+        CLLocationManager.locationServicesEnabled()
+    }
+
     var isAuthorized: Bool {
         manager.authorizationStatus == .authorized
             || manager.authorizationStatus == .authorizedAlways

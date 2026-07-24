@@ -23,6 +23,8 @@ struct ConnectionInfo {
     let linkSpeed: Double?
     let channel: Int?
     let channelWidth: Int?
+    let channelBand: String?
+    let phyMode: String?
 }
 
 class HotspotDetector: @unchecked Sendable {
@@ -49,14 +51,14 @@ class HotspotDetector: @unchecked Sendable {
         updateConnection(path: path)
     }
 
-    func refreshWifiInfo() -> (ssid: String?, bssid: String?, rssi: Int?, noise: Int?, linkSpeed: Double?, channel: Int?, channelWidth: Int?) {
+    func refreshWifiInfo() -> (ssid: String?, bssid: String?, rssi: Int?, noise: Int?, linkSpeed: Double?, channel: Int?, channelWidth: Int?, channelBand: String?, phyMode: String?) {
         guard CLLocationManager.locationServicesEnabled() else {
-            return (nil, nil, nil, nil, nil, nil, nil)
+            return (nil, nil, nil, nil, nil, nil, nil, nil, nil)
         }
 
         let client = CWWiFiClient.shared()
         guard let interface = client.interface() else {
-            return (nil, nil, nil, nil, nil, nil, nil)
+            return (nil, nil, nil, nil, nil, nil, nil, nil, nil)
         }
 
         let ssid = interface.ssid()
@@ -64,7 +66,31 @@ class HotspotDetector: @unchecked Sendable {
         let rssi = interface.rssiValue()
         let noise = interface.noiseMeasurement()
         let linkSpeed = interface.transmitRate()
-        return (ssid, bssid, rssi, noise, linkSpeed, nil, nil)
+
+        var channelNumber: Int? = nil
+        var channelWidth: Int? = nil
+        var channelBand: String? = nil
+        var phyMode: String? = nil
+
+        if let cwChannel = interface.wlanChannel() {
+            channelNumber = cwChannel.channelNumber
+            let widthValues: [Int: Int] = [0: 20, 1: 40, 2: 80, 3: 160]
+            channelWidth = widthValues[cwChannel.channelWidth.rawValue]
+            let bandValues: [Int: String] = [1: "2.4GHz", 2: "5GHz", 3: "6GHz"]
+            channelBand = bandValues[cwChannel.channelBand.rawValue]
+        }
+
+        switch interface.activePHYMode() {
+        case .mode11a: phyMode = "802.11a"
+        case .mode11b: phyMode = "802.11b"
+        case .mode11g: phyMode = "802.11g"
+        case .mode11n: phyMode = "802.11n"
+        case .mode11ac: phyMode = "802.11ac"
+        case .mode11ax: phyMode = "802.11ax"
+        default: break
+        }
+
+        return (ssid, bssid, rssi, noise, linkSpeed, channelNumber, channelWidth, channelBand, phyMode)
     }
 
     private func makeInfo(type: ConnectionType, interfaceName: String?, localIP: String?, gatewayIP: String?, isExpensive: Bool, isConstrained: Bool) -> ConnectionInfo {
@@ -75,11 +101,12 @@ class HotspotDetector: @unchecked Sendable {
             gatewayIP: gatewayIP,
             isExpensive: isExpensive,
             isConstrained: isConstrained,
-            rssi: nil, noise: nil, linkSpeed: nil, channel: nil, channelWidth: nil
+            rssi: nil, noise: nil, linkSpeed: nil, channel: nil, channelWidth: nil,
+            channelBand: nil, phyMode: nil
         )
     }
 
-    private func makeWiFiInfo(type: ConnectionType, interfaceName: String?, localIP: String?, gatewayIP: String?, isExpensive: Bool, isConstrained: Bool, wifi: (ssid: String?, bssid: String?, rssi: Int?, noise: Int?, linkSpeed: Double?, channel: Int?, channelWidth: Int?)) -> ConnectionInfo {
+    private func makeWiFiInfo(type: ConnectionType, interfaceName: String?, localIP: String?, gatewayIP: String?, isExpensive: Bool, isConstrained: Bool, wifi: (ssid: String?, bssid: String?, rssi: Int?, noise: Int?, linkSpeed: Double?, channel: Int?, channelWidth: Int?, channelBand: String?, phyMode: String?)) -> ConnectionInfo {
         ConnectionInfo(
             type: type,
             interfaceName: interfaceName,
@@ -91,7 +118,9 @@ class HotspotDetector: @unchecked Sendable {
             noise: wifi.noise,
             linkSpeed: wifi.linkSpeed,
             channel: wifi.channel,
-            channelWidth: wifi.channelWidth
+            channelWidth: wifi.channelWidth,
+            channelBand: wifi.channelBand,
+            phyMode: wifi.phyMode
         )
     }
 
@@ -120,10 +149,16 @@ class HotspotDetector: @unchecked Sendable {
 
             let detectedType: ConnectionType
 
-            if let gw = gatewayIP, gw.hasPrefix("192.168.43.") {
-                detectedType = .androidHotspot(ssid: wifi.ssid)
-            } else if let gw = gatewayIP, gw.hasPrefix("172.20.10.") {
-                detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
+            if let gw = gatewayIP {
+                if gw.hasPrefix("192.168.43.") || gw.hasPrefix("10.") {
+                    detectedType = .androidHotspot(ssid: wifi.ssid)
+                } else if gw.hasPrefix("172.20.10.") {
+                    detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
+                } else if isExpensive {
+                    detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
+                } else {
+                    detectedType = .normalWiFi(ssid: wifi.ssid, bssid: wifi.bssid)
+                }
             } else if isExpensive {
                 detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
             } else {
@@ -209,6 +244,35 @@ class HotspotDetector: @unchecked Sendable {
         } catch {}
 
         return nil
+    }
+
+    private func hotspotTypeByBSSID(_ bssid: String?) -> ConnectionType {
+        guard let bssid = bssid?.uppercased() else { return .androidHotspot(ssid: nil) }
+        let appleOUIs: Set<String> = [
+            "00:17:F2", "00:1E:52", "00:1F:F3", "00:21:E9", "00:22:41",
+            "00:23:32", "00:23:6E", "00:25:00", "00:25:BC", "00:26:08",
+            "00:26:B0", "00:27:0A", "30:10:B3", "60:03:08", "68:5B:35",
+            "88:66:5A", "8C:85:90", "A4:D1:D2", "B0:65:BD", "B8:F7:61",
+            "C8:89:F3", "D0:A6:37", "D4:61:9D", "F0:18:98", "F4:F5:E5"
+        ]
+        let oui = String(bssid.prefix(8))
+        return appleOUIs.contains(oui) ? .iOSPersonalHotspot(ssid: nil) : .androidHotspot(ssid: nil)
+    }
+
+    private func isPersonalRange(_ ip: String) -> Bool {
+        let personalPrefixes = ["172.16.", "172.17.", "172.18.", "172.19.",
+                                "172.20.", "172.21.", "172.22.", "172.23.",
+                                "172.24.", "172.25.", "172.26.", "172.27.",
+                                "172.28.", "172.29.", "172.30.", "172.31.",
+                                "192.168."]
+        return personalPrefixes.contains { ip.hasPrefix($0) }
+    }
+
+    private func isAndroidSSID(_ ssid: String?) -> Bool {
+        guard let ssid = ssid?.lowercased() else { return false }
+        let keywords = ["galaxy", "android", "sm-", "samsung", "oneplus", "xiaomi",
+                        "redmi", "huawei", "pixel", "motog", "asus", "tplink"]
+        return keywords.contains { ssid.contains($0) }
     }
 }
 
