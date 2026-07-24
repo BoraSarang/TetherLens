@@ -8,6 +8,8 @@ struct PopoverView: View {
     let locationManager: LocationManager
 
     @State private var refreshID = UUID()
+    @State private var showDNSPicker = false
+    @State private var dnsStatusMessage: String?
 
     var body: some View {
         VStack(spacing: 12) {
@@ -32,6 +34,9 @@ struct PopoverView: View {
         .onReceive(NotificationCenter.default.publisher(for: .init("connectionChanged"))) { _ in
             hotspotDetector.refreshNow()
             refreshID = UUID()
+        }
+        .sheet(isPresented: $showDNSPicker) {
+            dnsPresetPicker
         }
     }
 
@@ -156,6 +161,7 @@ struct PopoverView: View {
             }
             if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {
                 detailRow(label: "DNS", value: dns.joined(separator: ", "))
+                    .onTapGesture { showDNSPicker = true }
             }
             detailRow(label: "Ping", value: pingString)
             if usesWiFi && ssidString == nil {
@@ -309,6 +315,57 @@ struct PopoverView: View {
             Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
             Text(title).font(.caption2).foregroundColor(.secondary).fixedSize()
             Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+        }
+    }
+
+    private var dnsPresetPicker: some View {
+        VStack(spacing: 12) {
+            Text("DNS 프리셋 선택")
+                .font(.headline)
+                .padding(.top, 16)
+
+            ForEach(DNSPreset.presets) { preset in
+                Button(action: { applyDNSPreset(preset) }) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(preset.name).font(.body)
+                            Text(preset.servers.joined(separator: ", "))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+                Divider()
+            }
+
+            if let msg = dnsStatusMessage {
+                Text(msg)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Button("닫기") { showDNSPicker = false }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .padding(.bottom, 16)
+        }
+        .frame(width: 260)
+    }
+
+    private func applyDNSPreset(_ preset: DNSPreset) {
+        dnsStatusMessage = "적용 중..."
+        DNSManager.shared.applyPreset(preset) { success, message in
+            DispatchQueue.main.async {
+                if success {
+                    dnsStatusMessage = "✓ \(message) DNS 적용 완료"
+                } else {
+                    dnsStatusMessage = "✗ \(message)"
+                }
+            }
         }
     }
 
