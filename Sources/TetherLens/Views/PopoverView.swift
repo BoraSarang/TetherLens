@@ -453,6 +453,7 @@ struct PopoverView: View {
                 Button("DNS 프리셋 적용") { showDNSPicker = true }
                 Button(savingModeActive ? "절약 모드 온" : "절약 모드") { openSavingMode() }
                 Button("설정") { showSettings = true }
+                Button("업데이트 확인") { UpdaterManager.shared.checkForUpdates() }
             } label: {
                 Text("더보기")
                     .font(.caption)

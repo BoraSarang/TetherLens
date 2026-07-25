@@ -17,16 +17,18 @@ rm -rf "$APP_BUNDLE"
 
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
+mkdir -p "$APP_BUNDLE/Contents/Frameworks"
 
 cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/"
 cp "$PROJECT_DIR/Resources/Info.plist" "$APP_BUNDLE/Contents/"
 
-# Sign with location entitlement only.
-# The com.apple.developer.networking.wifi-info entitlement requires a provisioning profile
-# and currently causes launch failure on macOS Tahoe. To enable full WiFi info:
-#   1. Register com.tetherlens.app at developer.apple.com
-#   2. Create a provisioning profile with the WiFi Info capability
-#   3. Update this script with the profile path
+# Embed Sparkle framework
+SPARKLE_SOURCE="$BUILD_DIR/Sparkle.framework"
+if [ -d "$SPARKLE_SOURCE" ]; then
+    cp -Rf "$SPARKLE_SOURCE" "$APP_BUNDLE/Contents/Frameworks/"
+fi
+
+# Sign the app bundle (deep sign includes frameworks)
 CODESIGN_IDENTITY="Apple Development: leeborasarang@gmail.com (HLQNBZHQQN)"
 cat > /tmp/tetherlens_entitlements.plist << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -38,7 +40,7 @@ cat > /tmp/tetherlens_entitlements.plist << EOF
 </dict>
 </plist>
 EOF
-/usr/bin/codesign --force --sign "$CODESIGN_IDENTITY" --entitlements /tmp/tetherlens_entitlements.plist "$APP_BUNDLE"
+/usr/bin/codesign --force --deep --sign "$CODESIGN_IDENTITY" --entitlements /tmp/tetherlens_entitlements.plist "$APP_BUNDLE"
 
 echo "App bundle created at $APP_BUNDLE"
 

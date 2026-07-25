@@ -50,9 +50,9 @@
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
-| 27 | Sparkle 자동 업데이트 | P0 | ⬜ |
-| 28 | 코드 서명 + Notarization | P0 | ⬜ |
-| 29 | GitHub Actions CI/CD | P0 | ⬜ |
+| 27 | Sparkle 자동 업데이트 | P0 | ✅ |
+| 28 | 코드 서명 + Notarization | P0 | ⬜ (로컬 서명 완료, Notarization은 유료 계정 필요) |
+| 29 | GitHub Actions CI/CD | P0 | ✅ |
 | 30 | Buy Me a Coffee 후원 링크 | P1 | ✅ |
 | 31 | 로그인 시 자동 실행 | P1 | ✅ |
 

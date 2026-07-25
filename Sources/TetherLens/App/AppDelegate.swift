@@ -11,6 +11,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.setActivationPolicy(.accessory)
 
+        _ = UpdaterManager.shared
+
         menuBarManager = MenuBarManager(locationManager: locationManager!)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
