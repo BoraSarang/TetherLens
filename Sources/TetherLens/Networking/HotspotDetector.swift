@@ -292,4 +292,13 @@ class HotspotDetector: @unchecked Sendable {
     }
 }
 
-
+extension ConnectionInfo {
+    var ssid: String? {
+        switch type {
+        case .normalWiFi(let ssid, _): return ssid
+        case .iOSPersonalHotspot(let ssid): return ssid
+        case .androidHotspot(let ssid): return ssid
+        case .ethernet, .unknown: return nil
+        }
+    }
+}

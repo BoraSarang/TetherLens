@@ -3,13 +3,34 @@ import Foundation
 struct DNSPreset: Identifiable, Equatable {
     let id = UUID()
     let name: String
+    let description: String
     let servers: [String]
 
-    static let google = DNSPreset(name: "Google", servers: ["8.8.8.8", "8.8.4.4"])
-    static let cloudflare = DNSPreset(name: "Cloudflare", servers: ["1.1.1.1", "1.0.0.1"])
-    static let opendns = DNSPreset(name: "OpenDNS", servers: ["208.67.222.222", "208.67.220.220"])
-    static let quad9 = DNSPreset(name: "Quad9", servers: ["9.9.9.9", "149.112.112.112"])
-    static let custom = DNSPreset(name: "사용자 설정", servers: [])
+    static let google = DNSPreset(
+        name: "Google",
+        description: "가장 빠른 글로벌 DNS",
+        servers: ["8.8.8.8", "8.8.4.4"]
+    )
+    static let cloudflare = DNSPreset(
+        name: "Cloudflare",
+        description: "개인정보 보호 중심, 1.1.1.1",
+        servers: ["1.1.1.1", "1.0.0.1"]
+    )
+    static let opendns = DNSPreset(
+        name: "OpenDNS",
+        description: "유해 사이트 차단 기능",
+        servers: ["208.67.222.222", "208.67.220.220"]
+    )
+    static let quad9 = DNSPreset(
+        name: "Quad9",
+        description: "악성 사이트 차단, 9.9.9.9",
+        servers: ["9.9.9.9", "149.112.112.112"]
+    )
+    static let custom = DNSPreset(
+        name: "사용자 설정",
+        description: "직접 DNS 주소 입력",
+        servers: []
+    )
 
     static let presets: [DNSPreset] = [google, cloudflare, opendns, quad9, custom]
 }
@@ -48,37 +69,45 @@ class DNSManager: @unchecked Sendable {
         }
     }
 
-    func applyPreset(_ preset: DNSPreset, completion: @escaping (Bool, String) -> Void) {
-        let script: String
-        if preset.servers.isEmpty {
-            script = "do shell script \"/usr/sbin/networksetup -setdnsservers \(serviceName) Empty\" with administrator privileges"
-        } else {
-            let servers = preset.servers.joined(separator: " ")
-            script = "do shell script \"/usr/sbin/networksetup -setdnsservers \(serviceName) \(servers)\" with administrator privileges"
-        }
+    func applyPreset(_ preset: DNSPreset, completion: @escaping @Sendable (Bool, String) -> Void) {
+        DispatchQueue.global().async { [weak self] in
+            guard let self else { return }
 
-        let task = Process()
-        task.launchPath = "/usr/bin/osascript"
-        task.arguments = ["-e", script]
-
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = pipe
-
-        do {
-            try task.run()
-            task.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-
-            if task.terminationStatus == 0 {
-                completion(true, preset.name)
+            let script: String
+            if preset.servers.isEmpty {
+                script = "do shell script \"/usr/sbin/networksetup -setdnsservers \(serviceName) Empty\" with administrator privileges"
             } else {
-                let msg = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                completion(false, msg.isEmpty ? "권한이 필요합니다" : msg)
+                let servers = preset.servers.joined(separator: " ")
+                script = "do shell script \"/usr/sbin/networksetup -setdnsservers \(serviceName) \(servers)\" with administrator privileges"
             }
-        } catch {
-            completion(false, error.localizedDescription)
+
+            let task = Process()
+            task.launchPath = "/usr/bin/osascript"
+            task.arguments = ["-e", script]
+
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = pipe
+
+            do {
+                try task.run()
+                task.waitUntilExit()
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let output = String(data: data, encoding: .utf8) ?? ""
+
+                DispatchQueue.main.async {
+                    if task.terminationStatus == 0 {
+                        completion(true, preset.name)
+                    } else {
+                        let msg = output.trimmingCharacters(in: .whitespacesAndNewlines)
+                        completion(false, msg.isEmpty ? "권한이 필요합니다" : msg)
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(false, error.localizedDescription)
+                }
+            }
         }
     }
 }

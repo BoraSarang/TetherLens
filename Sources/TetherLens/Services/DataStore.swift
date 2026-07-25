@@ -1,0 +1,53 @@
+import Foundation
+import GRDB
+
+final class DataStore: @unchecked Sendable {
+    static let shared = DataStore()
+
+    let dbQueue: DatabaseQueue
+
+    private init() {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dbPath = appSupport.appendingPathComponent("TetherLens/data.sqlite")
+        let parent = dbPath.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        dbQueue = try! DatabaseQueue(path: dbPath.path)
+        try! migrator.migrate(dbQueue)
+    }
+
+    private var migrator: DatabaseMigrator {
+        var m = DatabaseMigrator()
+        m.registerMigration("v1_profile") { db in
+            try db.create(table: "profile") { t in
+                t.column("id", .text).primaryKey()
+                t.column("ssid", .text).notNull().unique()
+                t.column("name", .text).notNull()
+                t.column("quota_gb", .double)
+                t.column("created_at", .text).notNull()
+                t.column("last_connected", .text).notNull()
+            }
+        }
+        m.registerMigration("v2_usage_log") { db in
+            try db.create(table: "usage_log") { t in
+                t.column("id", .text).primaryKey()
+                t.column("profile_id", .text).notNull().references("profile", onDelete: .cascade)
+                t.column("upload_delta", .integer).notNull()
+                t.column("download_delta", .integer).notNull()
+                t.column("recorded_at", .text).notNull()
+            }
+            try db.create(index: "idx_usage_log_profile", on: "usage_log", columns: ["profile_id"])
+            try db.create(index: "idx_usage_log_recorded", on: "usage_log", columns: ["recorded_at"])
+        }
+        m.registerMigration("v3_session") { db in
+            try db.create(table: "session") { t in
+                t.column("id", .text).primaryKey()
+                t.column("profile_id", .text).notNull().references("profile", onDelete: .cascade)
+                t.column("start_time", .text).notNull()
+                t.column("end_time", .text)
+            }
+            try db.create(index: "idx_session_profile", on: "session", columns: ["profile_id"])
+            try db.create(index: "idx_session_start", on: "session", columns: ["start_time"])
+        }
+        return m
+    }
+}

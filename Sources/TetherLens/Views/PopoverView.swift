@@ -10,8 +10,58 @@ struct PopoverView: View {
     @State private var refreshID = UUID()
     @State private var showDNSPicker = false
     @State private var dnsStatusMessage: String?
+    @State private var confirmPreset: DNSPreset?
+    @State private var currentDNSServers: [String] = []
+    @State private var applyingPresetID: UUID?
+    @State private var profiles: [Profile] = []
+    @State private var showProfileManager = false
+    @State private var editingProfile: Profile?
+    @State private var showSettings = false
+    @State private var showSavingMode = false
+    @State private var savingModeActive = SavingModeManager.shared.isEnabled
+    @State private var showUsageReport = false
 
     var body: some View {
+        mainContent
+            .sheet(isPresented: $showDNSPicker) {
+                dnsPresetPicker
+                    .onAppear {
+                        currentDNSServers = DNSManager.shared.currentServers()
+                        applyingPresetID = nil
+                        dnsStatusMessage = nil
+                    }
+            }
+            .sheet(isPresented: $showProfileManager) {
+                profileManagerSheet
+                    .onAppear { profiles = ProfileManager.shared.getAllProfiles() }
+            }
+            .sheet(item: $editingProfile) { profile in
+                ProfileEditorView(
+                    profile: profile,
+                    currentSSID: ssidString,
+                    onClose: { editingProfile = nil },
+                    onProfilesChanged: { profiles = ProfileManager.shared.getAllProfiles() }
+                )
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView(onClose: { showSettings = false })
+            }
+            .sheet(isPresented: $showSavingMode) {
+                SavingModeSheet(onClose: { showSavingMode = false })
+            }
+            .sheet(isPresented: $showUsageReport) {
+                UsageReportView(onClose: { showUsageReport = false })
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .init("settingsChanged"))) { _ in
+                refreshID = UUID()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .init("savingModeChanged"))) { _ in
+                savingModeActive = SavingModeManager.shared.isEnabled
+                refreshID = UUID()
+            }
+    }
+
+    private var mainContent: some View {
         VStack(spacing: 12) {
             headerView
             sectionDivider("연결 정보")
@@ -20,6 +70,8 @@ struct PopoverView: View {
             connectionAddressView
             sectionDivider("QoS 방지 게이지")
             qosGaugeBody
+            sectionDivider("프로필")
+            profileSection
             Divider()
             speedView
             Divider()
@@ -34,9 +86,7 @@ struct PopoverView: View {
         .onReceive(NotificationCenter.default.publisher(for: .init("connectionChanged"))) { _ in
             hotspotDetector.refreshNow()
             refreshID = UUID()
-        }
-        .sheet(isPresented: $showDNSPicker) {
-            dnsPresetPicker
+            profiles = ProfileManager.shared.getAllProfiles()
         }
     }
 
@@ -117,6 +167,9 @@ struct PopoverView: View {
     private var connectionInfoView: some View {
         VStack(alignment: .leading, spacing: 6) {
             detailRow(label: "유형", value: connectionTypeString)
+            if let dur = sessionDurationString {
+                detailRow(label: "세션", value: dur)
+            }
             if let ssid = ssidString {
                 let rssiSuffix: String = {
                     guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
@@ -194,6 +247,21 @@ struct PopoverView: View {
         return "측정 중..."
     }
 
+    private var sessionDurationString: String? {
+        guard let ssid = ssidString,
+              let profile = ProfileManager.shared.getProfile(ssid: ssid),
+              let session = ProfileManager.shared.getActiveSession(profileId: profile.id)
+        else { return nil }
+        let interval = Date().timeIntervalSince(session.startTime)
+        let hours = Int(interval) / 3600
+        let minutes = (Int(interval) % 3600) / 60
+        let seconds = Int(interval) % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
     private var locationWarningView: some View {
         HStack(alignment: .top, spacing: 4) {
             Image(systemName: "location.slash")
@@ -252,8 +320,108 @@ struct PopoverView: View {
         }
     }
 
+    @ViewBuilder
     private var qosGaugeBody: some View {
-        QoSGauge(used: 2.7, total: 3.0)
+        let ssid = hotspotDetector.currentConnection?.ssid
+        let profile = ssid.flatMap { ProfileManager.shared.getProfile(ssid: $0) }
+        let todayUsage = profile.map { ProfileManager.shared.getTodayUsage(profileId: $0.id) } ?? (0, 0)
+        let totalUsedGB = Double(todayUsage.upload + todayUsage.download) / 1_000_000_000
+        let quotaGB = profile?.quotaGB
+        if let quotaGB = quotaGB {
+            QoSGauge(used: totalUsedGB, total: quotaGB, saving: SavingModeManager.shared.isEnabled)
+        } else {
+            HStack {
+                Spacer()
+                Text("할당량 없음 — 프로필 편집에서 설정하세요")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+        }
+    }
+
+    private var profileSection: some View {
+        let currentSSID = hotspotDetector.currentConnection?.ssid
+        let currentProfile = currentSSID.flatMap { ProfileManager.shared.getProfile(ssid: $0) }
+        return VStack(spacing: 6) {
+            if let profile = currentProfile {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(profile.name).font(.body)
+                        Text(profile.ssid).font(.caption).foregroundColor(.secondary)
+                        if let q = profile.quotaGB {
+                            Text("할당량 \(String(format: "%.1f", q))GB").font(.caption2).foregroundColor(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Button("편집") {
+                        editingProfile = profile
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            Button("프로필 관리...") { showProfileManager = true }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var profileManagerSheet: some View {
+        VStack(spacing: 12) {
+            Text("프로필 관리")
+                .font(.headline)
+                .padding(.top, 16)
+
+            if profiles.isEmpty {
+                Spacer()
+                Text("등록된 프로필이 없습니다")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+            } else {
+                List {
+                    ForEach(profiles) { profile in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Text(profile.name).font(.body)
+                                    if profile.ssid == ssidString {
+                                        Circle().fill(Color.orange).frame(width: 6, height: 6)
+                                        Text("접속 중").font(.caption2).foregroundColor(.orange)
+                                    }
+                                }
+                                Text(profile.ssid).font(.caption).foregroundColor(.secondary)
+                                if let q = profile.quotaGB {
+                                    Text("할당량 \(String(format: "%.1f", q))GB").font(.caption2)
+                                }
+                            }
+                            Spacer()
+                            Button("편집") {
+                                showProfileManager = false
+                                editingProfile = profile
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
+                    .onDelete { indexSet in
+                        for i in indexSet {
+                            ProfileManager.shared.deleteProfile(id: profiles[i].id)
+                        }
+                        profiles = ProfileManager.shared.getAllProfiles()
+                    }
+                }
+                .listStyle(.plain)
+            }
+
+            Button("닫기") { showProfileManager = false }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .padding(.bottom, 16)
+        }
+        .frame(width: 280, height: 300)
     }
 
     private var speedView: some View {
@@ -280,16 +448,21 @@ struct PopoverView: View {
 
     private var bottomButtons: some View {
         HStack(spacing: 12) {
-            Button("설정") { openSettings() }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            Button("통계") { openStatistics() }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            Button("절약 모드") { openSavingMode() }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            Menu {
+                Button("통계") { openStatistics() }
+                Button("DNS 프리셋 적용") { showDNSPicker = true }
+                Button(savingModeActive ? "절약 모드 온" : "절약 모드") { openSavingMode() }
+                Button("설정") { showSettings = true }
+            } label: {
+                Text("더보기")
+                    .font(.caption)
+            }
+            .menuIndicator(.hidden)
+            .tint(savingModeActive ? .orange : .secondary)
             Spacer()
+            Button("☕️ 후원") { openDonation() }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             Button("종료") { NSApplication.shared.terminate(nil) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
@@ -325,20 +498,37 @@ struct PopoverView: View {
                 .padding(.top, 16)
 
             ForEach(DNSPreset.presets) { preset in
-                Button(action: { applyDNSPreset(preset) }) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(preset.name).font(.body)
-                            Text(preset.servers.joined(separator: ", "))
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(preset.name).font(.body)
+                        Text(preset.description)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(preset.servers.joined(separator: ", "))
+                            .font(.caption2)
+                            .foregroundColor(.secondary.opacity(0.6))
+                    }
+                    Spacer()
+                    Group {
+                        if applyingPresetID == preset.id {
+                            Text("적용 중...")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                        } else if !preset.servers.isEmpty && currentDNSServers == preset.servers {
+                            Text("적용됨")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                                .fontWeight(.semibold)
+                        } else {
+                            Button("적용") { confirmPreset = preset }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
                         }
-                        Spacer()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .frame(minWidth: 48, alignment: .center)
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
                 Divider()
             }
 
@@ -354,14 +544,31 @@ struct PopoverView: View {
                 .padding(.bottom, 16)
         }
         .frame(width: 260)
+        .alert(item: $confirmPreset) { preset in
+            Alert(
+                title: Text("DNS 변경"),
+                message: Text("""
+\(preset.name) (\(preset.servers.joined(separator: ", ")))(으)로 변경하시겠습니까?
+
+변경을 위해 관리자 비밀번호가 필요합니다.
+"""),
+                primaryButton: .cancel(Text("취소")),
+                secondaryButton: .default(Text("적용")) {
+                    applyDNSPreset(preset)
+                }
+            )
+        }
     }
 
     private func applyDNSPreset(_ preset: DNSPreset) {
+        applyingPresetID = preset.id
         dnsStatusMessage = "적용 중..."
         DNSManager.shared.applyPreset(preset) { success, message in
             DispatchQueue.main.async {
+                applyingPresetID = nil
                 if success {
                     dnsStatusMessage = "✓ \(message) DNS 적용 완료"
+                    currentDNSServers = preset.servers
                 } else {
                     dnsStatusMessage = "✗ \(message)"
                 }
@@ -389,9 +596,16 @@ struct PopoverView: View {
     }
 
     private func openStatistics() {
+        showUsageReport = true
     }
 
     private func openSavingMode() {
+        showSavingMode = true
+    }
+
+    private func openDonation() {
+        let url = URL(string: "https://buymeacoffee.com/okstart")!
+        NSWorkspace.shared.open(url)
     }
 
     private func flag(from countryCode: String) -> String {
