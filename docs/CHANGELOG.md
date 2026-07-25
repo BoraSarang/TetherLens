@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0] — 2026-07-25 — Sparkle 자동 업데이트 + CI/CD
+
+### Added
+- **Sparkle 자동 업데이트** (2.x, SPM) — `UpdaterManager`, 더보기 "업데이트 확인" 메뉴
+- **GitHub Actions CI/CD** — `.github/workflows/ci.yml` (macos-14, SPM 캐싱, `swift build`)
+
+### Changed
+- `scripts/package.sh`: Sparkle.framework 임베드 + `--deep` 서명 + rpath 설정
+- `Info.plist`: 버전 0.4.0, SUFeedURL/SUPublicEDKey 추가
+- EdDSA 서명 키 생성 완료
+
 ## [0.4.0] — 2026-07-25 — Phase 2 통계·세션·절약 모드
 
 ### Added
