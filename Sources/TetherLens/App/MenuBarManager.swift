@@ -2,11 +2,18 @@ import AppKit
 import SwiftUI
 import UserNotifications
 
+private final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound])
+    }
+}
+
 @MainActor
 class MenuBarManager: NSObject, @unchecked Sendable {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
     private var timer: Timer?
+    private var cacheTimer: Timer?     
 
     private let networkMonitor = NetworkMonitor()
     private let hotspotDetector = HotspotDetector()
@@ -21,8 +28,17 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private var recordTimer: Timer?
     private var lastQuotaNotified: Bool = false
 
+    private let notiDelegate = NotificationDelegate()
+
     private var lastTrackedSSID: String?
     private var currentSession: Session?
+
+    private var cachedProfile: Profile?
+    private var cachedUsage: (upload: Int64, download: Int64)?
+    private var cachedTotalUsage: (upload: Int64, download: Int64)?
+    private var cacheNeedsInvalidation = false
+
+    private(set) var popoverPinned = false
 
     var currentSessionDuration: TimeInterval? {
         guard let session = currentSession else { return nil }
@@ -38,6 +54,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
         super.init()
 
+        UNUserNotificationCenter.current().delegate = notiDelegate
+
         setupMenuBar()
         setupPopover()
         setupLocationCallback()
@@ -46,14 +64,29 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             self, selector: #selector(handleCurrentProfileDeleted),
             name: .init("currentProfileDeleted"), object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleAppTermination),
+            name: NSApplication.willTerminateNotification, object: nil
+        )
+    }
+
+    @objc private func handleResignActive() {
+        guard popover.isShown, !popoverPinned else { return }
+        popover.performClose(nil)
     }
 
     @objc private func handleCurrentProfileDeleted() {
         guard let ssid = hotspotDetector.currentConnection?.ssid, !ssid.isEmpty else { return }
         lastAutoRegisterSSID = nil
+        cacheNeedsInvalidation = true
+        refreshCache()
         _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid)
         updateMenuBarText()
         NotificationCenter.default.post(name: connectionChanged, object: nil)
+    }
+
+    @objc private func handleAppTermination() {
+        ProfileManager.shared.endAllActiveSessions()
     }
 
     private func setupLocationCallback() {
@@ -78,22 +111,31 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             hotspotDetector: hotspotDetector,
             pingMonitor: pingMonitor,
             ipResolver: ipResolver,
-            locationManager: locationManager
+            locationManager: locationManager,
+            onTogglePin: { [weak self] in self?.togglePin() }
         )
         popover.contentViewController = NSHostingController(rootView: contentView)
     }
 
     func startMonitoring() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+
         networkMonitor.start()
         hotspotDetector.start()
         pingMonitor.start()
+        TrafficMonitor.shared.start()
 
         Task { await ipResolver.refresh() }
 
         ProfileManager.shared.cleanupOldLogs()
+        ProfileManager.shared.cleanupAppTrafficLogs()
+        ProfileManager.shared.endAllActiveSessions()
+        NotificationCenter.default.post(name: .init("sessionChanged"), object: nil)
+
+        refreshCache()
 
         if let ssid = hotspotDetector.currentConnection?.ssid,
-           let profile = ProfileManager.shared.getProfile(ssid: ssid) {
+           let profile = cachedProfile {
             currentSession = ProfileManager.shared.getActiveSession(profileId: profile.id)
             if currentSession == nil {
                 currentSession = ProfileManager.shared.startSession(profileId: profile.id)
@@ -107,7 +149,13 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             }
         }
 
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        cacheTimer = Timer.scheduledTimer(withTimeInterval: SettingsManager.shared.cacheRefreshInterval, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.refreshCache()
+            }
+        }
+
+        timer = Timer.scheduledTimer(withTimeInterval: SettingsManager.shared.menuBarRefreshInterval, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.updateMenuBarText()
             }
@@ -117,11 +165,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     func stopMonitoring() {
         timer?.invalidate()
         timer = nil
+        cacheTimer?.invalidate()
+        cacheTimer = nil
         recordTimer?.invalidate()
         recordTimer = nil
         networkMonitor.stop()
         hotspotDetector.stop()
         pingMonitor.stop()
+        TrafficMonitor.shared.stop()
     }
 
     private func recordCurrentUsage() {
@@ -134,6 +185,34 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         )
     }
 
+    private func refreshCache() {
+        if cacheNeedsInvalidation {
+            cachedProfile = nil
+            cachedUsage = nil
+            cachedTotalUsage = nil
+            cacheNeedsInvalidation = false
+        }
+        let ssid = hotspotDetector.currentConnection?.ssid
+        guard let ssid = ssid, !ssid.isEmpty else {
+            cachedProfile = nil
+            cachedUsage = nil
+            cachedTotalUsage = nil
+            return
+        }
+        cachedProfile = ProfileManager.shared.getProfile(ssid: ssid)
+        if let pid = cachedProfile?.id {
+            cachedUsage = ProfileManager.shared.getTodayUsage(profileId: pid)
+            if cachedProfile?.quotaGB == nil {
+                cachedTotalUsage = ProfileManager.shared.getTotalUsage(profileId: pid)
+            } else {
+                cachedTotalUsage = nil
+            }
+        } else {
+            cachedUsage = nil
+            cachedTotalUsage = nil
+        }
+    }
+
     private func updateMenuBarText() {
         let upload = networkMonitor.currentUploadSpeed
         let download = networkMonitor.currentDownloadSpeed
@@ -141,6 +220,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         let downloadStr = formatSpeed(download)
 
         let ssid = hotspotDetector.currentConnection?.ssid
+        if let conn = hotspotDetector.currentConnection {
+            switch conn.type {
+            case .iOSPersonalHotspot, .androidHotspot:
+                pingMonitor.isHotspot = true
+            default:
+                pingMonitor.isHotspot = false
+            }
+        }
         var totalQuotaGB: Double?
         var totalStr = ""
         var remainingStr = ""
@@ -149,8 +236,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             if ssid != lastAutoRegisterSSID {
                 lastAutoRegisterSSID = ssid
                 _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid)
+                cacheNeedsInvalidation = true
             }
-            let profile = ProfileManager.shared.getProfile(ssid: ssid)
+
+            let profile = cachedProfile ?? ProfileManager.shared.getProfile(ssid: ssid)
             totalQuotaGB = profile?.quotaGB
 
             if ssid != lastTrackedSSID {
@@ -163,10 +252,11 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                     currentSession = nil
                 }
                 lastTrackedSSID = ssid
+                cacheNeedsInvalidation = true
                 NotificationCenter.default.post(name: .init("sessionChanged"), object: nil)
             }
 
-            let usage = profile.map { ProfileManager.shared.getTodayUsage(profileId: $0.id) } ?? (0, 0)
+            let usage = cachedUsage ?? (0, 0)
             let totalBytes = usage.upload + usage.download
             let totalGB = Double(totalBytes) / 1_000_000_000
 
@@ -175,9 +265,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                     totalStr = formatBytes(totalBytes)
                     let remaining = quota - totalGB
                     if remaining >= 1.0 {
-                        remainingStr = "잔여 " + String(format: "%.1fGB", remaining)
+                        remainingStr = "잔여 " + String(format: "%.1f GB", remaining)
                     } else {
-                        remainingStr = "잔여 " + String(format: "%.0fMB", remaining * 1000)
+                        remainingStr = "잔여 " + String(format: "%.0f MB", remaining * 1000)
                     }
                 }
 
@@ -188,18 +278,24 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 }
             } else if SettingsManager.shared.showTotalColumn {
                 totalStr = formatBytes(totalBytes)
-                let totalUsage = profile.map { ProfileManager.shared.getTotalUsage(profileId: $0.id) } ?? (0, 0)
-                let totalAllBytes = totalUsage.upload + totalUsage.download
-                remainingStr = formatBytes(totalAllBytes)
+                let totalAll = cachedTotalUsage ?? (0, 0)
+                remainingStr = formatBytes(totalAll.upload + totalAll.download)
             }
+        } else if lastTrackedSSID != nil {
+            if let oldSession = currentSession {
+                ProfileManager.shared.endSession(oldSession)
+            }
+            currentSession = nil
+            lastTrackedSSID = nil
+            lastAutoRegisterSSID = nil
+            cacheNeedsInvalidation = true
+            NotificationCenter.default.post(name: .init("sessionChanged"), object: nil)
         }
 
         let quotaRatio: Double
         if SettingsManager.shared.showTotalColumn, let quota = totalQuotaGB, quota > 0 {
-            let totalGB = ssid.flatMap { ProfileManager.shared.getProfile(ssid: $0) }.map { p in
-                let u = ProfileManager.shared.getTodayUsage(profileId: p.id)
-                return Double(u.upload + u.download) / 1_000_000_000
-            } ?? 0
+            let usage = cachedUsage ?? (0, 0)
+            let totalGB = Double(usage.upload + usage.download) / 1_000_000_000
             quotaRatio = min(totalGB / quota, 1.0)
         } else if SettingsManager.shared.showTotalColumn, !totalStr.isEmpty {
             quotaRatio = 0
@@ -215,14 +311,20 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         statusItem.length = menuBarView.frame.width
 
         if let quota = totalQuotaGB, quota > 0 {
-            let todayGB = ssid.flatMap { ProfileManager.shared.getProfile(ssid: $0) }.map { p in
-                let u = ProfileManager.shared.getTodayUsage(profileId: p.id)
-                return Double(u.upload + u.download) / 1_000_000_000
-            } ?? 0
-            if todayGB >= quota {
+            let usage = cachedUsage ?? (0, 0)
+            let todayGB = Double(usage.upload + usage.download) / 1_000_000_000
+            let threshold = SettingsManager.shared.quotaWarningThreshold
+            if threshold < 1.0, todayGB >= quota * threshold {
+                if !lastQuotaNotified {
+                    lastQuotaNotified = true
+                    sendThresholdNotification(used: todayGB, quota: quota, threshold: threshold)
+                    postQuotaAlert(type: .quotaWarning, message: "할당량 \(Int(threshold * 100))% 도달 — \(String(format: "%.1f", todayGB))GB / \(String(format: "%.1f", quota))GB")
+                }
+            } else if threshold >= 1.0, todayGB >= quota {
                 if !lastQuotaNotified {
                     lastQuotaNotified = true
                     sendQuotaNotification(used: todayGB, quota: quota)
+                    postQuotaAlert(type: .quotaExceeded, message: "할당량 초과 — \(String(format: "%.1f", todayGB))GB / \(String(format: "%.1f", quota))GB")
                 }
             } else {
                 lastQuotaNotified = false
@@ -247,13 +349,53 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         }
     }
 
+    private func sendThresholdNotification(used: Double, quota: Double, threshold: Double) {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            guard granted else { return }
+            let pct = Int(threshold * 100)
+            let content = UNMutableNotificationContent()
+            content.title = "데이터 할당량 \(pct)% 도달"
+            content.body = "\(String(format: "%.1f", used))GB / \(String(format: "%.1f", quota))GB 사용 (\(pct)%)"
+            content.sound = .default
+            let request = UNNotificationRequest(
+                identifier: "quota-threshold-\(Date().timeIntervalSince1970)",
+                content: content,
+                trigger: nil
+            )
+            center.add(request)
+        }
+    }
+
+    private func postQuotaAlert(type: AppNotification.NotificationType, message: String) {
+        NotificationManager.shared.add(type: type, message: message)
+        NotificationCenter.default.post(name: .init("quotaAlert"), object: nil, userInfo: ["message": message])
+    }
+
     private func togglePopover() {
+        if popoverPinned {
+            return
+        }
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            popover.show(relativeTo: menuBarView.bounds, of: menuBarView, preferredEdge: .minY)
+            let positioningView: NSView
+            let positioningBounds: NSRect
+            if let button = statusItem.button {
+                positioningView = button
+                positioningBounds = button.bounds
+            } else {
+                positioningView = menuBarView
+                positioningBounds = menuBarView.bounds
+            }
+            popover.show(relativeTo: positioningBounds, of: positioningView, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
+    }
+
+    private func togglePin() {
+        popoverPinned.toggle()
+        popover.behavior = popoverPinned ? .applicationDefined : .transient
     }
 
     private func formatSpeed(_ bps: Double) -> String {
@@ -291,15 +433,17 @@ class MenuBarView: NSView {
     private let upTotal = NSTextField(labelWithString: "")
     private let downTotal = NSTextField(labelWithString: "")
 
-    private static let col2FixedW: CGFloat = {
-        let f = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)
+    private var currentFontSize: Double = 9
+
+    private var col2FixedW: CGFloat {
+        let f = NSFont.monospacedDigitSystemFont(ofSize: currentFontSize, weight: .regular)
         return ceil(NSString(string: "999.0 MB/s").size(withAttributes: [.font: f]).width) + 2
-    }()
-    private static let col3FixedW: CGFloat = {
-        let f = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
+    }
+    private var col3FixedW: CGFloat {
+        let f = NSFont.monospacedDigitSystemFont(ofSize: currentFontSize, weight: .bold)
         let base = NSString(string: "잔여 999.9 GB").size(withAttributes: [.font: f]).width
-        return ceil(base) + 5
-    }()
+        return ceil(base)
+    }
 
     var onClick: (() -> Void)?
 
@@ -321,30 +465,34 @@ class MenuBarView: NSView {
     required init?(coder: NSCoder) { nil }
 
     func update(upSpeed s1: String, downSpeed s2: String, col3Top t1: String, col3Bottom t2: String, totalRatio: Double = 0) {
-        let bold9 = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold)
-        let reg9 = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)
+        let fontSize = SettingsManager.shared.menuBarFontSize
+        currentFontSize = fontSize
+
+        let boldFont = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .bold)
+        let regFont = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .regular)
         let rightStyle = NSMutableParagraphStyle()
         rightStyle.alignment = .right
 
+        let upAttr: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: NSColor.systemOrange]
+        let downAttr: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: NSColor.systemBlue]
+        let speedAttr: [NSAttributedString.Key: Any] = [.font: regFont, .foregroundColor: NSColor.white, .paragraphStyle: rightStyle]
+
         let totalColor = totalRatio < 0 ? NSColor.clear : colorForRatio(totalRatio)
+        let totalAttr: [NSAttributedString.Key: Any] = totalRatio < 0 ? [:] : [.font: boldFont, .foregroundColor: totalColor, .paragraphStyle: rightStyle]
 
-        upArrow.attributedStringValue = NSAttributedString(string: "▲", attributes: [.font: bold9, .foregroundColor: NSColor.systemOrange])
-        downArrow.attributedStringValue = NSAttributedString(string: "▼", attributes: [.font: bold9, .foregroundColor: NSColor.systemBlue])
-        upSpeed.attributedStringValue = NSAttributedString(string: s1, attributes: [.font: reg9, .foregroundColor: NSColor.white, .paragraphStyle: rightStyle])
-        downSpeed.attributedStringValue = NSAttributedString(string: s2, attributes: [.font: reg9, .foregroundColor: NSColor.white, .paragraphStyle: rightStyle])
-        upTotal.attributedStringValue = totalRatio < 0
-            ? NSAttributedString(string: "", attributes: [:])
-            : NSAttributedString(string: t1, attributes: [.font: bold9, .foregroundColor: totalColor, .paragraphStyle: rightStyle])
-        downTotal.attributedStringValue = totalRatio < 0
-            ? NSAttributedString(string: "", attributes: [:])
-            : NSAttributedString(string: t2, attributes: [.font: bold9, .foregroundColor: totalColor, .paragraphStyle: rightStyle])
+        upArrow.attributedStringValue = NSAttributedString(string: "▲", attributes: upAttr)
+        downArrow.attributedStringValue = NSAttributedString(string: "▼", attributes: downAttr)
+        upArrow.sizeToFit()
+        downArrow.sizeToFit()
+        setText(upSpeed, value: s1, attrs: speedAttr)
+        setText(downSpeed, value: s2, attrs: speedAttr)
+        setText(upTotal, value: t1, attrs: totalAttr)
+        setText(downTotal, value: t2, attrs: totalAttr)
 
-        [upArrow, downArrow, upSpeed, downSpeed, upTotal, downTotal].forEach { $0.sizeToFit() }
-
-        let col3W = totalRatio < 0 ? 0 : Self.col3FixedW
+        let col3W = totalRatio < 0 ? 0 : col3FixedW
         let col1X: CGFloat = 1
         let col2X = col1X + upArrow.frame.width + 2
-        let col3X = col2X + Self.col2FixedW + 3
+        let col3X = col2X + col2FixedW + 3
         let w = col3X + col3W + 1
 
         let h = NSStatusBar.system.thickness
@@ -354,12 +502,19 @@ class MenuBarView: NSView {
 
         upArrow.setFrameOrigin(NSPoint(x: col1X, y: baseY + lineHeight))
         downArrow.setFrameOrigin(NSPoint(x: col1X, y: baseY))
-        upSpeed.frame = NSRect(x: col2X, y: baseY + lineHeight, width: Self.col2FixedW, height: lineHeight)
-        downSpeed.frame = NSRect(x: col2X, y: baseY, width: Self.col2FixedW, height: lineHeight)
+        upSpeed.frame = NSRect(x: col2X, y: baseY + lineHeight, width: col2FixedW, height: lineHeight)
+        downSpeed.frame = NSRect(x: col2X, y: baseY, width: col2FixedW, height: lineHeight)
         upTotal.frame = NSRect(x: col3X, y: baseY + lineHeight, width: col3W, height: lineHeight)
         downTotal.frame = NSRect(x: col3X, y: baseY, width: col3W, height: lineHeight)
 
         frame.size = NSSize(width: w, height: h)
+    }
+
+    private func setText(_ field: NSTextField, value: String, attrs: [NSAttributedString.Key: Any]) {
+        if field.attributedStringValue.string != value {
+            field.attributedStringValue = NSAttributedString(string: value, attributes: attrs)
+            field.sizeToFit()
+        }
     }
 
     override func mouseDown(with event: NSEvent) {
