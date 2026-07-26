@@ -6,8 +6,20 @@ struct PopoverView: View {
     let pingMonitor: PingMonitor
     let ipResolver: IPResolver
     let locationManager: LocationManager
+    let onTogglePin: (() -> Void)?
+    @State private var pinned = false
 
-    @State private var refreshID = UUID()
+    private struct PingAlert {
+        let message: String
+        let type: AppNotification.NotificationType
+    }
+
+    private struct UsageReportConfig: Identifiable {
+        let id = UUID()
+        let preselectedProfileId: UUID?
+    }
+
+    @State private var tick = Date()
     @State private var showDNSPicker = false
     @State private var dnsStatusMessage: String?
     @State private var confirmPreset: DNSPreset?
@@ -19,7 +31,17 @@ struct PopoverView: View {
     @State private var showSettings = false
     @State private var showSavingMode = false
     @State private var savingModeActive = SavingModeManager.shared.isEnabled
-    @State private var showUsageReport = false
+    @State private var usageReportConfig: UsageReportConfig?
+    @State private var showTraffic = false
+    @State private var showAbout = false
+    @ObservedObject private var trafficMonitor = TrafficMonitor.shared
+    @State private var sessionStartTime: Date?
+    @State private var quotaAlertMessage: String?
+    @State private var pingAlert: PingAlert?
+    @State private var showNotifications = false
+    @AppStorage("popover_expanded_connection_info") private var expandedConnectionInfo = false
+    @AppStorage("popover_expanded_address_info") private var expandedAddressInfo = false
+    @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
 
     var body: some View {
         mainContent
@@ -49,27 +71,104 @@ struct PopoverView: View {
             .sheet(isPresented: $showSavingMode) {
                 SavingModeSheet(onClose: { showSavingMode = false })
             }
-            .sheet(isPresented: $showUsageReport) {
-                UsageReportView(onClose: { showUsageReport = false })
+            .sheet(item: $usageReportConfig) { config in
+                UsageReportView(onClose: { usageReportConfig = nil }, preselectedProfileId: config.preselectedProfileId)
             }
-            .onReceive(NotificationCenter.default.publisher(for: .init("settingsChanged"))) { _ in
-                refreshID = UUID()
+            .sheet(isPresented: $showTraffic) {
+                AppTrafficView(onClose: { showTraffic = false })
             }
-            .onReceive(NotificationCenter.default.publisher(for: .init("savingModeChanged"))) { _ in
+            .sheet(isPresented: $showAbout) {
+                AboutView(onClose: { showAbout = false })
+            }
+            .sheet(isPresented: $showNotifications) {
+                NotificationListView(onClose: { showNotifications = false })
+            }
+        .onReceive(NotificationCenter.default.publisher(for: .init("settingsChanged"))) { _ in
+            tick = Date()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("quotaAlert"))) { notification in
+            if let msg = notification.userInfo?["message"] as? String {
+                quotaAlertMessage = msg
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    self.quotaAlertMessage = nil
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("pingAlert"))) { notification in
+            if let msg = notification.userInfo?["message"] as? String {
+                let typeRaw = notification.userInfo?["type"] as? String ?? ""
+                let type = AppNotification.NotificationType(rawValue: typeRaw) ?? .pingWarning
+                pingAlert = PingAlert(message: msg, type: type)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    self.pingAlert = nil
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .init("savingModeChanged"))) { _ in
                 savingModeActive = SavingModeManager.shared.isEnabled
-                refreshID = UUID()
+                tick = Date()
             }
     }
 
     private var mainContent: some View {
         VStack(spacing: 12) {
             headerView
-            sectionDivider("연결 정보")
+            collapsibleSectionDivider("연결 정보", isExpanded: $expandedConnectionInfo)
             connectionInfoView
-            sectionDivider("연결 주소")
+            collapsibleSectionDivider("연결 주소", isExpanded: $expandedAddressInfo)
             connectionAddressView
             sectionDivider("QoS 방지 게이지")
             qosGaugeBody
+            if let msg = quotaAlertMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    Text(msg)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    Spacer()
+                    Button {
+                        quotaAlertMessage = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.orange)
+                .cornerRadius(6)
+            }
+            if let alert = pingAlert {
+                HStack(spacing: 6) {
+                    Image(systemName: pingAlertIcon(for: alert.type))
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    Text(alert.message)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    Spacer()
+                    Button {
+                        pingAlert = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(pingAlertColor(for: alert.type))
+                .cornerRadius(6)
+            }
+            if showAppTraffic, !trafficMonitor.apps.isEmpty {
+                trafficSectionDivider
+                appTrafficPreview
+            }
             sectionDivider("프로필")
             profileSection
             Divider()
@@ -77,27 +176,58 @@ struct PopoverView: View {
             Divider()
             bottomButtons
         }
-        .id(refreshID)
         .padding(16)
         .frame(width: 280)
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
-            refreshID = UUID()
+            tick = Date()
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("connectionChanged"))) { _ in
             hotspotDetector.refreshNow()
-            refreshID = UUID()
+            tick = Date()
             profiles = ProfileManager.shared.getAllProfiles()
+            updateSessionStartTime()
+        }
+        .onAppear {
+            updateSessionStartTime()
         }
     }
 
     private var headerView: some View {
         HStack {
-            Image(systemName: connectionIcon)
-                .font(.title2)
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .frame(width: 20, height: 20)
             Text(connectionName)
                 .font(.headline)
                 .lineLimit(1)
             Spacer()
+            if let onTogglePin {
+                Button {
+                    pinned.toggle()
+                    onTogglePin()
+                } label: {
+                    Image(systemName: pinned ? "pin.fill" : "pin")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(pinned ? .accentColor : .secondary)
+                .help(pinned ? "고정 해제" : "팝오버 고정")
+            }
+            Button {
+                showNotifications = true
+            } label: {
+                HStack(spacing: 2) {
+                    Image(systemName: "bell")
+                        .font(.caption)
+                    if !NotificationManager.shared.notifications.isEmpty {
+                        Text("\(NotificationManager.shared.notifications.count)")
+                            .font(.system(size: 8, design: .monospaced))
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(NotificationManager.shared.notifications.isEmpty ? .secondary : .accentColor)
+            .help("알림 기록")
             statusDot
         }
     }
@@ -186,24 +316,28 @@ struct PopoverView: View {
             if let bssid = bssidString {
                 detailRow(label: "BSSID", value: bssid)
             }
-            if let phy = hotspotDetector.currentConnection?.phyMode {
-                detailRow(label: "규격", value: phy)
-            }
-            if let ch = hotspotDetector.currentConnection?.channel,
-               let band = hotspotDetector.currentConnection?.channelBand {
-                let width = hotspotDetector.currentConnection?.channelWidth ?? 0
-                detailRow(label: "채널", value: width > 0 ? "\(ch) (\(band), \(width)MHz)" : "\(ch) (\(band))")
-            }
-            if let speed = hotspotDetector.currentConnection?.linkSpeed {
-                detailRow(label: "속도", value: String(format: "%.0f Mbps", speed))
+            if expandedConnectionInfo {
+                if let phy = hotspotDetector.currentConnection?.phyMode {
+                    detailRow(label: "규격", value: phy)
+                }
+                if let ch = hotspotDetector.currentConnection?.channel,
+                   let band = hotspotDetector.currentConnection?.channelBand {
+                    let width = hotspotDetector.currentConnection?.channelWidth ?? 0
+                    detailRow(label: "채널", value: width > 0 ? "\(ch) (\(band), \(width)MHz)" : "\(ch) (\(band))")
+                }
+                if let speed = hotspotDetector.currentConnection?.linkSpeed {
+                    detailRow(label: "속도", value: String(format: "%.0f Mbps", speed))
+                }
             }
         }
     }
 
     private var connectionAddressView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let gw = hotspotDetector.currentConnection?.gatewayIP {
-                detailRow(label: "게이트웨이", value: gw)
+            if expandedAddressInfo {
+                if let gw = hotspotDetector.currentConnection?.gatewayIP {
+                    detailRow(label: "게이트웨이", value: gw)
+                }
             }
             if let ip = hotspotDetector.currentConnection?.localIP {
                 detailRow(label: "로컬 IP", value: ip)
@@ -212,11 +346,13 @@ struct PopoverView: View {
                 let country = ipResolver.geoInfo?.countryCode.map { " (\(flag(from: $0)))" } ?? ""
                 detailRow(label: "외부 IP", value: "\(extIP)\(country)")
             }
-            if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {
-                detailRow(label: "DNS", value: dns.joined(separator: ", "))
-                    .onTapGesture { showDNSPicker = true }
+            if expandedAddressInfo {
+                if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {
+                    detailRow(label: "DNS", value: dns.joined(separator: ", "))
+                        .onTapGesture { showDNSPicker = true }
+                }
             }
-            detailRow(label: "Ping", value: pingString)
+            detailRow(label: "지연 시간 (Ping)", value: pingString)
             if usesWiFi && ssidString == nil {
                 locationWarningView
             }
@@ -248,11 +384,9 @@ struct PopoverView: View {
     }
 
     private var sessionDurationString: String? {
-        guard let ssid = ssidString,
-              let profile = ProfileManager.shared.getProfile(ssid: ssid),
-              let session = ProfileManager.shared.getActiveSession(profileId: profile.id)
-        else { return nil }
-        let interval = Date().timeIntervalSince(session.startTime)
+        guard let startTime = sessionStartTime else { return nil }
+        let _ = tick
+        let interval = Date().timeIntervalSince(startTime)
         let hours = Int(interval) / 3600
         let minutes = (Int(interval) % 3600) / 60
         let seconds = Int(interval) % 60
@@ -340,6 +474,70 @@ struct PopoverView: View {
         }
     }
 
+    private var trafficSectionDivider: some View {
+        HStack(spacing: 6) {
+            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+            Text("프로세스별 트래픽")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .fixedSize()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 8))
+                .foregroundColor(.secondary.opacity(0.5))
+            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { showTraffic = true }
+        .onHover { inside in
+            if inside { NSCursor.pointingHand.push() }
+            else { NSCursor.pop() }
+        }
+    }
+
+    private var appTrafficPreview: some View {
+        let top3 = Array(trafficMonitor.apps.prefix(3))
+        return VStack(spacing: 4) {
+            HStack(spacing: 0) {
+                Text("프로세스")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("▲ 업로드")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.orange)
+                    .frame(width: 62, alignment: .trailing)
+                Text("▼ 다운로드")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.blue)
+                    .frame(width: 68, alignment: .trailing)
+            }
+            ForEach(top3) { app in
+                HStack(spacing: 0) {
+                    Text(app.processName)
+                        .font(.system(size: 10))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(formatByteRate(app.bytesIn))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.orange)
+                        .frame(width: 62, alignment: .trailing)
+                    Text(formatByteRate(app.bytesOut))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.blue)
+                        .frame(width: 68, alignment: .trailing)
+                }
+            }
+            Button("더보기...") { showTraffic = true }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundColor(.blue)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { showTraffic = true }
+    }
+
     private var profileSection: some View {
         let currentSSID = hotspotDetector.currentConnection?.ssid
         let currentProfile = currentSSID.flatMap { ProfileManager.shared.getProfile(ssid: $0) }
@@ -354,6 +552,11 @@ struct PopoverView: View {
                         }
                     }
                     Spacer()
+                    Button("통계") {
+                        usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     Button("편집") {
                         editingProfile = profile
                     }
@@ -396,8 +599,19 @@ struct PopoverView: View {
                                 if let q = profile.quotaGB {
                                     Text("할당량 \(String(format: "%.1f", q))GB").font(.caption2)
                                 }
+                                if profile.ssid != ssidString {
+                                    Text("마지막 접속: \(relativeTimeString(profile.lastConnected))")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             Spacer()
+                            Button("통계") {
+                                showProfileManager = false
+                                usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
                             Button("편집") {
                                 showProfileManager = false
                                 editingProfile = profile
@@ -449,17 +663,23 @@ struct PopoverView: View {
     private var bottomButtons: some View {
         HStack(spacing: 12) {
             Menu {
-                Button("통계") { openStatistics() }
+                Button("사용량 리포트") { openStatistics() }
+                Button("프로세스별 트래픽") { showTraffic = true }
+                Button("알림 기록") { showNotifications = true }
+                Divider()
                 Button("DNS 프리셋 적용") { showDNSPicker = true }
                 Button(savingModeActive ? "절약 모드 온" : "절약 모드") { openSavingMode() }
+                Divider()
                 Button("설정") { showSettings = true }
                 Button("업데이트 확인") { UpdaterManager.shared.checkForUpdates() }
+                Button("정보") { showAbout = true }
             } label: {
                 Text("더보기")
                     .font(.caption)
             }
             .menuIndicator(.hidden)
-            .tint(savingModeActive ? .orange : .secondary)
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
             Spacer()
             Button("☕️ 후원") { openDonation() }
                 .buttonStyle(.bordered)
@@ -476,7 +696,7 @@ struct PopoverView: View {
             Text(label)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.secondary)
-                .frame(width: 64, alignment: .leading)
+                .frame(width: 96, alignment: .leading)
             Text(value)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.primary)
@@ -489,6 +709,23 @@ struct PopoverView: View {
             Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
             Text(title).font(.caption2).foregroundColor(.secondary).fixedSize()
             Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+        }
+    }
+
+    private func collapsibleSectionDivider(_ title: String, isExpanded: Binding<Bool>) -> some View {
+        HStack(spacing: 6) {
+            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+            Image(systemName: isExpanded.wrappedValue ? "chevron.down" : "chevron.right")
+                .font(.system(size: 8))
+                .foregroundColor(.secondary)
+            Text(title).font(.caption2).foregroundColor(.secondary).fixedSize()
+            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { isExpanded.wrappedValue.toggle() }
+        .onHover { inside in
+            if inside { NSCursor.pointingHand.push() }
+            else { NSCursor.pop() }
         }
     }
 
@@ -590,6 +827,49 @@ struct PopoverView: View {
         }
     }
 
+    private func formatByteRate(_ bytesPerSecond: Int64) -> String {
+        let bps = Double(bytesPerSecond)
+        if bps >= 1_000_000_000 {
+            return String(format: "%.1f GB/s", bps / 1_000_000_000)
+        } else if bps >= 1_000_000 {
+            return String(format: "%.1f MB/s", bps / 1_000_000)
+        } else if bps >= 1_000 {
+            return String(format: "%.1f KB/s", bps / 1_000)
+        } else {
+            return String(format: "%.0f B/s", bps)
+        }
+    }
+
+    private func pingAlertIcon(for type: AppNotification.NotificationType) -> String {
+        switch type {
+        case .pingWarning, .connectionLost: return "exclamationmark.triangle.fill"
+        case .pingCritical: return "xmark.circle.fill"
+        case .pingRecovery, .connectionRestored: return "checkmark.circle.fill"
+        default: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private func pingAlertColor(for type: AppNotification.NotificationType) -> Color {
+        switch type {
+        case .pingWarning: return .orange
+        case .pingCritical: return .red
+        case .pingRecovery, .connectionRestored: return .green
+        case .connectionLost: return .blue
+        default: return .orange
+        }
+    }
+
+    private func relativeTimeString(_ date: Date) -> String {
+        let interval = -date.timeIntervalSinceNow
+        if interval < 60 { return "방금 전" }
+        if interval < 3600 { return "\(Int(interval / 60))분 전" }
+        if interval < 86400 { return "\(Int(interval / 3600))시간 전" }
+        if interval < 604800 { return "\(Int(interval / 86400))일 전" }
+        let f = DateFormatter()
+        f.dateFormat = "MM/dd"
+        return f.string(from: date)
+    }
+
     private func openSettings() {
         if #available(macOS 14.0, *) {
             NSApplication.shared.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
@@ -597,7 +877,7 @@ struct PopoverView: View {
     }
 
     private func openStatistics() {
-        showUsageReport = true
+        usageReportConfig = UsageReportConfig(preselectedProfileId: nil)
     }
 
     private func openSavingMode() {
@@ -615,5 +895,16 @@ struct PopoverView: View {
             .unicodeScalars
             .map { String(UnicodeScalar(base + $0.value)!) }
             .joined()
+    }
+
+    private func updateSessionStartTime() {
+        guard let ssid = ssidString,
+              let profile = ProfileManager.shared.getProfile(ssid: ssid),
+              let session = ProfileManager.shared.getActiveSession(profileId: profile.id)
+        else {
+            sessionStartTime = nil
+            return
+        }
+        sessionStartTime = session.startTime
     }
 }
