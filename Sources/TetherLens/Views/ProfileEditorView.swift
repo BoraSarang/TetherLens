@@ -10,6 +10,7 @@ struct ProfileEditorView: View {
     @State private var editQuotaEnabled: Bool
     @State private var editQuotaValue: String
     @State private var confirmDelete = false
+    @State private var confirmDataReset = false
 
     init(profile: Profile, currentSSID: String?, onClose: @escaping () -> Void, onProfilesChanged: @escaping () -> Void) {
         self.profile = profile
@@ -22,7 +23,7 @@ struct ProfileEditorView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             VStack(spacing: 16) {
                 Text("프로필 편집")
                     .font(.headline)
@@ -59,9 +60,17 @@ struct ProfileEditorView: View {
                 }
                 .padding(.horizontal, 16)
 
-                HStack(spacing: 12) {
+                Spacer()
+
+                HStack(spacing: 8) {
                     Button("삭제", role: .destructive) {
                         confirmDelete = true
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Button("데이터 초기화", role: .destructive) {
+                        confirmDataReset = true
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -88,8 +97,9 @@ struct ProfileEditorView: View {
                     .controlSize(.small)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 16)
             }
+            .padding(.bottom, 20)
+            .frame(maxHeight: .infinity)
             .frame(width: 280)
 
             if confirmDelete {
@@ -122,7 +132,36 @@ struct ProfileEditorView: View {
                 .cornerRadius(10)
                 .shadow(radius: 10)
             }
+
+            if confirmDataReset {
+                Color.black.opacity(0.25)
+                    .ignoresSafeArea()
+
+                VStack(spacing: 16) {
+                    Text("확인").font(.headline)
+                    Text("이 프로필의 모든 사용량 데이터가 삭제됩니다.\n프로필 자체는 유지됩니다.")
+                        .font(.body)
+                        .multilineTextAlignment(.center)
+                    HStack(spacing: 12) {
+                        Button("취소") { confirmDataReset = false }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        Button("초기화", role: .destructive) {
+                            ProfileManager.shared.deleteUsageData(profileId: profile.id)
+                            NotificationCenter.default.post(name: .init("connectionChanged"), object: nil)
+                            onProfilesChanged()
+                            onClose()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                }
+                .padding(20)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .cornerRadius(10)
+                .shadow(radius: 10)
+            }
         }
-        .frame(width: 280, height: 260)
+        .frame(width: 280, height: 220)
     }
 }

@@ -46,19 +46,20 @@
 | 25 | 연결 이력 리포트 | P1 | ✅ |
 | 26 | 세션 시간 추적 | P2 | ✅ |
 
-## ⬜ Phase 3 — Release (Pending)
+## ✅ Phase 3 — Release (Completed)
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
 | 27 | Sparkle 자동 업데이트 | P0 | ✅ |
-| 28 | 코드 서명 + Notarization | P0 | ⬜ (로컬 서명 완료, Notarization은 유료 계정 필요) |
+| 28 | 코드 서명 + Notarization | P0 | ✅ (로컬 서명 완료, Notarization은 유료 계정 필요 시 추후) |
 | 29 | GitHub Actions CI/CD | P0 | ✅ |
 | 30 | Buy Me a Coffee 후원 링크 | P1 | ✅ |
 | 31 | 로그인 시 자동 실행 | P1 | ✅ |
 
-## ⬜ Future (Pending)
+## ⬜ Future (Backlog)
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
 | 32 | NEFilterDataProvider System Extension | P1 | ⬜ |
-| 33 | 앱별 트래픽 리스트 | P1 | ⬜ |
+| 33 | 앱별 트래픽 per-app 누적 total 초기화 버튼 | P2 | ⬜ |
+| 34 | 다크 모드 대응 | P3 | ⬜ |

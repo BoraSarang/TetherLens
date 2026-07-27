@@ -25,6 +25,7 @@ cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_BUNDLE/Contents/MacOS/$APP_NAME" 2>/dev/null || true
 
 cp "$PROJECT_DIR/Resources/Info.plist" "$APP_BUNDLE/Contents/"
+cp "$PROJECT_DIR/Resources/TetherLens.icns" "$APP_BUNDLE/Contents/Resources/"
 
 # Embed Sparkle framework
 SPARKLE_SOURCE="$BUILD_DIR/Sparkle.framework"

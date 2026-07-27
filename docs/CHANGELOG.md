@@ -30,6 +30,7 @@
 ### Fixed
 - 통계 창 하단 Legend/닫기 버튼 고정 (`Spacer()` 누락 복구)
 - 차트 오버레이 문제 해결 (maxHeight: .infinity → height: 280 + Spacer)
+- **통계 차트 날짜 그룹핑 UTC 기준 버그** — `DATE()`/`strftime()`에 `'localtime'` modifier 누락으로 KST(UTC+9) 사용자 오전 00:00~08:59 데이터가 어제 날짜로 표시되던 문제 수정 (ProfileManager.swift 4쿼리)
 
 ## [0.9.0] — 2026-07-25 — UX 개선 + 앱 트래픽 히스토리 + Ping 알림
 
