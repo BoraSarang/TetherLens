@@ -42,7 +42,8 @@ struct QoSGauge: View {
             .frame(height: 12)
 
             HStack {
-                Text("\(formatGB(used)) / \(formatGB(total)) 사용")
+                let pct = Int(ratio * 100)
+                Text("\(formatGB(used)) / \(formatGB(total)) (\(pct)% 사용됨)")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 Spacer()

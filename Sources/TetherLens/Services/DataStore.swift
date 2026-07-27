@@ -48,6 +48,17 @@ final class DataStore: @unchecked Sendable {
             try db.create(index: "idx_session_profile", on: "session", columns: ["profile_id"])
             try db.create(index: "idx_session_start", on: "session", columns: ["start_time"])
         }
+        m.registerMigration("v4_app_traffic_log") { db in
+            try db.create(table: "app_traffic_log") { t in
+                t.column("id", .text).primaryKey()
+                t.column("process_name", .text).notNull()
+                t.column("upload_bytes", .integer).notNull()
+                t.column("download_bytes", .integer).notNull()
+                t.column("recorded_at", .text).notNull()
+            }
+            try db.create(index: "idx_app_traffic_name", on: "app_traffic_log", columns: ["process_name"])
+            try db.create(index: "idx_app_traffic_recorded", on: "app_traffic_log", columns: ["recorded_at"])
+        }
         return m
     }
 }
