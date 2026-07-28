@@ -121,6 +121,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     func startMonitoring() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
+        setupDebugPanelShortcut()
+        DebugLogger.shared.system("App", "앱 시작됨")
+
         networkMonitor.start()
         hotspotDetector.start()
         pingMonitor.start()
@@ -168,6 +171,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     }
 
     func stopMonitoring() {
+        DebugLogger.shared.system("App", "모니터링 중지")
         timer?.invalidate()
         timer = nil
         cacheTimer?.invalidate()
@@ -258,6 +262,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 } else {
                     currentSession = nil
                 }
+                DebugLogger.shared.action("Network", "SSID 변경: \(ssid) (\(lastTrackedSSID ?? "없음") → \(ssid))")
                 lastTrackedSSID = ssid
                 cacheNeedsInvalidation = true
                 NotificationCenter.default.post(name: .init("sessionChanged"), object: nil)
@@ -432,6 +437,24 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             return "\(bytes) B"
         }
     }
+
+    private func setupDebugPanelShortcut() {
+        // LSUIElement 앱은 메뉴바가 없어 NSMenuItem 단축키가 안 먹음 → event monitor 사용
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "d" {
+                self?.toggleDebugPanel()
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func toggleDebugPanel() {
+        // popover가 debug panel 위에 뜨지 않도록 먼저 닫음
+        popover.performClose(nil)
+        DebugPanelController.shared.toggle()
+        DebugLogger.shared.action("UI", "디버그 패널 토글 (visible=\(DebugPanelController.shared.isVisible))")
+    }
 }
 
 class MenuBarView: NSView {
@@ -541,4 +564,5 @@ class MenuBarView: NSView {
             return .systemRed
         }
     }
+
 }

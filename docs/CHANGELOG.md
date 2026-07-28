@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.11.0] — 2026-07-28 — Debug Panel + 빌드 디스패처 + AGENTS v1.6
+
+### Added
+- **Debug Log Panel v1.6** — DebugLogger 싱글톤 (7 level, 5,000 제한, print 동시 출력)
+- **DebugPanelView + DebugPanelController** — NSWindow floating 600×320, 화면 중앙, `.floating+100`
+- **Line-based selection**: 클릭=1줄, Shift+클릭=범위, Cmd+클릭=토글
+- **자동 스크롤**: 📌 버튼 토글, 드래그 시 2초 일시정지 후 DispatchWorkItem 자동 재개
+- **선택/전체 복사**: 선택된 줄 join → NSPasteboard / formatForAgent() 포맷
+- **Cmd+D 단축키** — `NSEvent.addLocalMonitorForEvents` (LSUIElement 메뉴바 없는 앱 대응)
+- **Popover "더보기" → 🐛 디버그 패널** 진입 버튼
+- **build_and_run.sh v1.6 디스패처** + `scripts/build-macos.sh` 분리
+- **`[PLATFORM]` 필드** — 로그 포맷에 MACOS 태그 추가
+- **DebugLogger 통합**: MenuBarManager(시작/중지/SSID), IPResolver(API 호출/응답), PingMonitor
+- **AGENTS.md v1.6 정렬**: AGENTS.local.md에 DoD 체크리스트, Git 브랜치 규칙, 프로젝트 설정 갱신
+
+### Changed
+- `Package.swift` — `swiftSettings: [.define("DEBUG")]` 추가
+
+### Fixed
+- Debug Panel NSWindow crash — `close()`+destroy → `orderOut`/`makeKeyAndOrderFront` show/hide 패턴
+- `isReleasedWhenClosed = false` — 시스템 닫기 버튼 dealloc 방지
+
 ## [0.10.0] — 2026-07-26 — Ping 알림 전면 개선 + 프로세스별 트래픽 탭 + UX 개선
 
 ### Added

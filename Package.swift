@@ -22,6 +22,9 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             exclude: ["Info.plist"],
+            swiftSettings: [
+                .define("DEBUG", .when(configuration: .debug))
+            ],
             linkerSettings: [
                 .linkedFramework("CoreWLAN"),
                 .linkedFramework("CoreLocation"),
