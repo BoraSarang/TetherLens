@@ -129,7 +129,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         pingMonitor.start()
         TrafficMonitor.shared.start()
 
-        Task { await ipResolver.refresh() }
+        // 네트워크 연결 확인 후 1회 IP 조회 (앱 실행 직후 연결 안정화 대기)
+        Task {
+            for _ in 0..<15 {
+                if hotspotDetector.currentConnection?.ssid != nil { break }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+            await ipResolver.refresh()
+        }
 
         ProfileManager.shared.cleanupOldLogs()
         ProfileManager.shared.cleanupAppTrafficLogs()
