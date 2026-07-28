@@ -690,6 +690,10 @@ struct PopoverView: View {
                 Button("설정") { showSettings = true }
                 Button("업데이트 확인") { UpdaterManager.shared.checkForUpdates() }
                 Button("정보") { showAbout = true }
+                #if DEBUG
+                Divider()
+                Button("🐛 디버그 패널") { DebugPanelController.shared.toggle() }
+                #endif
             } label: {
                 Text("더보기")
                     .font(.caption)
