@@ -360,7 +360,7 @@ struct PopoverView: View {
                 detailRow(label: "로컬 IP", value: ip, copyValue: ip)
             }
             if let extIP = ipResolver.externalIP {
-                let country = ipResolver.geoInfo?.countryCode.map { " (\(flag(from: $0)))" } ?? ""
+                let country = ipResolver.geoInfo.map { " (\(flag(from: $0.countryCode)))" } ?? ""
                 detailRow(label: "외부 IP", value: "\(extIP)\(country)", copyValue: extIP)
             }
             if expandedAddressInfo {

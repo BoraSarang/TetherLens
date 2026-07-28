@@ -2,8 +2,9 @@ import Foundation
 
 struct GeoIPInfo: Codable {
     let ip: String
-    let country: String?
-    let countryCode: String?
+    let country: String
+
+    var countryCode: String { country }
 }
 
 @MainActor
@@ -28,11 +29,11 @@ class IPResolver {
             DebugLogger.shared.apiResponse("Network", 200, "api.ipify.org", body: ["ip": externalIP ?? ""])
 
             if let ip = externalIP {
-                let geoURL = URL(string: "https://ip-api.com/json/\(ip)?fields=status,country,countryCode")!
-                DebugLogger.shared.apiCall("Network", "GET", "https://ip-api.com/json/...")
+                let geoURL = URL(string: "https://ipinfo.io/\(ip)/json")!
+                DebugLogger.shared.apiCall("Network", "GET", "https://ipinfo.io/\(ip)/json")
                 let (geoData, _) = try await URLSession.shared.data(from: geoURL)
                 geoInfo = try JSONDecoder().decode(GeoIPInfo.self, from: geoData)
-                DebugLogger.shared.apiResponse("Network", 200, "ip-api.com", body: geoInfo.map { "country=\($0.country ?? "") code=\($0.countryCode ?? "")" })
+                DebugLogger.shared.apiResponse("Network", 200, "ipinfo.io", body: geoInfo.map { "country=\($0.country) code=\($0.countryCode)" })
             }
 
             lastFetch = Date()

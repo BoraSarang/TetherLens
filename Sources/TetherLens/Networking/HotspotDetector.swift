@@ -33,6 +33,7 @@ class HotspotDetector: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.tetherlens.hotspot-detector", qos: .utility)
 
     private(set) var currentConnection: ConnectionInfo?
+    var isNetworkAvailable: Bool { monitor.currentPath.status == .satisfied }
 
     func start() {
         monitor.pathUpdateHandler = { [weak self] path in
