@@ -39,6 +39,7 @@ struct PopoverView: View {
     @State private var quotaAlertMessage: String?
     @State private var pingAlert: PingAlert?
     @State private var showNotifications = false
+    @State private var copiedIPMessage: String?
     @AppStorage("popover_expanded_connection_info") private var expandedConnectionInfo = false
     @AppStorage("popover_expanded_address_info") private var expandedAddressInfo = false
     @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
@@ -164,6 +165,22 @@ struct PopoverView: View {
                 .padding(.vertical, 6)
                 .background(pingAlertColor(for: alert.type))
                 .cornerRadius(6)
+            }
+            if let msg = copiedIPMessage {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    Text(msg)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    Spacer()
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.green)
+                .cornerRadius(6)
+                .transition(.opacity)
             }
             if showAppTraffic, !trafficMonitor.apps.isEmpty {
                 trafficSectionDivider
@@ -305,7 +322,7 @@ struct PopoverView: View {
                     guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
                     return " (\(r)dBm)"
                 }()
-                detailRow(label: "네트워크", value: "\(ssid)\(rssiSuffix)")
+                detailRow(label: "네트워크", value: "\(ssid)\(rssiSuffix)", copyValue: ssid)
             } else if usesWiFi {
                 let rssiSuffix: String = {
                     guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
@@ -314,7 +331,7 @@ struct PopoverView: View {
                 detailRow(label: "네트워크", value: "알 수 없음\(rssiSuffix)")
             }
             if let bssid = bssidString {
-                detailRow(label: "BSSID", value: bssid)
+                detailRow(label: "BSSID", value: bssid, copyValue: bssid)
             }
             if expandedConnectionInfo {
                 if let phy = hotspotDetector.currentConnection?.phyMode {
@@ -336,15 +353,15 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 6) {
             if expandedAddressInfo {
                 if let gw = hotspotDetector.currentConnection?.gatewayIP {
-                    detailRow(label: "게이트웨이", value: gw)
+                    detailRow(label: "게이트웨이", value: gw, copyValue: gw)
                 }
             }
             if let ip = hotspotDetector.currentConnection?.localIP {
-                detailRow(label: "로컬 IP", value: ip)
+                detailRow(label: "로컬 IP", value: ip, copyValue: ip)
             }
             if let extIP = ipResolver.externalIP {
                 let country = ipResolver.geoInfo?.countryCode.map { " (\(flag(from: $0)))" } ?? ""
-                detailRow(label: "외부 IP", value: "\(extIP)\(country)")
+                detailRow(label: "외부 IP", value: "\(extIP)\(country)", copyValue: extIP)
             }
             if expandedAddressInfo {
                 if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {
@@ -691,16 +708,33 @@ struct PopoverView: View {
         }
     }
 
-    private func detailRow(label: String, value: String) -> some View {
+    private func detailRow(label: String, value: String, copyValue: String? = nil) -> some View {
         HStack {
             Text(label)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(.secondary)
                 .frame(width: 96, alignment: .leading)
-            Text(value)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.primary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            HStack(spacing: 3) {
+                if copyValue != nil {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 9))
+                        .foregroundColor(.secondary.opacity(0.4))
+                }
+                Text(value)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.primary)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard let copyValue else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(copyValue, forType: .string)
+            copiedIPMessage = "\(copyValue)가 복사되었습니다."
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                copiedIPMessage = nil
+            }
         }
     }
 

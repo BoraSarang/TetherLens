@@ -12,8 +12,8 @@ class IPResolver {
     private(set) var geoInfo: GeoIPInfo?
     private var lastFetch: Date?
 
-    func refresh() async {
-        guard lastFetch == nil || Date().timeIntervalSince(lastFetch!) > 300 else { return }
+    func refresh(force: Bool = false) async {
+        if !force, let last = lastFetch, Date().timeIntervalSince(last) <= 300 { return }
 
         do {
             let url = URL(string: "https://api.ipify.org?format=json")!
@@ -22,7 +22,7 @@ class IPResolver {
             externalIP = ipResult["ip"]
 
             if let ip = externalIP {
-                let geoURL = URL(string: "http://ip-api.com/json/\(ip)?fields=status,country,countryCode")!
+                let geoURL = URL(string: "https://ip-api.com/json/\(ip)?fields=status,country,countryCode")!
                 let (geoData, _) = try await URLSession.shared.data(from: geoURL)
                 geoInfo = try JSONDecoder().decode(GeoIPInfo.self, from: geoData)
             }

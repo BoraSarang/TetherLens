@@ -26,6 +26,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private let connectionChanged = Notification.Name("connectionChanged")
     private var lastAutoRegisterSSID: String?
     private var recordTimer: Timer?
+    private var ipRefreshTimer: Timer?
     private var lastQuotaNotified: Bool = false
 
     private let notiDelegate = NotificationDelegate()
@@ -149,6 +150,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             }
         }
 
+        ipRefreshTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in
+            Task { [weak self] in await self?.ipResolver.refresh() }
+        }
+
         cacheTimer = Timer.scheduledTimer(withTimeInterval: SettingsManager.shared.cacheRefreshInterval, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.refreshCache()
@@ -169,6 +174,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         cacheTimer = nil
         recordTimer?.invalidate()
         recordTimer = nil
+        ipRefreshTimer?.invalidate()
+        ipRefreshTimer = nil
         networkMonitor.stop()
         hotspotDetector.stop()
         pingMonitor.stop()
@@ -254,6 +261,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 lastTrackedSSID = ssid
                 cacheNeedsInvalidation = true
                 NotificationCenter.default.post(name: .init("sessionChanged"), object: nil)
+                Task { await ipResolver.refresh(force: true) }
             }
 
             let usage = cachedUsage ?? (0, 0)
@@ -287,6 +295,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             }
             currentSession = nil
             lastTrackedSSID = nil
+            Task { await ipResolver.refresh(force: true) }
             lastAutoRegisterSSID = nil
             cacheNeedsInvalidation = true
             NotificationCenter.default.post(name: .init("sessionChanged"), object: nil)
