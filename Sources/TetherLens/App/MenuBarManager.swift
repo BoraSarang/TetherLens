@@ -95,7 +95,6 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             guard let self else { return }
             hotspotDetector.refreshNow()
             updateMenuBarText()
-            Task { await self.ipResolver.refresh() }
             NotificationCenter.default.post(name: connectionChanged, object: nil)
         }
     }
@@ -129,10 +128,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         pingMonitor.start()
         TrafficMonitor.shared.start()
 
-        // 네트워크 연결 확인 후 1회 IP 조회 (앱 실행 직후 연결 안정화 대기)
+        // 네트워크 연결 확인 후 1회 IP 조회
         Task {
             for _ in 0..<15 {
-                if hotspotDetector.currentConnection?.ssid != nil { break }
+                if hotspotDetector.isNetworkAvailable { break }
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
             await ipResolver.refresh()
@@ -448,7 +447,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private func setupDebugPanelShortcut() {
         // LSUIElement 앱은 메뉴바가 없어 NSMenuItem 단축키가 안 먹음 → event monitor 사용
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "d" {
+            if event.modifierFlags.contains(.command) && event.keyCode == 2 {
                 self?.toggleDebugPanel()
                 return nil
             }
