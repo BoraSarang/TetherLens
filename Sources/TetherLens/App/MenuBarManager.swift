@@ -352,7 +352,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         }
     }
 
-    private nonisolated static func authorizeNotifications() {
+    private nonisolated func authorizeNotifications() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
