@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.11.1] — 2026-07-29 — IPResolver 안정화 + GitHub Pages + CI 릴리스
+
+### Fixed
+- **IPResolver: ip-api.com HTTPS 유료화 대응** — ip-api.com (HTTPS 유료/HTTP 차단) → ipinfo.io (HTTPS 무료) 교체
+- **시작 IP 조회 타이밍** — SSID 대기 → NWPath.status==satisfied 대기로 변경, location callback 중복 refresh 제거
+- **Cmd+D 단축키** — 한글 입력 상태에서도 동작하도록 keyCode 기반으로 수정
+
+### Added
+- **GitHub Pages 랜딩 페이지** — `docs/index.html` + `docs/icon.png` (다크 테마, 다운로드 링크, 기능 소개)
+- **GitHub Actions 릴리스 워크플로우** — `.github/workflows/release.yml` (macOS 빌드 → .zip → Release 업로드)
+
+### Removed
+- ATS 예외 (ip-api.com HTTP) — 불필요
+
 ## [0.11.0] — 2026-07-28 — Debug Panel + 빌드 디스패처 + AGENTS v1.6
 
 ### Added
