@@ -1,0 +1,39 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. v0.11.1)'
+        required: true
+        type: string
+
+jobs:
+  build-macos:
+    name: Build macOS
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Bundle .app
+        run: |
+          mkdir -p TetherLens.app/Contents/{MacOS,Resources,Frameworks}
+          cp .build/release/TetherLens TetherLens.app/Contents/MacOS/
+          cp Resources/Info.plist TetherLens.app/Contents/
+          cp Resources/TetherLens.icns TetherLens.app/Contents/Resources/
+          strip TetherLens.app/Contents/MacOS/TetherLens
+
+      - name: Archive
+        run: zip -r "TetherLens-${{ inputs.version }}.zip" TetherLens.app
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: ${{ inputs.version }}
+          files: TetherLens-*.zip
+          draft: true
+          generate_release_notes: true
