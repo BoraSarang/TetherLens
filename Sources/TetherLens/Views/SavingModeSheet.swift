@@ -133,12 +133,14 @@ struct SavingModeSheet: View {
         isApplying = true
         statusMessage = "적용 중..."
         SavingModeController.shared.activate { success, msg in
-            isApplying = false
-            statusMessage = msg
-            controllerActive = success
-            if success {
-                SavingModeManager.shared.isEnabled = true
-                isEnabled = true
+            Task { @MainActor in
+                isApplying = false
+                statusMessage = msg
+                controllerActive = success
+                if success {
+                    SavingModeManager.shared.isEnabled = true
+                    isEnabled = true
+                }
             }
         }
     }
@@ -147,12 +149,14 @@ struct SavingModeSheet: View {
         isApplying = true
         statusMessage = "해제 중..."
         SavingModeController.shared.deactivate { success, msg in
-            isApplying = false
-            statusMessage = msg
-            controllerActive = !success
-            if success {
-                SavingModeManager.shared.isEnabled = false
-                isEnabled = false
+            Task { @MainActor in
+                isApplying = false
+                statusMessage = msg
+                controllerActive = !success
+                if success {
+                    SavingModeManager.shared.isEnabled = false
+                    isEnabled = false
+                }
             }
         }
     }
