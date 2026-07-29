@@ -30,13 +30,12 @@ jobs:
           strip TetherLens.app/Contents/MacOS/TetherLens
 
       - name: Archive
-        run: zip -r "TetherLens-${{ inputs.version }}.zip" TetherLens.app
+        run: zip -r "TetherLens-macOS.zip" TetherLens.app
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.version }}
           name: ${{ inputs.version }}
-          files: TetherLens-*.zip
-          draft: true
+          files: TetherLens-macOS.zip
           generate_release_notes: true
