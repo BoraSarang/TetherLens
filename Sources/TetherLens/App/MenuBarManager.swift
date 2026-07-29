@@ -118,7 +118,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     }
 
     func startMonitoring() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        authorizeNotifications()
 
         setupDebugPanelShortcut()
         DebugLogger.shared.system("App", "앱 시작됨")
@@ -352,38 +352,38 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         }
     }
 
+    private nonisolated static func authorizeNotifications() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
     private func sendQuotaNotification(used: Double, quota: Double) {
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            guard granted else { return }
-            let content = UNMutableNotificationContent()
-            content.title = "데이터 할당량 초과"
-            content.body = "\(String(format: "%.1f", used))GB / \(String(format: "%.1f", quota))GB 사용"
-            content.sound = .default
-            let request = UNNotificationRequest(
-                identifier: "quota-exceeded-\(Date().timeIntervalSince1970)",
-                content: content,
-                trigger: nil
-            )
-            center.add(request)
-        }
+        sendNotification(
+            title: "데이터 할당량 초과",
+            body: "\(String(format: "%.1f", used))GB / \(String(format: "%.1f", quota))GB 사용"
+        )
     }
 
     private func sendThresholdNotification(used: Double, quota: Double, threshold: Double) {
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+        let pct = Int(threshold * 100)
+        sendNotification(
+            title: "데이터 할당량 \(pct)% 도달",
+            body: "\(String(format: "%.1f", used))GB / \(String(format: "%.1f", quota))GB 사용 (\(pct)%)"
+        )
+    }
+
+    private nonisolated func sendNotification(title: String, body: String) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }
-            let pct = Int(threshold * 100)
             let content = UNMutableNotificationContent()
-            content.title = "데이터 할당량 \(pct)% 도달"
-            content.body = "\(String(format: "%.1f", used))GB / \(String(format: "%.1f", quota))GB 사용 (\(pct)%)"
+            content.title = title
+            content.body = body
             content.sound = .default
             let request = UNNotificationRequest(
-                identifier: "quota-threshold-\(Date().timeIntervalSince1970)",
+                identifier: "\(Date().timeIntervalSince1970)",
                 content: content,
                 trigger: nil
             )
-            center.add(request)
+            UNUserNotificationCenter.current().add(request)
         }
     }
 
