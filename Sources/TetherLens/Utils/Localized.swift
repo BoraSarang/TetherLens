@@ -367,6 +367,12 @@ enum Localized {
   static let hourLabel: String = value(kr: "시", en: "")
 
   // MARK: - Helper
+  // MARK: - IP History
+  static var ipHistory: String { value(kr: "IP 변경 이력", en: "IP History") }
+  static var noIPHistory: String { value(kr: "IP 변경 이력이 없습니다", en: "No IP history") }
+  static func firstSeen(_ date: String) -> String { value(kr: "첫 발견: \(date)", en: "First seen: \(date)") }
+  static func lastSeen(_ date: String) -> String { value(kr: "마지막: \(date)", en: "Last seen: \(date)") }
+
   static func value(kr: String, en: String) -> String {
     isKorean ? kr : en
   }

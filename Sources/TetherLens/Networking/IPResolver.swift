@@ -20,6 +20,7 @@ class IPResolver {
     var resolvedLocation: (latitude: Double, longitude: Double)? {
         geoInfo?.location
     }
+    var onIPChange: ((String?, String, GeoIPInfo?) -> Void)?
     private var lastFetch: Date?
 
     func refresh(force: Bool = false) async {
@@ -28,24 +29,30 @@ class IPResolver {
             return
         }
         DebugLogger.shared.action("Network", "외부 IP 갱신 시작 (force=\(force))")
+        let oldIP = externalIP
 
         do {
             let url = URL(string: "https://api.ipify.org?format=json")!
             let (data, _) = try await URLSession.shared.data(from: url)
             let ipResult = try JSONDecoder().decode([String: String].self, from: data)
-            externalIP = ipResult["ip"]
+            let newIP = ipResult["ip"]
             DebugLogger.shared.apiCall("Network", "GET", "https://api.ipify.org?format=json")
-            DebugLogger.shared.apiResponse("Network", 200, "api.ipify.org", body: ["ip": externalIP ?? ""])
+            DebugLogger.shared.apiResponse("Network", 200, "api.ipify.org", body: ["ip": newIP ?? ""])
 
-            if let ip = externalIP {
+            if let ip = newIP {
                 let geoURL = URL(string: "https://ipapi.co/\(ip)/json/")!
                 DebugLogger.shared.apiCall("Network", "GET", "https://ipapi.co/\(ip)/json/")
                 let (geoData, _) = try await URLSession.shared.data(from: geoURL)
-                geoInfo = try JSONDecoder().decode(GeoIPInfo.self, from: geoData)
-                if let loc = geoInfo?.location {
-                    DebugLogger.shared.apiResponse("Network", 200, "ipapi.co", body: "lat=\(loc.latitude) lng=\(loc.longitude) country=\(geoInfo?.country ?? "")")
+                let newGeo = try JSONDecoder().decode(GeoIPInfo.self, from: geoData)
+                geoInfo = newGeo
+                if let loc = newGeo.location {
+                    DebugLogger.shared.apiResponse("Network", 200, "ipapi.co", body: "lat=\(loc.latitude) lng=\(loc.longitude) country=\(newGeo.country)")
                 } else {
-                    DebugLogger.shared.apiResponse("Network", 200, "ipapi.co", body: "country=\(geoInfo?.country ?? "") (no location)")
+                    DebugLogger.shared.apiResponse("Network", 200, "ipapi.co", body: "country=\(newGeo.country) (no location)")
+                }
+                externalIP = ip
+                if ip != oldIP {
+                    onIPChange?(oldIP, ip, newGeo)
                 }
             }
 

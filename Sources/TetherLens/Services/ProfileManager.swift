@@ -54,6 +54,7 @@ final class ProfileManager: @unchecked Sendable {
     func deleteProfile(id: UUID) {
         try! db.write { db in
             try UsageLog.filter(Column("profile_id") == id).deleteAll(db)
+            try IPLog.filter(Column("profile_id") == id).deleteAll(db)
             try Profile.filter(Column("id") == id).deleteAll(db)
         }
     }
@@ -321,6 +322,42 @@ final class ProfileManager: @unchecked Sendable {
                 SELECT COALESCE(SUM(download_delta), 0) FROM usage_log WHERE profile_id = ?
             """, arguments: [profileId]) ?? 0
             return (up, dn)
+        }
+    }
+
+    // MARK: - IP Change Tracking
+
+    func addIPLog(profileId: UUID, ipAddress: String, country: String?, latitude: Double?, longitude: Double?) {
+        try! db.write { db in
+            if let existing = try IPLog
+                .filter(Column("profile_id") == profileId)
+                .filter(Column("ip_address") == ipAddress)
+                .fetchOne(db) {
+                var updated = existing
+                updated.lastSeenAt = Date()
+                try updated.save(db)
+            } else {
+                let log = IPLog(
+                    id: UUID(),
+                    profileId: profileId,
+                    ipAddress: ipAddress,
+                    country: country,
+                    latitude: latitude,
+                    longitude: longitude,
+                    firstSeenAt: Date(),
+                    lastSeenAt: Date()
+                )
+                try log.insert(db)
+            }
+        }
+    }
+
+    func getIPLogs(profileId: UUID) -> [IPLog] {
+        try! db.read { db in
+            try IPLog
+                .filter(Column("profile_id") == profileId)
+                .order(Column("last_seen_at").desc)
+                .fetchAll(db)
         }
     }
 

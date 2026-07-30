@@ -81,6 +81,20 @@ final class DataStore: @unchecked Sendable {
                 try db.execute(sql: "UPDATE profile SET connection_type = ? WHERE id = ?", arguments: [classified, idStr])
             }
         }
+        m.registerMigration("v7_ip_log") { db in
+            try db.create(table: "ip_log") { t in
+                t.column("id", .text).primaryKey()
+                t.column("profile_id", .text).notNull().references("profile", onDelete: .cascade)
+                t.column("ip_address", .text).notNull()
+                t.column("country", .text)
+                t.column("latitude", .double)
+                t.column("longitude", .double)
+                t.column("first_seen_at", .text).notNull()
+                t.column("last_seen_at", .text).notNull()
+            }
+            try db.create(index: "idx_ip_log_profile", on: "ip_log", columns: ["profile_id"])
+            try db.create(index: "idx_ip_log_ip", on: "ip_log", columns: ["ip_address"])
+        }
         return m
     }
 }

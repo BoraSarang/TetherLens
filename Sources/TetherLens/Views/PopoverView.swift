@@ -34,6 +34,7 @@ struct PopoverView: View {
     @State private var usageReportConfig: UsageReportConfig?
     @State private var showTraffic = false
     @State private var showAbout = false
+    @State private var showIPHistory = false
     @ObservedObject private var trafficMonitor = TrafficMonitor.shared
     @State private var sessionStartTime: Date?
     @State private var quotaAlertMessage: String?
@@ -83,6 +84,11 @@ struct PopoverView: View {
             }
             .sheet(isPresented: $showNotifications) {
                 NotificationListView(onClose: { showNotifications = false })
+            }
+            .sheet(isPresented: $showIPHistory) {
+                if let pid = currentProfileId {
+                    IPHistoryView(profileId: pid, onClose: { showIPHistory = false })
+                }
             }
         .onReceive(NotificationCenter.default.publisher(for: .init("settingsChanged"))) { _ in
             tick = Date()
@@ -293,6 +299,11 @@ struct PopoverView: View {
             .frame(width: 10, height: 10)
     }
 
+    private var currentProfileId: UUID? {
+        guard let ssid = ssidString else { return nil }
+        return ProfileManager.shared.getProfile(ssid: ssid)?.id
+    }
+
     private var ssidString: String? {
         guard let conn = hotspotDetector.currentConnection else { return nil }
         switch conn.type {
@@ -370,6 +381,15 @@ struct PopoverView: View {
             if let extIP = ipResolver.externalIP {
                 let country = ipResolver.geoInfo.map { " (\(flag(from: $0.countryCode)))" } ?? ""
                 detailRow(label: Localized.externalIP, value: "\(extIP)\(country)", copyValue: extIP)
+            }
+            if currentProfileId != nil {
+                HStack {
+                    Spacer()
+                    Button(Localized.ipHistory) { showIPHistory = true }
+                        .buttonStyle(.plain)
+                        .font(.system(size: 9))
+                        .foregroundColor(.accentColor)
+                }
             }
             if expandedAddressInfo {
                 if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {

@@ -39,6 +39,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private var cachedUsage: (upload: Int64, download: Int64)?
     private var cachedTotalUsage: (upload: Int64, download: Int64)?
     private var cacheNeedsInvalidation = false
+    private var pendingIPLog: (ip: String, country: String?, latitude: Double?, longitude: Double?)?
 
     private(set) var popoverPinned = false
 
@@ -124,19 +125,21 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         setupDebugPanelShortcut()
         DebugLogger.shared.system("App", "앱 시작됨")
 
+        ipResolver.onIPChange = { [weak self] oldIP, newIP, geo in
+            guard let self else { return }
+            if let profileId = self.cachedProfile?.id {
+                DebugLogger.shared.action("Network", "외부 IP 변경: \(oldIP ?? "없음") → \(newIP)")
+                ProfileManager.shared.addIPLog(profileId: profileId, ipAddress: newIP, country: geo?.country, latitude: geo?.latitude, longitude: geo?.longitude)
+                NotificationCenter.default.post(name: .init("ipChanged"), object: nil)
+            } else {
+                self.pendingIPLog = (newIP, geo?.country, geo?.latitude, geo?.longitude)
+            }
+        }
+
         networkMonitor.start()
         hotspotDetector.start()
         pingMonitor.start()
         TrafficMonitor.shared.start()
-
-        // 네트워크 연결 확인 후 1회 IP 조회
-        Task {
-            for _ in 0..<15 {
-                if hotspotDetector.isNetworkAvailable { break }
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-            }
-            await ipResolver.refresh()
-        }
 
         ProfileManager.shared.cleanupOldLogs()
         ProfileManager.shared.cleanupAppTrafficLogs()
@@ -156,6 +159,30 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 )
             }
             lastTrackedSSID = ssid
+            // IP가 이미 조회된 경우 (이전 실행에서 캐시) 첫 로그 기록
+            if let ip = ipResolver.externalIP {
+                let geo = ipResolver.geoInfo
+                ProfileManager.shared.addIPLog(profileId: profile.id, ipAddress: ip, country: geo?.country, latitude: geo?.latitude, longitude: geo?.longitude)
+            }
+            // onIPChange가 프로필 없이 먼저 불린 경우
+            if let pending = pendingIPLog {
+                ProfileManager.shared.addIPLog(profileId: profile.id, ipAddress: pending.ip, country: pending.country, latitude: pending.latitude, longitude: pending.longitude)
+                pendingIPLog = nil
+            }
+        }
+
+        Task {
+            for _ in 0..<15 {
+                if hotspotDetector.isNetworkAvailable { break }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+            await ipResolver.refresh()
+            // refresh 완료 후 현재 IP 기록 (onIPChange와 무관)
+            if let pid = cachedProfile?.id,
+               let ip = ipResolver.externalIP {
+                ProfileManager.shared.addIPLog(profileId: pid, ipAddress: ip, country: ipResolver.geoInfo?.country, latitude: ipResolver.geoInfo?.latitude, longitude: ipResolver.geoInfo?.longitude)
+                NotificationCenter.default.post(name: .init("ipChanged"), object: nil)
+            }
         }
 
         recordTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
@@ -256,6 +283,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         var totalQuotaGB: Double?
         var totalStr = ""
         var remainingStr = ""
+        var todayGB: Double = 0
 
         if let ssid = ssid, !ssid.isEmpty {
             if ssid != lastAutoRegisterSSID {
@@ -292,7 +320,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             let totalBytes = totalUsage.upload + totalUsage.download
             let totalGB = Double(totalBytes) / 1_000_000_000
             let todayBytes = todayUsage.upload + todayUsage.download
-            let todayGB = Double(todayBytes) / 1_000_000_000
+            todayGB = Double(todayBytes) / 1_000_000_000
 
             if let quota = totalQuotaGB, quota > 0 {
                 if SettingsManager.shared.showTotalColumn {
@@ -330,10 +358,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         }
 
         let quotaRatio: Double
-        if SettingsManager.shared.showTotalColumn, let quota = totalQuotaGB, quota > 0 {
-            let totalUsage = cachedTotalUsage ?? cachedUsage ?? (0, 0)
-            let totalGB = Double(totalUsage.upload + totalUsage.download) / 1_000_000_000
-            quotaRatio = min(totalGB / quota, 1.0)
+        if let quota = totalQuotaGB, quota > 0 {
+            quotaRatio = min(todayGB / quota, 1.0)
         } else if SettingsManager.shared.showTotalColumn, !totalStr.isEmpty {
             quotaRatio = 0
         } else {
