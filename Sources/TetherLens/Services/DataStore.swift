@@ -59,6 +59,28 @@ final class DataStore: @unchecked Sendable {
             try db.create(index: "idx_app_traffic_name", on: "app_traffic_log", columns: ["process_name"])
             try db.create(index: "idx_app_traffic_recorded", on: "app_traffic_log", columns: ["recorded_at"])
         }
+        m.registerMigration("v5_session_usage_link") { db in
+            try db.alter(table: "usage_log") { t in
+                t.add(column: "session_id", .text)
+            }
+            try db.create(index: "idx_usage_log_session", on: "usage_log", columns: ["session_id"])
+            try db.alter(table: "session") { t in
+                t.add(column: "latitude", .double)
+                t.add(column: "longitude", .double)
+            }
+        }
+        m.registerMigration("v6_connection_type") { db in
+            try db.alter(table: "profile") { t in
+                t.add(column: "connection_type", .text)
+            }
+            let nullRows = try Row.fetchAll(db, sql: "SELECT id, ssid FROM profile WHERE connection_type IS NULL")
+            for row in nullRows {
+                guard let idStr = row["id"] as? String, let id = UUID(uuidString: idStr),
+                      let ssid = row["ssid"] as? String else { continue }
+                let classified = Profile.classifiedConnectionType(ssid: ssid)
+                try db.execute(sql: "UPDATE profile SET connection_type = ? WHERE id = ?", arguments: [classified, idStr])
+            }
+        }
         return m
     }
 }

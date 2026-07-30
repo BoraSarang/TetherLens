@@ -71,18 +71,23 @@ final class ProfileManager: @unchecked Sendable {
     }
 
     @discardableResult
-    func autoRegisterIfNeeded(ssid: String) -> Profile {
+    func autoRegisterIfNeeded(ssid: String, connectionType: String? = nil) -> Profile {
         if let existing = getProfile(ssid: ssid) {
             var updated = existing
             updated.lastConnected = Date()
+            if let ct = connectionType, updated.connectionType != ct {
+                updated.connectionType = ct
+            }
             saveProfile(updated)
             return updated
         }
+        let defaultName = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
         let profile = Profile(
             id: UUID(),
             ssid: ssid,
-            name: ssid,
+            name: defaultName,
             quotaGB: nil,
+            connectionType: connectionType,
             createdAt: Date(),
             lastConnected: Date()
         )
@@ -96,7 +101,7 @@ final class ProfileManager: @unchecked Sendable {
     private var lastCumulativeDownload: Int64?
     private var lastRecordProfileId: UUID?
 
-    func recordUsage(totalUpload: Int64, totalDownload: Int64, profileId: UUID) {
+    func recordUsage(totalUpload: Int64, totalDownload: Int64, profileId: UUID, sessionId: UUID? = nil) {
         guard let lastUp = lastCumulativeUpload,
               let lastDn = lastCumulativeDownload,
               lastRecordProfileId == profileId else {
@@ -121,7 +126,8 @@ final class ProfileManager: @unchecked Sendable {
                 profileId: profileId,
                 uploadDelta: upDelta,
                 downloadDelta: dnDelta,
-                recordedAt: Date()
+                recordedAt: Date(),
+                sessionId: sessionId
             )
             try! db.write { db in
                 try log.insert(db)
@@ -320,8 +326,8 @@ final class ProfileManager: @unchecked Sendable {
 
     // MARK: - Session Tracking
 
-    func startSession(profileId: UUID) -> Session {
-        let session = Session(id: UUID(), profileId: profileId, startTime: Date(), endTime: nil)
+    func startSession(profileId: UUID, latitude: Double? = nil, longitude: Double? = nil) -> Session {
+        let session = Session(id: UUID(), profileId: profileId, startTime: Date(), endTime: nil, latitude: latitude, longitude: longitude)
         try! db.write { db in
             try session.insert(db)
         }
@@ -377,6 +383,23 @@ final class ProfileManager: @unchecked Sendable {
                 .filter(Column("end_time") == nil)
                 .updateAll(db, Column("end_time").set(to: Date()))
         }
+    }
+
+    func getSessionUsage(sessionId: UUID) -> (upload: Int64, download: Int64) {
+        try! db.read { db in
+            let up = try Int64.fetchOne(db, sql: """
+                SELECT COALESCE(SUM(upload_delta), 0) FROM usage_log WHERE session_id = ?
+            """, arguments: [sessionId]) ?? 0
+            let dn = try Int64.fetchOne(db, sql: """
+                SELECT COALESCE(SUM(download_delta), 0) FROM usage_log WHERE session_id = ?
+            """, arguments: [sessionId]) ?? 0
+            return (up, dn)
+        }
+    }
+
+    func getSessionUsage(session: Session) -> (upload: Int64, download: Int64) {
+        guard let sid = session.id as UUID? else { return (0, 0) }
+        return getSessionUsage(sessionId: sid)
     }
 
     func getAppTrafficLogs(days: Int = 1) -> [(processName: String, uploadBytes: Int64, downloadBytes: Int64)] {

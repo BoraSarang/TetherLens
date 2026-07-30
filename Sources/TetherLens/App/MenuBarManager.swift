@@ -13,7 +13,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
     private var timer: Timer?
-    private var cacheTimer: Timer?     
+    private var cacheTimer: Timer?
+    private var locationTimer: Timer?
 
     private let networkMonitor = NetworkMonitor()
     private let hotspotDetector = HotspotDetector()
@@ -27,7 +28,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private var lastAutoRegisterSSID: String?
     private var recordTimer: Timer?
     private var ipRefreshTimer: Timer?
-    private var lastQuotaNotified: Bool = false
+    private static let notifiedThresholdsKey = "quota_notified_thresholds"
 
     private let notiDelegate = NotificationDelegate()
 
@@ -81,7 +82,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         lastAutoRegisterSSID = nil
         cacheNeedsInvalidation = true
         refreshCache()
-        _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid)
+        _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
         updateMenuBarText()
         NotificationCenter.default.post(name: connectionChanged, object: nil)
     }
@@ -148,7 +149,11 @@ class MenuBarManager: NSObject, @unchecked Sendable {
            let profile = cachedProfile {
             currentSession = ProfileManager.shared.getActiveSession(profileId: profile.id)
             if currentSession == nil {
-                currentSession = ProfileManager.shared.startSession(profileId: profile.id)
+                currentSession = ProfileManager.shared.startSession(
+                    profileId: profile.id,
+                    latitude: bestLocation.latitude,
+                    longitude: bestLocation.longitude
+                )
             }
             lastTrackedSSID = ssid
         }
@@ -161,6 +166,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
         ipRefreshTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in
             Task { [weak self] in await self?.ipResolver.refresh() }
+        }
+
+        locationTimer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
+            // 연속 업데이트로 충분, 타이머는 백업
         }
 
         cacheTimer = Timer.scheduledTimer(withTimeInterval: SettingsManager.shared.cacheRefreshInterval, repeats: true) { [weak self] _ in
@@ -186,6 +195,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         recordTimer = nil
         ipRefreshTimer?.invalidate()
         ipRefreshTimer = nil
+        locationTimer?.invalidate()
+        locationTimer = nil
         networkMonitor.stop()
         hotspotDetector.stop()
         pingMonitor.stop()
@@ -198,7 +209,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         ProfileManager.shared.recordUsage(
             totalUpload: networkMonitor.totalUpload,
             totalDownload: networkMonitor.totalDownload,
-            profileId: profile.id
+            profileId: profile.id,
+            sessionId: currentSession?.id
         )
     }
 
@@ -219,11 +231,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         cachedProfile = ProfileManager.shared.getProfile(ssid: ssid)
         if let pid = cachedProfile?.id {
             cachedUsage = ProfileManager.shared.getTodayUsage(profileId: pid)
-            if cachedProfile?.quotaGB == nil {
-                cachedTotalUsage = ProfileManager.shared.getTotalUsage(profileId: pid)
-            } else {
-                cachedTotalUsage = nil
-            }
+            cachedTotalUsage = ProfileManager.shared.getTotalUsage(profileId: pid)
         } else {
             cachedUsage = nil
             cachedTotalUsage = nil
@@ -252,7 +260,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         if let ssid = ssid, !ssid.isEmpty {
             if ssid != lastAutoRegisterSSID {
                 lastAutoRegisterSSID = ssid
-                _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid)
+                _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
                 cacheNeedsInvalidation = true
             }
 
@@ -264,7 +272,11 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                     ProfileManager.shared.endSession(oldSession)
                 }
                 if let pid = profile?.id {
-                    currentSession = ProfileManager.shared.startSession(profileId: pid)
+                    currentSession = ProfileManager.shared.startSession(
+                        profileId: pid,
+                        latitude: bestLocation.latitude,
+                        longitude: bestLocation.longitude
+                    )
                 } else {
                     currentSession = nil
                 }
@@ -275,18 +287,22 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 Task { await ipResolver.refresh(force: true) }
             }
 
-            let usage = cachedUsage ?? (0, 0)
-            let totalBytes = usage.upload + usage.download
+            let todayUsage = cachedUsage ?? (0, 0)
+            let totalUsage = cachedTotalUsage ?? cachedUsage ?? (0, 0)
+            let totalBytes = totalUsage.upload + totalUsage.download
             let totalGB = Double(totalBytes) / 1_000_000_000
+            let todayBytes = todayUsage.upload + todayUsage.download
+            let todayGB = Double(todayBytes) / 1_000_000_000
 
             if let quota = totalQuotaGB, quota > 0 {
                 if SettingsManager.shared.showTotalColumn {
-                    totalStr = formatBytes(totalBytes)
-                    let remaining = quota - totalGB
+                    totalStr = formatBytes(todayBytes)
+                    let remaining = max(quota - todayGB, 0)
+                    let remainLabel = Localized.string("잔여 ", "Remaining ")
                     if remaining >= 1.0 {
-                        remainingStr = "잔여 " + String(format: "%.1f GB", remaining)
+                        remainingStr = remainLabel + String(format: "%.1f GB", remaining)
                     } else {
-                        remainingStr = "잔여 " + String(format: "%.0f MB", remaining * 1000)
+                        remainingStr = remainLabel + String(format: "%.0f MB", remaining * 1000)
                     }
                 }
 
@@ -295,10 +311,11 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                         SavingModeManager.shared.isEnabled = true
                     }
                 }
+
+                checkQuotaThresholds(totalGB: todayGB, quota: quota)
             } else if SettingsManager.shared.showTotalColumn {
-                totalStr = formatBytes(totalBytes)
-                let totalAll = cachedTotalUsage ?? (0, 0)
-                remainingStr = formatBytes(totalAll.upload + totalAll.download)
+                totalStr = formatBytes(totalUsage.upload + totalUsage.download)
+                remainingStr = ""
             }
         } else if lastTrackedSSID != nil {
             if let oldSession = currentSession {
@@ -314,8 +331,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
         let quotaRatio: Double
         if SettingsManager.shared.showTotalColumn, let quota = totalQuotaGB, quota > 0 {
-            let usage = cachedUsage ?? (0, 0)
-            let totalGB = Double(usage.upload + usage.download) / 1_000_000_000
+            let totalUsage = cachedTotalUsage ?? cachedUsage ?? (0, 0)
+            let totalGB = Double(totalUsage.upload + totalUsage.download) / 1_000_000_000
             quotaRatio = min(totalGB / quota, 1.0)
         } else if SettingsManager.shared.showTotalColumn, !totalStr.isEmpty {
             quotaRatio = 0
@@ -329,27 +346,6 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             totalRatio: quotaRatio
         )
         statusItem.length = menuBarView.frame.width
-
-        if let quota = totalQuotaGB, quota > 0 {
-            let usage = cachedUsage ?? (0, 0)
-            let todayGB = Double(usage.upload + usage.download) / 1_000_000_000
-            let threshold = SettingsManager.shared.quotaWarningThreshold
-            if threshold < 1.0, todayGB >= quota * threshold {
-                if !lastQuotaNotified {
-                    lastQuotaNotified = true
-                    sendThresholdNotification(used: todayGB, quota: quota, threshold: threshold)
-                    postQuotaAlert(type: .quotaWarning, message: "할당량 \(Int(threshold * 100))% 도달 — \(String(format: "%.1f", todayGB))GB / \(String(format: "%.1f", quota))GB")
-                }
-            } else if threshold >= 1.0, todayGB >= quota {
-                if !lastQuotaNotified {
-                    lastQuotaNotified = true
-                    sendQuotaNotification(used: todayGB, quota: quota)
-                    postQuotaAlert(type: .quotaExceeded, message: "할당량 초과 — \(String(format: "%.1f", todayGB))GB / \(String(format: "%.1f", quota))GB")
-                }
-            } else {
-                lastQuotaNotified = false
-            }
-        }
     }
 
     private nonisolated func authorizeNotifications() {
@@ -444,22 +440,77 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         }
     }
 
+    private var bestLocation: (latitude: Double?, longitude: Double?) {
+        if let lat = locationManager.lastLatitude, let lng = locationManager.lastLongitude {
+            return (lat, lng)
+        }
+        if let ipLoc = ipResolver.resolvedLocation {
+            return (ipLoc.latitude, ipLoc.longitude)
+        }
+        return (nil, nil)
+    }
+
+    private func connectionTypeString(for type: ConnectionType?) -> String? {
+        guard let type else { return nil }
+        switch type {
+        case .iOSPersonalHotspot: return "iOSHotspot"
+        case .androidHotspot: return "AndroidHotspot"
+        default: return nil
+        }
+    }
+
+    private func checkQuotaThresholds(totalGB: Double, quota: Double) {
+        let thresholds = [50, 80, 95, 100]
+        let pct = min(Int(totalGB / quota * 100), 100)
+        guard let profileId = cachedProfile?.id else { return }
+        var notified = Self.loadNotifiedThresholds(profileId: profileId)
+        var hasNewNotification = false
+        for t in thresholds {
+            guard pct >= t, !notified.contains(t) else { continue }
+            notified.insert(t)
+            hasNewNotification = true
+            if t == 100 {
+                sendQuotaNotification(used: totalGB, quota: quota)
+                postQuotaAlert(type: .quotaExceeded, message: Localized.quotaExceeded(String(format: "%.1f", totalGB), String(format: "%.1f", quota)))
+                if !SavingModeManager.shared.isEnabled {
+                    SavingModeManager.shared.isEnabled = true
+                }
+            } else {
+                sendThresholdNotification(used: totalGB, quota: quota, threshold: Double(t) / 100)
+                postQuotaAlert(type: .quotaWarning, message: Localized.quotaReached(t, String(format: "%.1f", totalGB), String(format: "%.1f", quota)))
+            }
+        }
+        if hasNewNotification {
+            Self.saveNotifiedThresholds(profileId: profileId, thresholds: notified)
+        }
+        if pct < thresholds.min() ?? 50, !notified.isEmpty {
+            Self.saveNotifiedThresholds(profileId: profileId, thresholds: [])
+        }
+    }
+
+    private static func loadNotifiedThresholds(profileId: UUID) -> Set<Int> {
+        let dict = UserDefaults.standard.dictionary(forKey: Self.notifiedThresholdsKey) as? [String: [Int]] ?? [:]
+        return Set(dict[profileId.uuidString] ?? [])
+    }
+
+    private static func saveNotifiedThresholds(profileId: UUID, thresholds: Set<Int>) {
+        var dict = UserDefaults.standard.dictionary(forKey: Self.notifiedThresholdsKey) as? [String: [Int]] ?? [:]
+        dict[profileId.uuidString] = thresholds.sorted()
+        UserDefaults.standard.set(dict, forKey: Self.notifiedThresholdsKey)
+    }
+
     private func setupDebugPanelShortcut() {
         // LSUIElement 앱은 메뉴바가 없어 NSMenuItem 단축키가 안 먹음 → event monitor 사용
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.modifierFlags.contains(.command) && event.keyCode == 2 {
-                self?.toggleDebugPanel()
+                Task { @MainActor in
+                    DebugPanelController.shared.toggle()
+                    DebugLogger.shared.action("UI", "디버그 패널 토글")
+                }
                 return nil
             }
             return event
         }
-    }
-
-    private func toggleDebugPanel() {
-        // popover가 debug panel 위에 뜨지 않도록 먼저 닫음
-        popover.performClose(nil)
-        DebugPanelController.shared.toggle()
-        DebugLogger.shared.action("UI", "디버그 패널 토글 (visible=\(DebugPanelController.shared.isVisible))")
     }
 }
 

@@ -90,9 +90,9 @@ class PingMonitor: @unchecked Sendable {
             sustainedStart = nil
             recoveryStart = nil
             if isReachable {
-                await postPingAlert(type: .connectionRestored, level: 0, message: "네트워크 연결이 복구되었습니다")
+                await postPingAlert(type: .connectionRestored, level: 0, message: Localized.connectionRestored)
             } else {
-                await postPingAlert(type: .connectionLost, level: 0, message: "네트워크 연결이 끊어졌습니다")
+                await postPingAlert(type: .connectionLost, level: 0, message: Localized.connectionLost)
             }
             return
         }
@@ -135,10 +135,7 @@ class PingMonitor: @unchecked Sendable {
                 recoveryStart = Date()
             }
             if Date().timeIntervalSince(recoveryStart!) >= recoveryDuration {
-                let msg = """
-                🟢 인터넷 연결이 다시 원활해졌습니다
-                지연 시간이 정상 범위(100ms 이하)로 회복되었습니다. 모든 서비스를 정상적으로 이용하실 수 있습니다.
-                """
+                let msg = "\(Localized.pingRecoveryTitle)\n\(Localized.pingRecoveryBody)"
                 await postPingAlert(type: .pingRecovery, level: 0, message: msg)
                 lastAlertLevel = 0
                 lastNotifiedLevel = 0
@@ -205,24 +202,12 @@ class PingMonitor: @unchecked Sendable {
 
         if level == 2 {
             if dns >= 250 {
-                return """
-                🔴 인터넷 연결 상태 매우 위험
-                데이터 QoS(속도 제한) 구역이거나 셀룰러 신호가 매우 약합니다. 메신저/텍스트 외의 서비스 이용이 어렵습니다. (\(dns)ms)
-                💡 팁: 통신사 데이터 잔여량을 확인하거나 핫스팟을 재연결해 보세요.
-                """
+                return "\(Localized.pingCriticalTitle)\n\(Localized.pingCriticalBody(dns))"
             }
-            return """
-            🔴 핫스팟 기기와의 연결이 불안정합니다
-            스마트폰과의 거리가 멀거나 주변 Wi-Fi 간섭이 심합니다. (\(gw)ms)
-            💡 팁: 스마트폰 가까이 이동하거나, 핫스팟 설정을 5GHz 대역으로 변경해 보세요.
-            """
+            return "\(Localized.pingUnstableTitle)\n\(Localized.pingUnstableBody(gw))"
         }
 
-        return """
-        🟡 핫스팟 반응 속도가 느려졌습니다
-        데이터 속도 제한(QoS) 또는 신호 약화가 의심됩니다. 고화질 영상이나 실시간 게임 시 끊김이 발생할 수 있습니다. (\(dns)ms)
-        💡 팁: 핫스팟 스마트폰을 창가 쪽으로 옮겨보세요.
-        """
+        return "\(Localized.pingWarningTitle)\n\(Localized.pingWarningBody(dns))"
     }
 
     private func performPing(host: String) async -> TimeInterval? {

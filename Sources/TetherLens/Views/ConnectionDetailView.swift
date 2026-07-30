@@ -6,20 +6,20 @@ struct ConnectionDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Group {
-                detailRow("유형", connectionTypeString)
+                detailRow(Localized.type, connectionTypeString)
                 detailRow("OS", osString)
                 detailRow("SSID", detail.wifi?.ssid ?? "-")
-                detailRow("BSSID", detail.wifi?.bssid ?? "-")
+                detailRow(Localized.bssid, detail.wifi?.bssid ?? "-")
                 if let linkSpeed = detail.wifi?.linkSpeed {
-                    detailRow("연결 속도", String(format: "%.0f Mbps", linkSpeed))
+                    detailRow(Localized.connectionSpeed, String(format: "%.0f Mbps", linkSpeed))
                 }
                 if let channel = detail.wifi?.channel {
                     let width = detail.wifi?.channelWidth ?? 0
-                    detailRow("채널", "\(channel) GHz, \(width) MHz")
+                    detailRow(Localized.channel, Localized.channelLabel(channel, width))
                 }
-                detailRow("로컬 IP", detail.localIP ?? "-")
-                detailRow("외부 IP", externalIPString)
-                detailRow("DNS", detail.dnsServers.first ?? "-")
+                detailRow(Localized.localIP, detail.localIP ?? "-")
+                detailRow(Localized.externalIP, externalIPString)
+                detailRow(Localized.dns, detail.dnsServers.first ?? "-")
             }
         }
         .font(.caption)
@@ -41,9 +41,9 @@ struct ConnectionDetailView: View {
         switch detail.type {
         case .normalWiFi: return "Wi-Fi"
         case .ethernet: return "Ethernet"
-        case .iOSPersonalHotspot: return "Wi-Fi (핫스팟)"
-        case .androidHotspot: return "Wi-Fi (핫스팟)"
-        case .unknown: return "알 수 없음"
+        case .iOSPersonalHotspot: return Localized.hotspotWifi("iOS")
+        case .androidHotspot: return Localized.hotspotWifi("Android")
+        case .unknown: return Localized.unknown
         }
     }
 

@@ -3,14 +3,23 @@ import Foundation
 struct GeoIPInfo: Codable {
     let ip: String
     let country: String
+    let latitude: Double?
+    let longitude: Double?
 
     var countryCode: String { country }
+    var location: (latitude: Double, longitude: Double)? {
+        guard let lat = latitude, let lng = longitude else { return nil }
+        return (lat, lng)
+    }
 }
 
 @MainActor
 class IPResolver {
     private(set) var externalIP: String?
     private(set) var geoInfo: GeoIPInfo?
+    var resolvedLocation: (latitude: Double, longitude: Double)? {
+        geoInfo?.location
+    }
     private var lastFetch: Date?
 
     func refresh(force: Bool = false) async {
@@ -29,11 +38,15 @@ class IPResolver {
             DebugLogger.shared.apiResponse("Network", 200, "api.ipify.org", body: ["ip": externalIP ?? ""])
 
             if let ip = externalIP {
-                let geoURL = URL(string: "https://ipinfo.io/\(ip)/json")!
-                DebugLogger.shared.apiCall("Network", "GET", "https://ipinfo.io/\(ip)/json")
+                let geoURL = URL(string: "https://ipapi.co/\(ip)/json/")!
+                DebugLogger.shared.apiCall("Network", "GET", "https://ipapi.co/\(ip)/json/")
                 let (geoData, _) = try await URLSession.shared.data(from: geoURL)
                 geoInfo = try JSONDecoder().decode(GeoIPInfo.self, from: geoData)
-                DebugLogger.shared.apiResponse("Network", 200, "ipinfo.io", body: geoInfo.map { "country=\($0.country) code=\($0.countryCode)" })
+                if let loc = geoInfo?.location {
+                    DebugLogger.shared.apiResponse("Network", 200, "ipapi.co", body: "lat=\(loc.latitude) lng=\(loc.longitude) country=\(geoInfo?.country ?? "")")
+                } else {
+                    DebugLogger.shared.apiResponse("Network", 200, "ipapi.co", body: "country=\(geoInfo?.country ?? "") (no location)")
+                }
             }
 
             lastFetch = Date()

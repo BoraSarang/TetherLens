@@ -25,33 +25,43 @@ struct ProfileEditorView: View {
     var body: some View {
         ZStack(alignment: .top) {
             VStack(spacing: 16) {
-                Text("프로필 편집")
+                Text(Localized.profileEdit)
                     .font(.headline)
                     .padding(.top, 16)
 
                 VStack(spacing: 10) {
                     HStack {
-                        Text("이름:").font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
-                        TextField("이름", text: $editName)
+                        Text(Localized.nameLabel).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
+                        TextField(Localized.namePlaceholder, text: $editName)
                             .textFieldStyle(.roundedBorder)
                     }
                     HStack {
-                        Text("SSID:").font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
-                        Text(profile.ssid).font(.body).foregroundColor(.primary)
+                        Text(Localized.ssidLabel).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(spacing: 6) {
+                                Text(profile.ssid).font(.body).foregroundColor(.primary)
+                                if profile.isHotspot {
+                                    Text("(\(Localized.hotspot))").font(.body).foregroundColor(.orange)
+                                }
+                            }
+                            Text(Localized.string("네트워크 이름 (읽기전용)", "Network name (read-only)"))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                         Spacer()
                     }
                     HStack {
-                        Text("할당량:").font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
+                        Text(Localized.quotaLabel).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
                         Toggle(isOn: $editQuotaEnabled) { EmptyView() }
                             .toggleStyle(.switch)
                             .controlSize(.small)
-                        Text("사용").font(.body).foregroundColor(.secondary)
+                        Text(Localized.quotaEnabled).font(.body).foregroundColor(.secondary)
                         Spacer()
                     }
                     if editQuotaEnabled {
                         HStack {
-                            Text("GB:").font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
-                            TextField("예: 3.0", text: $editQuotaValue)
+                            Text(Localized.quotaGB).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
+                            TextField(Localized.quotaPlaceholder, text: $editQuotaValue)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 80)
                             Spacer()
@@ -63,13 +73,13 @@ struct ProfileEditorView: View {
                 Spacer()
 
                 HStack(spacing: 8) {
-                    Button("삭제", role: .destructive) {
+                    Button(Localized.delete, role: .destructive) {
                         confirmDelete = true
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
 
-                    Button("데이터 초기화", role: .destructive) {
+                    Button(Localized.resetData, role: .destructive) {
                         confirmDataReset = true
                     }
                     .buttonStyle(.bordered)
@@ -77,11 +87,11 @@ struct ProfileEditorView: View {
 
                     Spacer()
 
-                    Button("취소") { onClose() }
+                    Button(Localized.cancel) { onClose() }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
 
-                    Button("저장") {
+                    Button(Localized.save) {
                         var updated = profile
                         updated.name = editName
                         if editQuotaEnabled {
@@ -107,15 +117,15 @@ struct ProfileEditorView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 16) {
-                    Text("확인").font(.headline)
-                    Text("통계 정보 등 모든 데이터가 삭제됩니다.")
+                    Text(Localized.confirm).font(.headline)
+                    Text(Localized.profileDeleteConfirm)
                         .font(.body)
                         .multilineTextAlignment(.center)
                     HStack(spacing: 12) {
-                        Button("취소") { confirmDelete = false }
+                        Button(Localized.cancel) { confirmDelete = false }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-                        Button("삭제", role: .destructive) {
+                        Button(Localized.delete, role: .destructive) {
                             ProfileManager.shared.deleteProfile(id: profile.id)
                             if profile.ssid == currentSSID {
                                 NotificationCenter.default.post(name: .init("currentProfileDeleted"), object: nil)
@@ -138,15 +148,15 @@ struct ProfileEditorView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 16) {
-                    Text("확인").font(.headline)
-                    Text("이 프로필의 모든 사용량 데이터가 삭제됩니다.\n프로필 자체는 유지됩니다.")
+                    Text(Localized.confirm).font(.headline)
+                    Text(Localized.profileResetConfirm)
                         .font(.body)
                         .multilineTextAlignment(.center)
                     HStack(spacing: 12) {
-                        Button("취소") { confirmDataReset = false }
+                        Button(Localized.cancel) { confirmDataReset = false }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-                        Button("초기화", role: .destructive) {
+                        Button(Localized.resetData, role: .destructive) {
                             ProfileManager.shared.deleteUsageData(profileId: profile.id)
                             NotificationCenter.default.post(name: .init("connectionChanged"), object: nil)
                             onProfilesChanged()

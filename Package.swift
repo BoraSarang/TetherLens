@@ -22,6 +22,7 @@ let package = Package(
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             exclude: ["Info.plist"],
+            resources: [.process("Resources")],
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
             ],

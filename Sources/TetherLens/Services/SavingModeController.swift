@@ -41,10 +41,10 @@ final class SavingModeController: @unchecked Sendable {
 
                 DispatchQueue.main.async {
                     if task.terminationStatus == 0 {
-                        completion(true, "절약 모드가 적용되었습니다")
+                        completion(true, Localized.savingModeActivated)
                     } else {
                         let msg = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                        completion(false, msg.isEmpty ? "권한이 필요합니다" : msg)
+                        completion(false, msg.isEmpty ? Localized.permissionRequired : msg)
                     }
                 }
             } catch {
@@ -81,10 +81,10 @@ final class SavingModeController: @unchecked Sendable {
 
                 DispatchQueue.main.async {
                     if task.terminationStatus == 0 {
-                        completion(true, "절약 모드가 해제되었습니다")
+                        completion(true, Localized.savingModeDeactivated)
                     } else {
                         let msg = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                        completion(false, msg.isEmpty ? "권한이 필요합니다" : msg)
+                        completion(false, msg.isEmpty ? Localized.permissionRequired : msg)
                     }
                 }
             } catch {

@@ -43,11 +43,11 @@ struct QoSGauge: View {
 
             HStack {
                 let pct = Int(ratio * 100)
-                Text("\(formatGB(used)) / \(formatGB(total)) (\(pct)% 사용됨)")
+                Text(Localized.usagePercent(formatGB(used), formatGB(total), pct))
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 Spacer()
-                Text("\(formatGB(remaining)) 남음")
+                Text(Localized.remaining(formatGB(remaining)))
                     .font(.caption2)
                     .foregroundColor(gaugeColor)
             }

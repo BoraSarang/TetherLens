@@ -22,18 +22,18 @@ struct AboutView: View {
             Text("TetherLens")
                 .font(.title2.bold())
 
-            Text("버전 \(version) (\(build))")
+            Text(Localized.version(version, build))
                 .font(.caption)
                 .foregroundColor(.secondary)
 
             Divider()
 
             VStack(spacing: 6) {
-                Text("macOS 핫스팟/테더링 데이터 사용량 모니터")
+                Text(Localized.appDescription)
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                detailRow(label: "제작", value: "OkStart")
+                detailRow(label: Localized.createdBy, value: "OkStart")
 
                 Button("okstart@gmail.com") {
                     NSWorkspace.shared.open(URL(string: "mailto:okstart@gmail.com")!)
@@ -43,7 +43,7 @@ struct AboutView: View {
                 .foregroundColor(.blue)
                 .underline()
 
-                Button("☕️ 후원하기") {
+                Button(Localized.donateButton) {
                     NSWorkspace.shared.open(URL(string: "https://buymeacoffee.com/okstart")!)
                 }
                 .buttonStyle(.bordered)
@@ -54,7 +54,7 @@ struct AboutView: View {
 
             Spacer()
 
-            Button("닫기") { onClose() }
+            Button(Localized.close) { onClose() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
         }

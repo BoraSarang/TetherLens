@@ -9,6 +9,7 @@ struct UsageLog: Identifiable, Codable, Equatable, FetchableRecord, PersistableR
     let uploadDelta: Int64
     let downloadDelta: Int64
     let recordedAt: Date
+    var sessionId: UUID?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -16,5 +17,6 @@ struct UsageLog: Identifiable, Codable, Equatable, FetchableRecord, PersistableR
         case uploadDelta = "upload_delta"
         case downloadDelta = "download_delta"
         case recordedAt = "recorded_at"
+        case sessionId = "session_id"
     }
 }

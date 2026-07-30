@@ -8,27 +8,27 @@ struct DNSPreset: Identifiable, Equatable {
 
     static let google = DNSPreset(
         name: "Google",
-        description: "가장 빠른 글로벌 DNS",
+        description: Localized.dnsGoogleDesc,
         servers: ["8.8.8.8", "8.8.4.4"]
     )
     static let cloudflare = DNSPreset(
         name: "Cloudflare",
-        description: "개인정보 보호 중심, 1.1.1.1",
+        description: Localized.dnsCloudflareDesc,
         servers: ["1.1.1.1", "1.0.0.1"]
     )
     static let opendns = DNSPreset(
         name: "OpenDNS",
-        description: "유해 사이트 차단 기능",
+        description: Localized.dnsOpenDNSDesc,
         servers: ["208.67.222.222", "208.67.220.220"]
     )
     static let quad9 = DNSPreset(
         name: "Quad9",
-        description: "악성 사이트 차단, 9.9.9.9",
+        description: Localized.dnsQuad9Desc,
         servers: ["9.9.9.9", "149.112.112.112"]
     )
     static let custom = DNSPreset(
-        name: "사용자 설정",
-        description: "직접 DNS 주소 입력",
+        name: Localized.dnsCustomName,
+        description: Localized.dnsCustomDesc,
         servers: []
     )
 
@@ -100,7 +100,7 @@ class DNSManager: @unchecked Sendable {
                         completion(true, preset.name)
                     } else {
                         let msg = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                        completion(false, msg.isEmpty ? "권한이 필요합니다" : msg)
+                        completion(false, msg.isEmpty ? Localized.permissionRequired : msg)
                     }
                 }
             } catch {

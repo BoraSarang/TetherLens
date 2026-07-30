@@ -15,10 +15,15 @@ struct UsageReportView: View {
     @State private var expandedSection: AppTrafficSection = .user
     @State private var sortOrder: TrafficSortOrder = .total
 
-    enum TrafficSortOrder: String, CaseIterable {
-        case total = "전체 순"
-        case upload = "업로드 순"
-        case download = "다운로드 순"
+    enum TrafficSortOrder: CaseIterable {
+        case total, upload, download
+        var localized: String {
+            switch self {
+            case .total: return Localized.sortTotal
+            case .upload: return Localized.sortUpload
+            case .download: return Localized.sortDownload
+            }
+        }
     }
 
     enum AppTrafficSection {
@@ -36,12 +41,17 @@ struct UsageReportView: View {
 
     private let allProfilesId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
-    enum Period: String, CaseIterable {
-        case day = "1일"
-        case week = "7일"
-        case month = "30일"
-        case halfYear = "6개월"
-        case year = "1년"
+    enum Period: CaseIterable {
+        case day, week, month, halfYear, year
+        var localized: String {
+            switch self {
+            case .day: return Localized.day
+            case .week: return Localized.week
+            case .month: return Localized.month
+            case .halfYear: return Localized.halfYear
+            case .year: return Localized.year
+            }
+        }
 
         var days: Int {
             switch self {
@@ -64,17 +74,23 @@ struct UsageReportView: View {
         }
     }
 
-    enum ViewMode: String, CaseIterable {
-        case chart = "그래프"
-        case detail = "상세"
-        case session = "세션"
-        case appTraffic = "프로세스별 트래픽"
+    enum ViewMode: CaseIterable {
+        case chart, detail, session, heatmap, appTraffic
+        var localized: String {
+            switch self {
+            case .chart: return Localized.chart
+            case .detail: return Localized.detail
+            case .session: return Localized.sessionTab
+            case .heatmap: return Localized.heatmapTitle
+            case .appTraffic: return Localized.appTrafficTab
+            }
+        }
     }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("사용량 리포트")
+                Text(Localized.usageReportTitle)
                     .font(.headline)
                     .padding(.leading, 16)
                 Spacer()
@@ -90,7 +106,7 @@ struct UsageReportView: View {
                 rightPanel
             }
         }
-        .frame(width: 520, height: 480)
+        .frame(width: 640, height: 520)
         .onAppear {
             profiles = ProfileManager.shared.getAllProfiles()
             selectedProfileId = preselectedProfileId ?? allProfilesId
@@ -98,6 +114,7 @@ struct UsageReportView: View {
         }
         .onChange(of: selectedProfileId) { _, _ in loadData() }
         .onChange(of: selectedPeriod) { _, _ in loadData() }
+        .onChange(of: viewMode) { _, _ in loadData() }
     }
 
     // MARK: - Sidebar
@@ -108,7 +125,7 @@ struct UsageReportView: View {
                 Button {
                     viewMode = mode
                 } label: {
-                    Text(mode.rawValue)
+                    Text(mode.localized)
                         .font(.subheadline)
                         .foregroundColor(viewMode == mode ? .accentColor : .secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -131,17 +148,21 @@ struct UsageReportView: View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
                 Picker("", selection: $selectedProfileId) {
-                    Text("전체 프로필").tag(allProfilesId as UUID?)
+                    Text(Localized.allProfiles).tag(allProfilesId as UUID?)
                     ForEach(profiles) { profile in
-                        Text(profile.name).tag(profile.id as UUID?)
+                        if profile.isHotspot {
+                            Text("\(profile.name) (\(Localized.hotspot))").tag(profile.id as UUID?)
+                        } else {
+                            Text(profile.name).tag(profile.id as UUID?)
+                        }
                     }
                 }
                 .pickerStyle(.menu)
-                .frame(maxWidth: 140)
+                .frame(width: 200)
 
                 Picker("", selection: $selectedPeriod) {
                     ForEach(Period.allCases, id: \.self) { period in
-                        Text(period.rawValue).tag(period)
+                        Text(period.localized).tag(period)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -159,7 +180,7 @@ struct UsageReportView: View {
 
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("총 사용량")
+                        Text(Localized.totalUsage)
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         Text(totalBytes.formattedBytes)
@@ -167,7 +188,7 @@ struct UsageReportView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("일 평균")
+                        Text(Localized.dailyAverage)
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         Text(avgBytes.formattedBytes)
@@ -187,15 +208,15 @@ struct UsageReportView: View {
 
             HStack {
                 HStack(spacing: 8) {
-                    Text("▲ 업로드")
+                    Text(Localized.upload)
                         .font(.caption.bold())
                         .foregroundColor(.orange)
-                    Text("▼ 다운로드")
+                    Text(Localized.download)
                         .font(.caption.bold())
                         .foregroundColor(.blue)
                 }
                 Spacer()
-                Button("닫기", action: onClose)
+                Button(Localized.close, action: onClose)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
             }
@@ -217,6 +238,8 @@ struct UsageReportView: View {
             sessionView
         case .appTraffic:
             appTrafficView
+        case .heatmap:
+            HeatmapView(sessions: sessions)
         }
     }
 
@@ -226,7 +249,7 @@ struct UsageReportView: View {
     private var chartView: some View {
         if dailyUsage.isEmpty {
             Spacer()
-            Text("사용량 데이터가 없습니다")
+            Text(Localized.noUsageData)
                 .foregroundColor(.secondary)
             Spacer()
         } else {
@@ -234,8 +257,8 @@ struct UsageReportView: View {
             let yDomain: ClosedRange<Int64> = 0 ... maxBytes
             Chart(dailyUsage.reversed()) { usage in
                 BarMark(
-                    x: .value("날짜", usage.date, unit: .day),
-                    y: .value("업로드", usage.upload)
+                    x: .value("Date", usage.date, unit: .day),
+                    y: .value("Upload", usage.upload)
                 )
                 .foregroundStyle(.orange)
                 .annotation(position: .bottom, alignment: .center) {
@@ -244,14 +267,14 @@ struct UsageReportView: View {
                         .foregroundColor(.secondary)
                 }
                 BarMark(
-                    x: .value("날짜", usage.date, unit: .day),
-                    y: .value("다운로드", usage.download)
+                    x: .value("Date", usage.date, unit: .day),
+                    y: .value("Download", usage.download)
                 )
                 .foregroundStyle(.blue)
             }
             .chartForegroundStyleScale([
-                "업로드": Color.orange,
-                "다운로드": Color.blue
+                Localized.uploadShort: Color.orange,
+                Localized.downloadShort: Color.blue
             ])
             .chartLegend(.hidden)
             .chartXAxis(.hidden)
@@ -280,27 +303,27 @@ struct UsageReportView: View {
             let isLong = selectedPeriod.isLongPeriod
             let items = isLong ? monthlyUsage.map { DetailItem(id: $0.id, date: $0.date, upload: $0.upload, download: $0.download, total: $0.total, isMonthly: true) } : dailyUsage.map { DetailItem(id: $0.id, date: $0.date, upload: $0.upload, download: $0.download, total: $0.total, isMonthly: false) }
             if items.isEmpty {
-                Spacer()
-                Text("사용량 데이터가 없습니다")
-                    .foregroundColor(.secondary)
-                Spacer()
+            Spacer()
+            Text(Localized.noUsageData)
+                .foregroundColor(.secondary)
+            Spacer()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         HStack(spacing: 0) {
-                            Text(isLong ? "월" : "날짜")
+                            Text(isLong ? Localized.monthLabel : Localized.date)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(width: 72, alignment: .leading)
-                            Text("▲ 업로드")
+                            Text(Localized.uploadShort)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.orange)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
-                            Text("▼ 다운로드")
+                            Text(Localized.downloadShort)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.blue)
                                 .frame(width: 72, alignment: .trailing)
-                            Text("합계")
+                            Text(Localized.total)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(width: 72, alignment: .trailing)
@@ -363,78 +386,36 @@ struct UsageReportView: View {
     }
 
     private var individualSessionView: some View {
-        Group {
-            if sessions.isEmpty {
-                Spacer()
-                Text("세션 데이터가 없습니다")
-                    .foregroundColor(.secondary)
-                Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        HStack(spacing: 0) {
-                            Text("시작 시간")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Text("상태")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 72, alignment: .trailing)
-                        }
-                        .padding(.vertical, 4)
-                        ForEach(sessions) { session in
-                            Divider()
-                            HStack(spacing: 0) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(session.startTime, style: .date)
-                                        .font(.caption)
-                                    Text(sessionStartTimeFormatted(session.startTime))
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer(minLength: 4)
-                                VStack(alignment: .trailing, spacing: 2) {
-                                    if let end = session.endTime {
-                                        Text(sessionDurationFormatted(session.startTime, end))
-                                            .font(.caption.monospacedDigit())
-                                    } else {
-                                        Text("진행 중")
-                                            .font(.caption)
-                                            .foregroundColor(.green)
-                                    }
-                                }
-                                .frame(width: 72, alignment: .trailing)
-                            }
-                            .padding(.vertical, 6)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                }
+        let name: String = {
+            if let pid = selectedProfileId {
+                if pid == allProfilesId { return Localized.allProfiles }
+                return ProfileManager.shared.getProfile(id: pid)?.name ?? "-"
             }
-        }
+            return "-"
+        }()
+        return SessionTimelineView(sessions: sessions, profileName: name)
     }
 
     private var dailySessionSummaryView: some View {
         Group {
             if dailySessionSummary.isEmpty {
                 Spacer()
-                Text("세션 데이터가 없습니다")
+                Text(Localized.noSessionData)
                     .foregroundColor(.secondary)
                 Spacer()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         HStack(spacing: 0) {
-                            Text("날짜")
+                            Text(Localized.date)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            Text("세션")
+                            Text(Localized.sessionCount)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(width: 44, alignment: .trailing)
-                            Text("시간")
+                            Text(Localized.time)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(width: 64, alignment: .trailing)
@@ -466,22 +447,22 @@ struct UsageReportView: View {
         Group {
             if monthlySessionSummary.isEmpty {
                 Spacer()
-                Text("세션 데이터가 없습니다")
+                Text(Localized.noSessionData)
                     .foregroundColor(.secondary)
                 Spacer()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         HStack(spacing: 0) {
-                            Text("월")
+                            Text(Localized.monthLabel)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            Text("세션")
+                            Text(Localized.sessionCount)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(width: 44, alignment: .trailing)
-                            Text("시간")
+                            Text(Localized.time)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(width: 64, alignment: .trailing)
@@ -526,7 +507,7 @@ struct UsageReportView: View {
         Group {
             if appTrafficData.isEmpty {
                 Spacer()
-                Text("트래픽 데이터가 없습니다")
+                Text(Localized.noTrafficData)
                     .foregroundColor(.secondary)
                 Spacer()
             } else {
@@ -550,15 +531,15 @@ struct UsageReportView: View {
                 VStack(spacing: 0) {
                     VStack(spacing: 0) {
                         HStack(spacing: 0) {
-                            Text("프로세스")
+                            Text(Localized.process)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            Text("▲ 업로드")
+                            Text(Localized.upload)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.orange)
                                 .frame(width: 68, alignment: .trailing)
-                            Text("▼ 다운로드")
+                            Text(Localized.download)
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(.blue)
                                 .frame(width: 68, alignment: .trailing)
@@ -567,18 +548,18 @@ struct UsageReportView: View {
 
                         Divider()
 
-                        summaryRow(label: "총 합계", upload: totalUp, download: totalDn, isBold: true)
-                        summaryRow(label: "사용자 합계", upload: userUp, download: userDn, isBold: true)
-                        summaryRow(label: "시스템 합계", upload: sysUp, download: sysDn, isBold: true)
+                        summaryRow(label: Localized.totalSum, upload: totalUp, download: totalDn, isBold: true)
+                        summaryRow(label: Localized.userSum, upload: userUp, download: userDn, isBold: true)
+                        summaryRow(label: Localized.systemSum, upload: sysUp, download: sysDn, isBold: true)
 
                         Divider()
                             .padding(.vertical, 4)
 
                         HStack(spacing: 0) {
                             Spacer()
-                            Picker("정렬", selection: $sortOrder) {
+                            Picker(Localized.sortBy, selection: $sortOrder) {
                                 ForEach(TrafficSortOrder.allCases, id: \.self) { order in
-                                    Text(order.rawValue).tag(order)
+                                    Text(order.localized).tag(order)
                                 }
                             }
                             .pickerStyle(.menu)
@@ -603,7 +584,7 @@ struct UsageReportView: View {
                                         Image(systemName: expandedSection == .user ? "chevron.down" : "chevron.right")
                                             .font(.system(size: 8))
                                             .foregroundColor(.secondary)
-                                        Text("사용자 프로세스 (상위 10)")
+                                        Text(Localized.userProcesses)
                                             .font(.system(size: 9, weight: .bold))
                                             .foregroundColor(.secondary)
                                         Spacer()
@@ -631,7 +612,7 @@ struct UsageReportView: View {
                                         Image(systemName: expandedSection == .system ? "chevron.down" : "chevron.right")
                                             .font(.system(size: 8))
                                             .foregroundColor(.secondary)
-                                    Text("시스템 프로세스 (상위 10)")
+                                    Text(Localized.systemProcesses)
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundColor(.secondary)
                                     Spacer()
@@ -703,6 +684,7 @@ struct UsageReportView: View {
             monthlySessionSummary = []
             return
         }
+        let loadAllSessions = viewMode == .heatmap || (viewMode == .session && selectedPeriod.days == 1)
         if pid == allProfilesId {
             var allUsage: [String: ProfileManager.DailyUsage] = [:]
             var allMonthly: [String: ProfileManager.MonthlyUsage] = [:]
@@ -715,7 +697,9 @@ struct UsageReportView: View {
                     let existing = allUsage[u.id, default: ProfileManager.DailyUsage(id: u.id, date: u.date, upload: 0, download: 0)]
                     allUsage[u.id] = ProfileManager.DailyUsage(id: u.id, date: u.date, upload: existing.upload + u.upload, download: existing.download + u.download)
                 }
-                allSessions.append(contentsOf: ProfileManager.shared.getSessions(profileId: profile.id, days: selectedPeriod.days))
+                if loadAllSessions {
+                    allSessions.append(contentsOf: ProfileManager.shared.getSessions(profileId: profile.id, days: selectedPeriod.days))
+                }
                 if selectedPeriod.isLongPeriod {
                     let months = selectedPeriod.months
                     let mu = ProfileManager.shared.getMonthlyUsage(profileId: profile.id, months: months)
@@ -748,14 +732,14 @@ struct UsageReportView: View {
         if selectedPeriod.isLongPeriod {
             monthlyUsage = ProfileManager.shared.getMonthlyUsage(profileId: pid, months: selectedPeriod.months)
             monthlySessionSummary = ProfileManager.shared.getMonthlySessionSummary(profileId: pid, months: selectedPeriod.months)
-            sessions = []
+            sessions = loadAllSessions ? ProfileManager.shared.getSessions(profileId: pid, days: selectedPeriod.days) : []
             dailySessionSummary = []
         } else if selectedPeriod.days > 1 {
-            sessions = []
+            sessions = loadAllSessions ? ProfileManager.shared.getSessions(profileId: pid, days: selectedPeriod.days) : []
             dailySessionSummary = ProfileManager.shared.getDailySessionSummary(profileId: pid, days: selectedPeriod.days)
             monthlySessionSummary = []
         } else {
-            sessions = ProfileManager.shared.getSessions(profileId: pid, days: 1)
+            sessions = ProfileManager.shared.getSessions(profileId: pid, days: selectedPeriod.days)
             dailySessionSummary = []
             monthlySessionSummary = []
         }

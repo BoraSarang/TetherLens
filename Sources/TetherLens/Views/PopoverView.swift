@@ -114,11 +114,11 @@ struct PopoverView: View {
     private var mainContent: some View {
         VStack(spacing: 12) {
             headerView
-            collapsibleSectionDivider("연결 정보", isExpanded: $expandedConnectionInfo)
+            collapsibleSectionDivider(Localized.connectionInfo, isExpanded: $expandedConnectionInfo)
             connectionInfoView
-            collapsibleSectionDivider("연결 주소", isExpanded: $expandedAddressInfo)
+            collapsibleSectionDivider(Localized.addressInfo, isExpanded: $expandedAddressInfo)
             connectionAddressView
-            sectionDivider("QoS 방지 게이지")
+            sectionDivider(Localized.qosGauge)
             qosGaugeBody
             if let msg = quotaAlertMessage {
                 HStack(spacing: 6) {
@@ -186,7 +186,7 @@ struct PopoverView: View {
                 trafficSectionDivider
                 appTrafficPreview
             }
-            sectionDivider("프로필")
+            sectionDivider(Localized.profile)
             profileSection
             Divider()
             speedView
@@ -214,7 +214,7 @@ struct PopoverView: View {
             Image(nsImage: NSApplication.shared.applicationIconImage)
                 .resizable()
                 .frame(width: 20, height: 20)
-            Text(connectionName)
+            Text(displayName)
                 .font(.headline)
                 .lineLimit(1)
             Spacer()
@@ -228,7 +228,7 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundColor(pinned ? .accentColor : .secondary)
-                .help(pinned ? "고정 해제" : "팝오버 고정")
+                .help(pinned ? Localized.unpin : Localized.pinPopover)
             }
             Button {
                 showNotifications = true
@@ -244,7 +244,7 @@ struct PopoverView: View {
             }
             .buttonStyle(.plain)
             .foregroundColor(NotificationManager.shared.notifications.isEmpty ? .secondary : .accentColor)
-            .help("알림 기록")
+            .help(Localized.notificationHistory)
             statusDot
         }
     }
@@ -264,19 +264,27 @@ struct PopoverView: View {
     }
 
     private var connectionName: String {
-        guard let conn = hotspotDetector.currentConnection else { return "연결 없음" }
+        guard let conn = hotspotDetector.currentConnection else { return Localized.noConnection }
         switch conn.type {
         case .iOSPersonalHotspot(let ssid):
-            return ssid ?? "iOS 핫스팟"
+            return ssid ?? Localized.iOSHotspot
         case .androidHotspot(let ssid):
-            return ssid ?? "Android 핫스팟"
+            return ssid ?? Localized.androidHotspot
         case .normalWiFi(let ssid, _):
-            return ssid ?? "Wi-Fi"
+            return ssid ?? Localized.wifi
         case .ethernet:
-            return "Ethernet"
+            return Localized.ethernet
         case .unknown:
-            return "알 수 없음"
+            return Localized.unknown
         }
+    }
+
+    private var displayName: String {
+        guard let ssid = ssidString else { return connectionName }
+        if let profile = ProfileManager.shared.getProfile(ssid: ssid) {
+            return profile.name
+        }
+        return connectionName
     }
 
     private var statusDot: some View {
@@ -313,37 +321,37 @@ struct PopoverView: View {
 
     private var connectionInfoView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            detailRow(label: "유형", value: connectionTypeString)
+            detailRow(label: Localized.type, value: connectionTypeString)
             if let dur = sessionDurationString {
-                detailRow(label: "세션", value: dur)
+                detailRow(label: Localized.session, value: dur)
             }
             if let ssid = ssidString {
                 let rssiSuffix: String = {
                     guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
                     return " (\(r)dBm)"
                 }()
-                detailRow(label: "네트워크", value: "\(ssid)\(rssiSuffix)", copyValue: ssid)
+                detailRow(label: Localized.network, value: "\(ssid)\(rssiSuffix)", copyValue: ssid)
             } else if usesWiFi {
                 let rssiSuffix: String = {
                     guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
                     return " (\(r)dBm)"
                 }()
-                detailRow(label: "네트워크", value: "알 수 없음\(rssiSuffix)")
+                detailRow(label: Localized.network, value: "\(Localized.unknown)\(rssiSuffix)")
             }
             if let bssid = bssidString {
-                detailRow(label: "BSSID", value: bssid, copyValue: bssid)
+                detailRow(label: Localized.bssid, value: bssid, copyValue: bssid)
             }
             if expandedConnectionInfo {
                 if let phy = hotspotDetector.currentConnection?.phyMode {
-                    detailRow(label: "규격", value: phy)
+                    detailRow(label: Localized.standard, value: phy)
                 }
                 if let ch = hotspotDetector.currentConnection?.channel,
                    let band = hotspotDetector.currentConnection?.channelBand {
                     let width = hotspotDetector.currentConnection?.channelWidth ?? 0
-                    detailRow(label: "채널", value: width > 0 ? "\(ch) (\(band), \(width)MHz)" : "\(ch) (\(band))")
+                    detailRow(label: Localized.channel, value: width > 0 ? "\(ch) (\(band), \(width)MHz)" : "\(ch) (\(band))")
                 }
                 if let speed = hotspotDetector.currentConnection?.linkSpeed {
-                    detailRow(label: "속도", value: String(format: "%.0f Mbps", speed))
+                    detailRow(label: Localized.speed, value: String(format: "%.0f Mbps", speed))
                 }
             }
         }
@@ -353,23 +361,23 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 6) {
             if expandedAddressInfo {
                 if let gw = hotspotDetector.currentConnection?.gatewayIP {
-                    detailRow(label: "게이트웨이", value: gw, copyValue: gw)
+                    detailRow(label: Localized.gateway, value: gw, copyValue: gw)
                 }
             }
             if let ip = hotspotDetector.currentConnection?.localIP {
-                detailRow(label: "로컬 IP", value: ip, copyValue: ip)
+                detailRow(label: Localized.localIP, value: ip, copyValue: ip)
             }
             if let extIP = ipResolver.externalIP {
                 let country = ipResolver.geoInfo.map { " (\(flag(from: $0.countryCode)))" } ?? ""
-                detailRow(label: "외부 IP", value: "\(extIP)\(country)", copyValue: extIP)
+                detailRow(label: Localized.externalIP, value: "\(extIP)\(country)", copyValue: extIP)
             }
             if expandedAddressInfo {
                 if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {
-                    detailRow(label: "DNS", value: dns.joined(separator: ", "))
+                    detailRow(label: Localized.dns, value: dns.joined(separator: ", "))
                         .onTapGesture { showDNSPicker = true }
                 }
             }
-            detailRow(label: "지연 시간 (Ping)", value: pingString)
+            detailRow(label: Localized.ping, value: pingString)
             if usesWiFi && ssidString == nil {
                 locationWarningView
             }
@@ -380,15 +388,15 @@ struct PopoverView: View {
         guard let conn = hotspotDetector.currentConnection else { return "-" }
         switch conn.type {
         case .iOSPersonalHotspot:
-            return "iOS 핫스팟"
+            return Localized.iOSHotspot
         case .androidHotspot:
-            return "Android 핫스팟"
+            return Localized.androidHotspot
         case .normalWiFi:
-            return "Wi-Fi"
+            return Localized.wifi
         case .ethernet:
-            return "Ethernet"
+            return Localized.ethernet
         case .unknown:
-            return "알 수 없음"
+            return Localized.unknown
         }
     }
 
@@ -397,7 +405,7 @@ struct PopoverView: View {
             let ms = Int(dns * 1000)
             return "\(ms)ms (8.8.8.8)"
         }
-        return "측정 중..."
+        return Localized.measuring
     }
 
     private var sessionDurationString: String? {
@@ -420,48 +428,48 @@ struct PopoverView: View {
                 .foregroundColor(.orange)
                 .padding(.top, 2)
             if !LocationManager.systemLocationServicesEnabled {
-                Text("시스템 설정 > 개인정보 보호 및 보안 >\n위치 서비스를 켜주세요")
+                Text(Localized.locationServiceOff)
                     .font(.system(size: 9))
                     .foregroundColor(.orange)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
-                Button("설정 열기") {
+                Button(Localized.openSettings) {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .tint(.orange)
             } else if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
-                Text("시스템 설정 > 개인정보 보호 및 보안 >\n위치 서비스 > TetherLens를 허용해주세요")
+                Text(Localized.locationAppDenied)
                     .font(.system(size: 9))
                     .foregroundColor(.orange)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
-                Button("설정 열기") {
+                Button(Localized.openSettings) {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .tint(.orange)
             } else if !locationManager.isAuthorized {
-                Text("TetherLens가 Wi-Fi 정보를 읽기 위해\n위치 접근 권한이 필요합니다")
+                Text(Localized.locationNeeded)
                     .font(.system(size: 9))
                     .foregroundColor(.orange)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
-                Button("권한 요청") {
+                Button(Localized.requestPermission) {
                     locationManager.requestAuthorization()
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .tint(.orange)
             } else {
-                Text("Wi-Fi 정보(SSID)를 읽을 수 없습니다.\nApple Developer 프로비저닝이 필요합니다")
+                Text(Localized.locationProvisioning)
                     .font(.system(size: 9))
                     .foregroundColor(.orange)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
-                Button("설정 열기") {
+                Button(Localized.openSettings) {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
                 }
                 .buttonStyle(.borderedProminent)
@@ -483,7 +491,7 @@ struct PopoverView: View {
         } else {
             HStack {
                 Spacer()
-                Text("할당량 없음 — 프로필 편집에서 설정하세요")
+                Text(Localized.noQuota)
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
@@ -494,7 +502,7 @@ struct PopoverView: View {
     private var trafficSectionDivider: some View {
         HStack(spacing: 6) {
             Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
-            Text("프로세스별 트래픽")
+            Text(Localized.appTraffic)
                 .font(.caption2)
                 .foregroundColor(.secondary)
                 .fixedSize()
@@ -515,15 +523,15 @@ struct PopoverView: View {
         let top3 = Array(trafficMonitor.apps.prefix(3))
         return VStack(spacing: 4) {
             HStack(spacing: 0) {
-                Text("프로세스")
+                Text(Localized.process)
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text("▲ 업로드")
+                Text(Localized.upload)
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(.orange)
                     .frame(width: 62, alignment: .trailing)
-                Text("▼ 다운로드")
+                Text(Localized.download)
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(.blue)
                     .frame(width: 68, alignment: .trailing)
@@ -545,7 +553,7 @@ struct PopoverView: View {
                         .frame(width: 68, alignment: .trailing)
                 }
             }
-            Button("더보기...") { showTraffic = true }
+            Button(Localized.showMore) { showTraffic = true }
                 .buttonStyle(.plain)
                 .font(.caption)
                 .foregroundColor(.blue)
@@ -562,26 +570,31 @@ struct PopoverView: View {
             if let profile = currentProfile {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(profile.name).font(.body)
+                        HStack(spacing: 4) {
+                            Text(profile.name).font(.body)
+                            if profile.isHotspot {
+                                Text("(\(Localized.hotspot))").font(.body).foregroundColor(.orange)
+                            }
+                        }
                         Text(profile.ssid).font(.caption).foregroundColor(.secondary)
                         if let q = profile.quotaGB {
-                            Text("할당량 \(String(format: "%.1f", q))GB").font(.caption2).foregroundColor(.secondary)
+                            Text("\(Localized.quota) \(String(format: "%.1f", q))GB").font(.caption2).foregroundColor(.secondary)
                         }
                     }
                     Spacer()
-                    Button("통계") {
+                    Button(Localized.statistics) {
                         usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    Button("편집") {
+                    Button(Localized.edit) {
                         editingProfile = profile
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                 }
             }
-            Button("프로필 관리...") { showProfileManager = true }
+            Button(Localized.manageProfiles) { showProfileManager = true }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .frame(maxWidth: .infinity)
@@ -590,13 +603,13 @@ struct PopoverView: View {
 
     private var profileManagerSheet: some View {
         VStack(spacing: 12) {
-            Text("프로필 관리")
+            Text(Localized.profileManagement)
                 .font(.headline)
                 .padding(.top, 16)
 
             if profiles.isEmpty {
                 Spacer()
-                Text("등록된 프로필이 없습니다")
+                Text(Localized.noProfiles)
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
@@ -607,29 +620,32 @@ struct PopoverView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 4) {
                                     Text(profile.name).font(.body)
+                                    if profile.isHotspot {
+                                        Text("(\(Localized.hotspot))").font(.body).foregroundColor(.orange)
+                                    }
                                     if profile.ssid == ssidString {
                                         Circle().fill(Color.orange).frame(width: 6, height: 6)
-                                        Text("접속 중").font(.caption2).foregroundColor(.orange)
+                                        Text(Localized.connected).font(.caption2).foregroundColor(.orange)
                                     }
                                 }
                                 Text(profile.ssid).font(.caption).foregroundColor(.secondary)
                                 if let q = profile.quotaGB {
-                                    Text("할당량 \(String(format: "%.1f", q))GB").font(.caption2)
+                                    Text("\(Localized.quota) \(String(format: "%.1f", q))GB").font(.caption2)
                                 }
                                 if profile.ssid != ssidString {
-                                    Text("마지막 접속: \(relativeTimeString(profile.lastConnected))")
+                                    Text("\(Localized.lastConnected) \(relativeTimeString(profile.lastConnected))")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
                             }
                             Spacer()
-                            Button("통계") {
+                            Button(Localized.statistics) {
                                 showProfileManager = false
                                 usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
-                            Button("편집") {
+                            Button(Localized.edit) {
                                 showProfileManager = false
                                 editingProfile = profile
                             }
@@ -647,7 +663,7 @@ struct PopoverView: View {
                 .listStyle(.plain)
             }
 
-            Button("닫기") { showProfileManager = false }
+            Button(Localized.close) { showProfileManager = false }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .padding(.bottom, 16)
@@ -658,7 +674,7 @@ struct PopoverView: View {
     private var speedView: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text("▲ 업로드")
+                Text(Localized.upload)
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 Text(formatSpeed(networkMonitor.currentUploadSpeed))
@@ -667,7 +683,7 @@ struct PopoverView: View {
             }
             Spacer()
             VStack(alignment: .trailing) {
-                Text("▼ 다운로드")
+                Text(Localized.download)
                     .font(.caption2)
                     .foregroundColor(.secondary)
                 Text(formatSpeed(networkMonitor.currentDownloadSpeed))
@@ -680,32 +696,32 @@ struct PopoverView: View {
     private var bottomButtons: some View {
         HStack(spacing: 12) {
             Menu {
-                Button("사용량 리포트") { openStatistics() }
-                Button("프로세스별 트래픽") { showTraffic = true }
-                Button("알림 기록") { showNotifications = true }
+                Button(Localized.usageReport) { openStatistics() }
+                Button(Localized.appTrafficButton) { showTraffic = true }
+                Button(Localized.notificationList) { showNotifications = true }
                 Divider()
-                Button("DNS 프리셋 적용") { showDNSPicker = true }
-                Button(savingModeActive ? "절약 모드 온" : "절약 모드") { openSavingMode() }
+                Button(Localized.dnsPresetApply) { showDNSPicker = true }
+                Button(savingModeActive ? Localized.savingModeOn : Localized.savingMode) { openSavingMode() }
                 Divider()
-                Button("설정") { showSettings = true }
-                Button("업데이트 확인") { UpdaterManager.shared.checkForUpdates() }
-                Button("정보") { showAbout = true }
+                Button(Localized.settings) { showSettings = true }
+                Button(Localized.checkUpdates) { UpdaterManager.shared.checkForUpdates() }
+                Button(Localized.about) { showAbout = true }
                 #if DEBUG
                 Divider()
-                Button("🐛 디버그 패널") { DebugPanelController.shared.toggle() }
+                Button(Localized.debugPanel) { DebugPanelController.shared.toggle() }
                 #endif
             } label: {
-                Text("더보기")
+                Text(Localized.more)
                     .font(.caption)
             }
             .menuIndicator(.hidden)
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             Spacer()
-            Button("☕️ 후원") { openDonation() }
+            Button(Localized.donate) { openDonation() }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-            Button("종료") { NSApplication.shared.terminate(nil) }
+            Button(Localized.quit) { NSApplication.shared.terminate(nil) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .tint(.red)
@@ -735,7 +751,7 @@ struct PopoverView: View {
             guard let copyValue else { return }
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(copyValue, forType: .string)
-            copiedIPMessage = "\(copyValue)가 복사되었습니다."
+            copiedIPMessage = Localized.copiedValue(copyValue)
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 copiedIPMessage = nil
             }
@@ -769,7 +785,7 @@ struct PopoverView: View {
 
     private var dnsPresetPicker: some View {
         VStack(spacing: 12) {
-            Text("DNS 프리셋 선택")
+            Text(Localized.dnsPresetPicker)
                 .font(.headline)
                 .padding(.top, 16)
 
@@ -787,16 +803,16 @@ struct PopoverView: View {
                     Spacer()
                     Group {
                         if applyingPresetID == preset.id {
-                            Text("적용 중...")
+                            Text(Localized.dnsApplying)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         } else if !preset.servers.isEmpty && currentDNSServers == preset.servers {
-                            Text("적용됨")
+                            Text(Localized.dnsApplied)
                                 .font(.caption)
                                 .foregroundColor(.green)
                                 .fontWeight(.semibold)
                         } else {
-                            Button("적용") { confirmPreset = preset }
+                            Button(Localized.apply) { confirmPreset = preset }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
                         }
@@ -814,7 +830,7 @@ struct PopoverView: View {
                     .foregroundColor(.secondary)
             }
 
-            Button("닫기") { showDNSPicker = false }
+            Button(Localized.close) { showDNSPicker = false }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .padding(.bottom, 16)
@@ -822,14 +838,10 @@ struct PopoverView: View {
         .frame(width: 260)
         .alert(item: $confirmPreset) { preset in
             Alert(
-                title: Text("DNS 변경"),
-                message: Text("""
-\(preset.name) (\(preset.servers.joined(separator: ", ")))(으)로 변경하시겠습니까?
-
-변경을 위해 관리자 비밀번호가 필요합니다.
-"""),
-                primaryButton: .cancel(Text("취소")),
-                secondaryButton: .default(Text("적용")) {
+                title: Text(Localized.dnsChangeTitle),
+                message: Text(Localized.dnsChangeMessage("\(preset.name) (\(preset.servers.joined(separator: ", ")))")),
+                primaryButton: .cancel(Text(Localized.cancel)),
+                secondaryButton: .default(Text(Localized.apply)) {
                     applyDNSPreset(preset)
                 }
             )
@@ -838,12 +850,12 @@ struct PopoverView: View {
 
     private func applyDNSPreset(_ preset: DNSPreset) {
         applyingPresetID = preset.id
-        dnsStatusMessage = "적용 중..."
+        dnsStatusMessage = Localized.dnsApplying
         DNSManager.shared.applyPreset(preset) { success, message in
             DispatchQueue.main.async {
                 applyingPresetID = nil
                 if success {
-                    dnsStatusMessage = "✓ \(message) DNS 적용 완료"
+                    dnsStatusMessage = "✓ \(message) DNS \(Localized.string("적용 완료", "Applied"))"
                     currentDNSServers = preset.servers
                 } else {
                     dnsStatusMessage = "✗ \(message)"
@@ -899,10 +911,10 @@ struct PopoverView: View {
 
     private func relativeTimeString(_ date: Date) -> String {
         let interval = -date.timeIntervalSinceNow
-        if interval < 60 { return "방금 전" }
-        if interval < 3600 { return "\(Int(interval / 60))분 전" }
-        if interval < 86400 { return "\(Int(interval / 3600))시간 전" }
-        if interval < 604800 { return "\(Int(interval / 86400))일 전" }
+        if interval < 60 { return Localized.justNow }
+        if interval < 3600 { return Localized.minutesAgo(Int(interval / 60)) }
+        if interval < 86400 { return Localized.hoursAgo(Int(interval / 3600)) }
+        if interval < 604800 { return Localized.daysAgo(Int(interval / 86400)) }
         let f = DateFormatter()
         f.dateFormat = "MM/dd"
         return f.string(from: date)

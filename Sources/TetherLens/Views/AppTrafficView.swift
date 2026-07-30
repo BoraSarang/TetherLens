@@ -13,7 +13,7 @@ struct AppTrafficView: View {
             } else {
                 trafficList
             }
-            Button("닫기") { onClose() }
+            Button(Localized.close) { onClose() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .padding(.bottom, 8)
@@ -24,14 +24,14 @@ struct AppTrafficView: View {
 
     private var headerView: some View {
         HStack {
-            Text("프로세스별 트래픽")
+            Text(Localized.appTraffic)
                 .font(.headline)
             Spacer()
-            Toggle("시스템 프로세스 제외", isOn: $showSystemProcesses)
+            Toggle(Localized.excludeSystem, isOn: $showSystemProcesses)
                 .toggleStyle(.checkbox)
                 .controlSize(.small)
                 .font(.caption)
-            Button("초기화") { monitor.resetAccumulated() }
+            Button(Localized.resetTraffic) { monitor.resetAccumulated() }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
         }
@@ -40,7 +40,7 @@ struct AppTrafficView: View {
     private var emptyView: some View {
         VStack {
             Spacer()
-            Text("트래픽 데이터를 수집 중입니다...")
+            Text(Localized.trafficCollecting)
                 .font(.caption)
                 .foregroundColor(.secondary)
             Spacer()
@@ -67,15 +67,15 @@ struct AppTrafficView: View {
 
     private var headerRow: some View {
         HStack(spacing: 0) {
-            Text("프로세스")
+            Text(Localized.process)
                 .font(.system(size: 9, weight: .bold))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text("▲ 업로드")
+            Text(Localized.upload)
                 .font(.system(size: 9, weight: .bold))
                 .foregroundColor(.orange)
                 .frame(width: 74, alignment: .trailing)
-            Text("▼ 다운로드")
+            Text(Localized.download)
                 .font(.system(size: 9, weight: .bold))
                 .foregroundColor(.blue)
                 .frame(width: 74, alignment: .trailing)

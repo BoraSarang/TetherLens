@@ -17,7 +17,7 @@ struct SavingModeSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("절약 모드")
+            Text(Localized.savingModeTitle)
                 .font(.headline)
                 .padding(.top, 20)
                 .frame(maxWidth: .infinity)
@@ -25,8 +25,8 @@ struct SavingModeSheet: View {
             VStack(spacing: 12) {
                 Toggle(isOn: $isEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("절약 모드 활성화")
-                        Text("QoS 색상 기준이 더 엄격해집니다")
+                        Text(Localized.enableSavingMode)
+                        Text(Localized.savingModeDescription)
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -38,8 +38,8 @@ struct SavingModeSheet: View {
 
                 Toggle(isOn: $autoActivate) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("자동 활성화")
-                        Text("할당량 80% 도달 시 자동으로 켜집니다")
+                        Text(Localized.autoActivate)
+                        Text(Localized.autoActivateDescription)
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -55,7 +55,7 @@ struct SavingModeSheet: View {
                 .padding(.horizontal, 20)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("시스템 제어").font(.subheadline).foregroundColor(.secondary)
+                Text(Localized.systemControl).font(.subheadline).foregroundColor(.secondary)
 
                 statusSection
             }
@@ -70,7 +70,7 @@ struct SavingModeSheet: View {
 
             Spacer()
 
-            Button("닫기", action: onClose)
+            Button(Localized.close, action: onClose)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .padding(.bottom, 20)
@@ -87,18 +87,18 @@ struct SavingModeSheet: View {
     private var statusSection: some View {
         if controllerActive {
             VStack(alignment: .leading, spacing: 4) {
-                Label("소프트웨어 업데이트 중지", systemImage: "checkmark.circle.fill")
+                Label(Localized.stopSoftwareUpdates, systemImage: "checkmark.circle.fill")
                     .foregroundColor(.green)
                     .font(.caption)
-                Label("Time Machine 백업 중지", systemImage: "checkmark.circle.fill")
+                Label(Localized.stopTimeMachine, systemImage: "checkmark.circle.fill")
                     .foregroundColor(.green)
                     .font(.caption)
-                Label("업데이트 서버 차단 중", systemImage: "checkmark.circle.fill")
+                Label(Localized.blockUpdateServers, systemImage: "checkmark.circle.fill")
                     .foregroundColor(.green)
                     .font(.caption)
             }
 
-            Button("절약 모드 해제", role: .destructive) {
+            Button(Localized.deactivateSavingMode, role: .destructive) {
                 applyDeactivate()
             }
             .buttonStyle(.bordered)
@@ -106,21 +106,21 @@ struct SavingModeSheet: View {
             .disabled(isApplying)
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                Text("관리자 비밀번호로 다음 항목을 제어합니다")
+                Text(Localized.controlDescription)
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                Text("• 소프트웨어 업데이트 중지")
+                Text(Localized.controlItem1)
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                Text("• Time Machine 백업 중지")
+                Text(Localized.controlItem2)
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                Text("• 업데이트/설치 서버 차단")
+                Text(Localized.controlItem3)
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
 
-            Button("절약 모드 적용") {
+            Button(Localized.activateSavingMode) {
                 applyActivate()
             }
             .buttonStyle(.borderedProminent)
@@ -131,7 +131,7 @@ struct SavingModeSheet: View {
 
     private func applyActivate() {
         isApplying = true
-        statusMessage = "적용 중..."
+        statusMessage = Localized.applying
         SavingModeController.shared.activate { success, msg in
             Task { @MainActor in
                 isApplying = false
@@ -147,7 +147,7 @@ struct SavingModeSheet: View {
 
     private func applyDeactivate() {
         isApplying = true
-        statusMessage = "해제 중..."
+        statusMessage = Localized.deactivating
         SavingModeController.shared.deactivate { success, msg in
             Task { @MainActor in
                 isApplying = false

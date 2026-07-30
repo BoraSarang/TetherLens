@@ -7,11 +7,11 @@ struct NotificationListView: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("알림 기록")
+                Text(Localized.notificationListTitle)
                     .font(.headline)
                 Spacer()
                 if !manager.notifications.isEmpty {
-                    Button("전체 지우기") { manager.clearAll() }
+                    Button(Localized.clearAll) { manager.clearAll() }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 }
@@ -23,7 +23,7 @@ struct NotificationListView: View {
 
             if manager.notifications.isEmpty {
                 Spacer()
-                Text("알림이 없습니다")
+                Text(Localized.noNotifications)
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
@@ -50,7 +50,7 @@ struct NotificationListView: View {
 
             Divider()
 
-            Button("닫기") { onClose() }
+            Button(Localized.close) { onClose() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .padding(.bottom, 12)
