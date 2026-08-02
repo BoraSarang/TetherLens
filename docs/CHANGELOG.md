@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.12.0] — 2026-08-02 — IP 변경 이력 + 한국어 용어 통일
+
+### Added
+- **IP 변경 이력 추적 (프로필별)** — `ip_log` 테이블 (v7 migration) + `IPLog` 모델
+  - `IPResolver.onIPChange` 콜백으로 IP 변경 감지 → `ProfileManager.addIPLog()` 기록
+  - `MenuBarManager`에서 초기 IP 조회 완료 시 자동 기록
+  - 동일 IP 재접속 시 `last_seen_at`만 UPDATE (중복 최소화)
+  - PopoverView "IP 변경 이력" 버튼 → `IPHistoryView` 시트
+- `Localized.swift` ~150개 키 한/영 분기 enum (v1.9 표준 준수)
+- `OnboardingView` — 첫 실행 권한 안내 시트
+- Heatmaps: `HeatmapView`, `HeatmapGridView`, `HeatmapMapView`
+  - 핀에 세션 시작 시간 (`HH:mm`) 레이블, region 자동 fit (min span 0.05°)
+- `SessionTimelineView` — 시간대별 세션 막대 차트
+- `Profile.connectionType` 필드 + DB v6 migration + 핫스팟 `(핫스팟)` 배지
+
+### Fixed
+- **할당량 색상 불일치** — `quotaRatio`가 `totalGB`(전체 누적) → `todayGB`(오늘 사용량) 기준으로 수정
+  - "잔여 1.9 GB" 표시 시 빨간색이었던 문제 → GREEN/YELLOW 정상 표시
+- **할당량 알림** — `getTodayUsage()` → `getTotalUsage()`로 변경, 다중 임계값(50/80/95/100%)
+- **IPResolver** — ip-api.com → ipapi.co 교체 (`latitude`/`longitude` 직접 반환)
+- **SettingsView** — `앱별 트래잽` → `프로세스별 트래픽` 용어 통일
+
+### Changed
+- macOS 26 (Tahoe) 대응 — `kCLErrorLocationUnknown` 기록 (`bd remember`)
+- `MenuBarManager`에 `@MainActor class` + `@unchecked Sendable`
+- SettingsView 권한 섹션 추가, threshold Picker 제거, ScrollView 하단 고정
+
+### Platform
+- [macOS]
+
 ## [0.11.1] — 2026-07-29 — IPResolver 안정화 + GitHub Pages + CI 릴리스
 
 ### Fixed

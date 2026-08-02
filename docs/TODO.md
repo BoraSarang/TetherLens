@@ -63,3 +63,9 @@
 | 32 | NEFilterDataProvider System Extension | P1 | ⬜ |
 | 33 | 앱별 트래픽 per-app 누적 total 초기화 버튼 | P2 | ⬜ |
 | 34 | 다크 모드 대응 | P3 | ⬜ |
+| 35 | IP 변경 이력 추적 (ip_log 테이블 + onIPChange 콜백) | P2 | ✅ |
+| 36 | 영문 현지화 (Localized.swift ~150개 키) | P1 | ✅ |
+| 37 | 세션 타임라인 뷰 (SessionTimelineView) | P2 | ✅ |
+| 38 | 핫스팟 히트맵 뷰 (HeatmapView/Grid/Map) | P2 | ✅ |
+| 39 | OnboardingView (첫 실행 권한 안내) | P2 | ✅ |
+| 40 | SettingsView 권한 섹션 + 용어 통일 | P2 | ✅ |
