@@ -142,6 +142,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         TrafficMonitor.shared.start()
 
         ProfileManager.shared.cleanupOldLogs()
+        ProfileManager.shared.mergeStaleIPLogs()
         ProfileManager.shared.cleanupAppTrafficLogs()
         ProfileManager.shared.endAllActiveSessions()
         NotificationCenter.default.post(name: .init("sessionChanged"), object: nil)

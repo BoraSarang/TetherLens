@@ -328,13 +328,16 @@ final class ProfileManager: @unchecked Sendable {
     // MARK: - IP Change Tracking
 
     func addIPLog(profileId: UUID, ipAddress: String, country: String?, latitude: Double?, longitude: Double?) {
+        let now = Date()
         try! db.write { db in
             if let existing = try IPLog
                 .filter(Column("profile_id") == profileId)
                 .filter(Column("ip_address") == ipAddress)
-                .fetchOne(db) {
+                .order(Column("last_seen_at").desc)
+                .fetchOne(db),
+               now.timeIntervalSince(existing.lastSeenAt) <= 1800 {
                 var updated = existing
-                updated.lastSeenAt = Date()
+                updated.lastSeenAt = now
                 try updated.save(db)
             } else {
                 let log = IPLog(
@@ -344,8 +347,8 @@ final class ProfileManager: @unchecked Sendable {
                     country: country,
                     latitude: latitude,
                     longitude: longitude,
-                    firstSeenAt: Date(),
-                    lastSeenAt: Date()
+                    firstSeenAt: now,
+                    lastSeenAt: now
                 )
                 try log.insert(db)
             }
@@ -358,6 +361,30 @@ final class ProfileManager: @unchecked Sendable {
                 .filter(Column("profile_id") == profileId)
                 .order(Column("last_seen_at").desc)
                 .fetchAll(db)
+        }
+    }
+
+    func mergeStaleIPLogs() {
+        try! db.write { db in
+            let rows = try Row.fetchAll(db, sql: "SELECT DISTINCT profile_id, ip_address FROM ip_log ORDER BY last_seen_at DESC")
+            var toDelete: [UUID] = []
+            for row in rows {
+                let profileId: UUID = row["profile_id"]
+                let ipAddress: String = row["ip_address"]
+                let all = try IPLog
+                    .filter(Column("profile_id") == profileId)
+                    .filter(Column("ip_address") == ipAddress)
+                    .order(Column("first_seen_at").asc)
+                    .fetchAll(db)
+                if all.count > 1, let latest = all.last {
+                    for log in all where log.id != latest.id {
+                        toDelete.append(log.id)
+                    }
+                }
+            }
+            for id in toDelete {
+                try IPLog.filter(Column("id") == id).deleteAll(db)
+            }
         }
     }
 
