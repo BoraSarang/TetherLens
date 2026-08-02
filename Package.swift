@@ -11,15 +11,13 @@ let package = Package(
         .executable(name: "TetherLens", targets: ["TetherLens"])
     ],
     dependencies: [
-        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.0.0"),
-        .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.7.0")
+        .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.0.0")
     ],
     targets: [
         .executableTarget(
             name: "TetherLens",
             dependencies: [
-                .product(name: "GRDB", package: "GRDB.swift"),
-                .product(name: "Sparkle", package: "Sparkle")
+                .product(name: "GRDB", package: "GRDB.swift")
             ],
             exclude: ["Info.plist"],
             resources: [.process("Resources")],

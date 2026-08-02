@@ -51,11 +51,6 @@ install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_BUNDLE/Conte
 cp "Resources/Info.plist" "$APP_BUNDLE/Contents/"
 cp "Resources/TetherLens.icns" "$APP_BUNDLE/Contents/Resources/"
 
-SPARKLE_SOURCE="$BUILD_DIR/$BUILD_MODE_DIR/Sparkle.framework"
-if [ -d "$SPARKLE_SOURCE" ]; then
-    cp -Rf "$SPARKLE_SOURCE" "$APP_BUNDLE/Contents/Frameworks/"
-fi
-
 if [ "$MODE" = "release" ]; then
     log "릴리스 최적화..."
     strip "$APP_BUNDLE/Contents/MacOS/$APP_NAME" 2>/dev/null || true

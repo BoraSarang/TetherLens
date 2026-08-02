@@ -27,12 +27,6 @@ install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_BUNDLE/Conte
 cp "$PROJECT_DIR/Resources/Info.plist" "$APP_BUNDLE/Contents/"
 cp "$PROJECT_DIR/Resources/TetherLens.icns" "$APP_BUNDLE/Contents/Resources/"
 
-# Embed Sparkle framework
-SPARKLE_SOURCE="$BUILD_DIR/Sparkle.framework"
-if [ -d "$SPARKLE_SOURCE" ]; then
-    cp -Rf "$SPARKLE_SOURCE" "$APP_BUNDLE/Contents/Frameworks/"
-fi
-
 # Sign the app bundle (deep sign includes frameworks)
 CODESIGN_IDENTITY="Apple Development: leeborasarang@gmail.com (HLQNBZHQQN)"
 cat > /tmp/tetherlens_entitlements.plist << EOF

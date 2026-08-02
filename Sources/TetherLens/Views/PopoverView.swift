@@ -724,7 +724,7 @@ struct PopoverView: View {
                 Button(savingModeActive ? Localized.savingModeOn : Localized.savingMode) { openSavingMode() }
                 Divider()
                 Button(Localized.settings) { showSettings = true }
-                Button(Localized.checkUpdates) { UpdaterManager.shared.checkForUpdates() }
+                Button(Localized.checkUpdates) { UpdaterManager.shared.openDownloadPage() }
                 Button(Localized.about) { showAbout = true }
                 #if DEBUG
                 Divider()

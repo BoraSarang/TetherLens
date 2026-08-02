@@ -23,14 +23,10 @@ jobs:
 
       - name: Bundle .app
         run: |
-          mkdir -p TetherLens.app/Contents/{MacOS,Resources,Frameworks}
+          mkdir -p TetherLens.app/Contents/{MacOS,Resources}
           cp .build/release/TetherLens TetherLens.app/Contents/MacOS/
           cp Resources/Info.plist TetherLens.app/Contents/
           cp Resources/TetherLens.icns TetherLens.app/Contents/Resources/
-          if [ -d .build/release/Sparkle.framework ]; then
-            cp -Rf .build/release/Sparkle.framework TetherLens.app/Contents/Frameworks/
-          fi
-          install_name_tool -add_rpath "@executable_path/../Frameworks" TetherLens.app/Contents/MacOS/TetherLens 2>/dev/null || true
           strip TetherLens.app/Contents/MacOS/TetherLens
 
       - name: Archive
