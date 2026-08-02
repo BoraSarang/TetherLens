@@ -177,12 +177,6 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
             }
             await ipResolver.refresh()
-            // refresh 완료 후 현재 IP 기록 (onIPChange와 무관)
-            if let pid = cachedProfile?.id,
-               let ip = ipResolver.externalIP {
-                ProfileManager.shared.addIPLog(profileId: pid, ipAddress: ip, country: ipResolver.geoInfo?.country, latitude: ipResolver.geoInfo?.latitude, longitude: ipResolver.geoInfo?.longitude)
-                NotificationCenter.default.post(name: .init("ipChanged"), object: nil)
-            }
         }
 
         recordTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
