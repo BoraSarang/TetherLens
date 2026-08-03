@@ -30,6 +30,14 @@ struct HeatmapMapView: View {
     )
   }
 
+  private var latestRegion: MKCoordinateRegion? {
+    guard let last = lastMarker else { return nil }
+    return MKCoordinateRegion(
+      center: CLLocationCoordinate2D(latitude: last.lat, longitude: last.lng),
+      span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    )
+  }
+
   private func timeLabel(_ date: Date) -> String {
     let f = DateFormatter()
     f.dateFormat = "HH:mm"
@@ -52,7 +60,7 @@ struct HeatmapMapView: View {
           Spacer()
         }
       } else {
-        Map(initialPosition: region.map { .region($0) } ?? .automatic) {
+        Map(initialPosition: latestRegion.map { .region($0) } ?? .automatic) {
           ForEach(Array(markedSessions.enumerated()), id: \.offset) { _, item in
             if let last = lastMarker, last.lat == item.lat, last.lng == item.lng, last.session.startTime == item.session.startTime {
               Annotation(Localized.string("최근 위치", "Latest"), coordinate: CLLocationCoordinate2D(latitude: item.lat, longitude: item.lng)) {
