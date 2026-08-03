@@ -11,6 +11,10 @@ struct HeatmapMapView: View {
     }
   }
 
+  private var lastMarker: (session: Session, lat: Double, lng: Double)? {
+    markedSessions.max { $0.session.startTime < $1.session.startTime }
+  }
+
   private var region: MKCoordinateRegion? {
     let coords = markedSessions.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
     guard !coords.isEmpty else { return nil }
@@ -50,8 +54,23 @@ struct HeatmapMapView: View {
       } else {
         Map(initialPosition: region.map { .region($0) } ?? .automatic) {
           ForEach(Array(markedSessions.enumerated()), id: \.offset) { _, item in
-            Marker(timeLabel(item.session.startTime),
-                   coordinate: CLLocationCoordinate2D(latitude: item.lat, longitude: item.lng))
+            if let last = lastMarker, last.lat == item.lat, last.lng == item.lng, last.session.startTime == item.session.startTime {
+              Annotation(Localized.string("최근 위치", "Latest"), coordinate: CLLocationCoordinate2D(latitude: item.lat, longitude: item.lng)) {
+                ZStack {
+                  Circle()
+                    .fill(Color.red.opacity(0.25))
+                    .frame(width: 44, height: 44)
+                  Circle()
+                    .fill(Color.red)
+                    .frame(width: 14, height: 14)
+                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                    .shadow(color: .red.opacity(0.7), radius: 6)
+                }
+              }
+            } else {
+              Marker(timeLabel(item.session.startTime),
+                     coordinate: CLLocationCoordinate2D(latitude: item.lat, longitude: item.lng))
+            }
           }
         }
         .padding(.horizontal, 12)
