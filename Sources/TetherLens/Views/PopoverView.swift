@@ -721,7 +721,7 @@ struct PopoverView: View {
                 Button(Localized.notificationList) { showNotifications = true }
                 Divider()
                 Button(Localized.dnsPresetApply) { showDNSPicker = true }
-                Button(savingModeActive ? Localized.savingModeOn : Localized.savingMode) { openSavingMode() }
+                Button(savingModeActive ? Localized.savingModeOn : Localized.savingModeOff) { openSavingMode() }
                 Button(SavingModeManager.shared.isLowPowerMode ? Localized.lowPowerModeOn : Localized.lowPowerModeOff) {
                     // 저전력 모드 토글 (시스템 설정 열기)
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.battery")!)
