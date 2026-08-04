@@ -121,7 +121,7 @@ enum Localized {
   static var usageReport: String { value(kr: "사용량 리포트", en: "Usage Report") }
   static var appTrafficButton: String { value(kr: "프로세스별 트래픽", en: "App Traffic") }
   static var notificationList: String { value(kr: "알림 기록", en: "Notifications") }
-  static var dnsPresetApply: String { value(kr: "DNS 프리셋 적용", en: "Apply DNS Preset") }
+    static var dnsPresetApply: String { value(kr: "DNS 프리셋", en: "DNS Preset") }
 static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
     static var savingModeOn: String { value(kr: "절약 모드 켜짐", en: "Saving Mode On") }
     static var savingModeOff: String { value(kr: "절약 모드 꺼짐", en: "Saving Mode Off") }
