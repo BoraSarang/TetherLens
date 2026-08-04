@@ -342,6 +342,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 if SavingModeManager.shared.shouldAutoActivate(used: totalGB, quota: quota) {
                     if !SavingModeManager.shared.isEnabled {
                         SavingModeManager.shared.isEnabled = true
+                        sendQuotaNotification(used: totalGB, quota: quota)
                     }
                 }
 

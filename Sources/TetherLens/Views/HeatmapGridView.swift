@@ -26,13 +26,16 @@ struct HeatmapGridView: View {
     return data
   }
 
+@Environment(\.colorScheme) private var colorScheme
+
   private func colorForMinutes(_ minutes: Int) -> Color {
+    let isDark = colorScheme == .dark
     switch minutes {
-    case 0: return Color.gray.opacity(0.12)
-    case 1..<15: return Color.gray.opacity(0.25)
-    case 15..<30: return Color.blue.opacity(0.35)
-    case 30..<45: return Color.blue.opacity(0.6)
-    default: return Color.blue
+    case 0: return isDark ? Color.white.opacity(0.08) : Color.gray.opacity(0.12)
+    case 1..<15: return isDark ? Color.white.opacity(0.2) : Color.gray.opacity(0.25)
+    case 15..<30: return isDark ? Color.blue.opacity(0.4) : Color.blue.opacity(0.35)
+    case 30..<45: return isDark ? Color.blue.opacity(0.7) : Color.blue.opacity(0.6)
+    default: return isDark ? Color.blue.opacity(0.9) : Color.blue
     }
   }
 
