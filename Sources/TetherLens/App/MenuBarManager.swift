@@ -190,7 +190,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             Task { [weak self] in await self?.ipResolver.refresh() }
         }
 
-        locationTimer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
+        locationTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             // 연속 업데이트로 충분, 타이머는 백업
         }
 
