@@ -33,5 +33,18 @@ final class SavingModeManager: @unchecked Sendable {
             "savingMode": false,
             "savingModeAuto": true
         ])
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("com.apple.system.lowPowerModeDidChange"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .init("powerStateChanged"), object: nil)
+            }
+        }
+    }
+
+    var isLowPowerMode: Bool {
+        ProcessInfo.processInfo.isLowPowerModeEnabled
     }
 }

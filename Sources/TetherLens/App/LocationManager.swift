@@ -105,7 +105,11 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     nonisolated func locationManager(_ locManager: CLLocationManager, didFailWithError error: Error) {
         let nsError = error as NSError
         Task { @MainActor in
-            DebugLogger.shared.warn("Location", "위치 오류: \(error.localizedDescription) (code=\(nsError.code))")
+            if nsError.code == CLError.locationUnknown.rawValue {
+                DebugLogger.shared.system("Location", "CoreLocation 알 수 없는 오류 - IP 기반 fallback")
+            } else {
+                DebugLogger.shared.warn("Location", "위치 오류: \(error.localizedDescription) (code=\(nsError.code))")
+            }
         }
     }
 

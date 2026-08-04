@@ -187,11 +187,21 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         }
 
         ipRefreshTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in
-            Task { [weak self] in await self?.ipResolver.refresh() }
+            Task { [weak self] in
+                guard let self else { return }
+                if SavingModeManager.shared.isLowPowerMode {
+                    await DebugLogger.shared.system("Power", "저전력 모드 - IP 갱신 건너뜀")
+                } else {
+                    await self.ipResolver.refresh()
+                }
+            }
         }
 
         locationTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            // 연속 업데이트로 충분, 타이머는 백업
+            guard let self else { return }
+            if SavingModeManager.shared.isLowPowerMode {
+                Task { await DebugLogger.shared.system("Power", "저전력 모드 - 위치 조회 건너뜀 (2hr 간격)") }
+            }
         }
 
         cacheTimer = Timer.scheduledTimer(withTimeInterval: SettingsManager.shared.cacheRefreshInterval, repeats: true) { [weak self] _ in

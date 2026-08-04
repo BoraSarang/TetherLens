@@ -1,0 +1,38 @@
+[21:02:20.452] [SYSTEM] [MACOS] [Location] 복원된 위치: 36.455753319999985,127.08197783999995
+[21:02:20.525] [SYSTEM] [MACOS] [Location] 권한 승인됨
+[21:02:20.526] [SYSTEM] [MACOS] [Location] 연속 위치 업데이트 시작
+[21:02:20.554] [WARN] [MACOS] [Location] 위치 오류: 작업을 완료할 수 없습니다.(kCLErrorDomain 오류 0.) (code=0)
+[21:02:21.563] [SYSTEM] [MACOS] [App] 앱 시작됨
+[21:02:21.613] [ACTION] [MACOS] [Network] 외부 IP 갱신 시작 (force=false)
+[21:02:23.035] [API→] [MACOS] [Network] GET https://api.ipify.org?format=json
+[21:02:23.036] [API←] [MACOS] [Network] 200 api.ipify.org latency=0ms | meta=["ip": "39.7.18.129"]
+[21:02:23.036] [API→] [MACOS] [Network] GET https://ipapi.co/39.7.18.129/json/
+[21:02:23.595] [ACTION] [MACOS] [Network] SSID 변경: OkStart (없음 → OkStart)
+[21:02:23.610] [ACTION] [MACOS] [Network] 외부 IP 갱신 시작 (force=true)
+[21:02:23.860] [API→] [MACOS] [Network] GET https://api.ipify.org?format=json
+[21:02:23.860] [API←] [MACOS] [Network] 200 api.ipify.org latency=0ms | meta=["ip": "39.7.18.129"]
+[21:02:23.860] [API→] [MACOS] [Network] GET https://ipapi.co/39.7.18.129/json/
+[21:02:23.892] [API←] [MACOS] [Network] 200 ipapi.co latency=0ms | meta=lat=37.566309 lng=126.977207 country=KR
+[21:02:24.111] [API←] [MACOS] [Network] 200 ipapi.co latency=0ms | meta=lat=37.566309 lng=126.977207 country=KR
+[21:02:28.263] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:02:28.938] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:02:29.383] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:03:29.867] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:04:30.452] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:05:30.954] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:06:31.523] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:07:32.129] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:08:32.657] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:09:33.184] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:10:33.702] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:11:34.203] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:12:34.863] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:13:35.375] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:14:35.893] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:15:36.419] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:16:36.946] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:17:37.416] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:18:38.021] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:19:38.478] [SYSTEM] [MACOS] [Location] 위치 획득: 36.455753319999985, 127.08197783999995
+[21:20:02.322] [ACTION] [MACOS] [UI] 디버그 패널 토글 (visible=false)
+[21:20:02.369] [ACTION] [MACOS] [UI] 디버그 패널 토글

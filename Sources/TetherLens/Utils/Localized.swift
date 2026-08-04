@@ -122,8 +122,9 @@ enum Localized {
   static var appTrafficButton: String { value(kr: "프로세스별 트래픽", en: "App Traffic") }
   static var notificationList: String { value(kr: "알림 기록", en: "Notifications") }
   static var dnsPresetApply: String { value(kr: "DNS 프리셋 적용", en: "Apply DNS Preset") }
-  static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
-  static var savingModeOn: String { value(kr: "절약 모드 온", en: "Saving Mode On") }
+static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
+static var savingModeOn: String { value(kr: "절약 모드 ON", en: "Saving Mode On") }
+static var lowPowerMode: String { value(kr: "저전력 모드", en: "Low Power Mode") }
   static var checkUpdates: String { value(kr: "업데이트 확인", en: "Check for Updates") }
   static var about: String { value(kr: "정보", en: "About") }
   static var debugPanel: String { value(kr: "🐛 디버그 패널", en: "🐛 Debug Panel") }

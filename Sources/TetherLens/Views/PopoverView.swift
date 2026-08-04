@@ -722,6 +722,14 @@ struct PopoverView: View {
                 Divider()
                 Button(Localized.dnsPresetApply) { showDNSPicker = true }
                 Button(savingModeActive ? Localized.savingModeOn : Localized.savingMode) { openSavingMode() }
+                if SavingModeManager.shared.isLowPowerMode {
+                    Button {
+                        // 저전력 모드 상태 표시 (토글 불가 - 시스템 설정 필요)
+                    } label: {
+                        Label(Localized.lowPowerMode, systemImage: "battery.100.badge.bolt.wave")
+                            .foregroundColor(.yellow)
+                    }
+                }
                 Divider()
                 Button(Localized.settings) { showSettings = true }
                 Button(Localized.checkUpdates) { UpdaterManager.shared.openDownloadPage() }
