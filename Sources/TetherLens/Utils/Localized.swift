@@ -255,6 +255,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var peak: String { value(kr: "피크", en: "Peak") }
   static var mapView: String { value(kr: "지도", en: "Map") }
   static var gridView: String { value(kr: "히트맵", en: "Heatmap") }
+  static var movementTitle: String { value(kr: "이동 이력", en: "Movement") }
 
   // MARK: - Session Timeline
   static var timelineTitle: String { value(kr: "세션 타임라인", en: "Session Timeline") }

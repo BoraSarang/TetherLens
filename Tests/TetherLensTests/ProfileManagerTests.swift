@@ -428,4 +428,31 @@ import GRDB
         #expect(chrome?.uploadBytes == 1000)
         #expect(logs.first?.processName == "Chrome", "합계순 정렬")
     }
+
+    @Test func getMovementTimeline_세션IP_시간순_병합() throws {
+        let (q, pm) = try makeManager()
+        let p = makeProfile()
+        pm.saveProfile(p)
+
+        // IP 변경 (first_seen_at 조작 위해 직접 insert)
+        let ipDate = Date().addingTimeInterval(-7200)
+        try q.write { db in
+            try IPLog(id: UUID(), profileId: p.id, ipAddress: "1.2.3.4",
+                      country: "KR", latitude: 37.5, longitude: 127.0,
+                      firstSeenAt: ipDate, lastSeenAt: ipDate).insert(db)
+        }
+        // 위치 세션 2건
+        pm.startSession(profileId: p.id, latitude: 37.56, longitude: 126.98, locationSource: "gps")
+        pm.startSession(profileId: p.id, latitude: 35.17, longitude: 129.07, locationSource: "ip")
+
+        let events = pm.getMovementTimeline(profileId: p.id, days: 3650)
+        #expect(events.count == 3, "IP 1 + 세션 2 병합")
+        #expect(events[0].kind == .ipChange, "가장 오래된 IP 변경이 먼저")
+        #expect(events[0].ipAddress == "1.2.3.4")
+        #expect(events[1].kind == .session)
+        #expect(events[1].locationSource == "gps")
+        #expect(events[2].kind == .session)
+        #expect(events[2].locationSource == "ip")
+        _ = q
+    }
 }

@@ -446,6 +446,75 @@ final class ProfileManager: @unchecked Sendable {
         }
     }
 
+    /// 이동 이력 — 위치가 있는 세션(출발 지점)과 IP 변경을 시간순(오래된 → 최신)으로 병합한다.
+    /// 각 항목은 시간, 종류(세션/IP), 좌표, IP 문자열을 담는다.
+    struct MovementEvent: Identifiable {
+        let id = UUID()
+        let timestamp: Date
+        let kind: Kind
+        let latitude: Double?
+        let longitude: Double?
+        let locationSource: String?
+        let ipAddress: String?
+
+        enum Kind {
+            case session
+            case ipChange
+        }
+    }
+
+    func getMovementTimeline(profileId: UUID, days: Int) -> [MovementEvent] {
+        let from = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date.distantPast
+        return try! db.read { db in
+            let sessions = try Session
+                .filter(Column("profile_id") == profileId && Column("start_time") >= from)
+                .order(Column("start_time").asc)
+                .fetchAll(db)
+                .filter { $0.latitude != nil && $0.longitude != nil }
+            let ipLogs = try IPLog
+                .filter(Column("profile_id") == profileId && Column("first_seen_at") >= from)
+                .order(Column("first_seen_at").asc)
+                .fetchAll(db)
+
+            var events: [MovementEvent] = []
+            var si = 0
+            var ii = 0
+            while si < sessions.count || ii < ipLogs.count {
+                let s = si < sessions.count ? sessions[si] : nil
+                let l = ii < ipLogs.count ? ipLogs[ii] : nil
+                if let s, let l, l.firstSeenAt < s.startTime {
+                    events.append(MovementEvent(
+                        timestamp: l.firstSeenAt, kind: .ipChange,
+                        latitude: l.latitude, longitude: l.longitude,
+                        locationSource: nil, ipAddress: l.ipAddress
+                    ))
+                    ii += 1
+                } else if let s {
+                    let ip = (try IPLog
+                        .filter(Column("profile_id") == s.profileId)
+                        .filter(Column("first_seen_at") <= (s.endTime ?? Date()))
+                        .filter(Column("last_seen_at") >= s.startTime)
+                        .order(Column("first_seen_at").desc)
+                        .fetchOne(db))?.ipAddress
+                    events.append(MovementEvent(
+                        timestamp: s.startTime, kind: .session,
+                        latitude: s.latitude, longitude: s.longitude,
+                        locationSource: s.locationSource, ipAddress: ip
+                    ))
+                    si += 1
+                } else if let l {
+                    events.append(MovementEvent(
+                        timestamp: l.firstSeenAt, kind: .ipChange,
+                        latitude: l.latitude, longitude: l.longitude,
+                        locationSource: nil, ipAddress: l.ipAddress
+                    ))
+                    ii += 1
+                }
+            }
+            return events
+        }
+    }
+
     func exportData(profileId: UUID?) -> (csv: String, json: String) {
         let profiles = profileId.map { [$0].compactMap { getProfile(id: $0) } } ?? getAllProfiles()
         let df = DateFormatter()

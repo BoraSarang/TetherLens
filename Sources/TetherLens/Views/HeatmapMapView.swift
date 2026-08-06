@@ -3,6 +3,7 @@ import MapKit
 
 struct HeatmapMapView: View {
   let sessions: [Session]
+  var focusCoordinate: CLLocationCoordinate2D?
 
   private var markedSessions: [(session: Session, lat: Double, lng: Double)] {
     sessions.compactMap { s in
@@ -77,10 +78,7 @@ struct HeatmapMapView: View {
           Spacer()
         }
       } else {
-        Map(initialPosition: latestCluster.map { .region(MKCoordinateRegion(
-          center: CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng),
-          span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-        )) } ?? .automatic) {
+        Map(position: $cameraPosition) {
           ForEach(Array(clusters.enumerated()), id: \.offset) { _, cluster in
             let isLatest = latestCluster.map { $0.lat == cluster.lat && $0.lng == cluster.lng } ?? false
             let isCluster = cluster.sessions.count > 1
@@ -119,8 +117,26 @@ struct HeatmapMapView: View {
           }
         }
         .padding(.horizontal, TLSpace.xl)
+        .onAppear {
+          if let latest = latestCluster {
+            cameraPosition = .region(MKCoordinateRegion(
+              center: CLLocationCoordinate2D(latitude: latest.lat, longitude: latest.lng),
+              span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+            ))
+          }
+        }
+        .onChange(of: focusCoordinate?.latitude) { _ in focusOnFocusCoordinate() }
+        .onChange(of: focusCoordinate?.longitude) { _ in focusOnFocusCoordinate() }
       }
     }
+  }
+
+  private func focusOnFocusCoordinate() {
+    guard let focusCoordinate else { return }
+    cameraPosition = .region(MKCoordinateRegion(
+      center: focusCoordinate,
+      span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+    ))
   }
 
   private func markerColor(_ source: String?) -> Color {
