@@ -158,9 +158,14 @@
 | 85 | PLAN 작성 + TODO 등록 | P0 | ✅ |
 | 86 | MenuBarManager 오늘 기준 통일 + Localized 라벨 + Info.plist | P0 | ✅ |
 | 87 | 검증 (테스트/빌드) + 문서 (CHANGELOG/TODO/세션) | P1 | ✅ |
+| 88 | Info.plist 단일화 (루트 Resources 최신화 + Sources 삭제) | P0 | ✅ |
+| 89 | 루트 잔재 정리 (tetherlens.db 추적 해제 + 빈 폴더) | P1 | ✅ |
+| 90 | 에이전트 규칙 문서 완성 (AGENTS.macos.md/DESIGN.md 신설 + AGENTS.local.md 정정) | P1 | ✅ |
+| 91 | PLAN.md 로드맵 전환 + icon 이동 + 검증/문서 | P2 | ✅ |
 
-> 커밋: be51234(T-85), 0be6108(T-86), T-87 문서 커밋
+> 커밋: be51234(T-85), 0be6108(T-86), 52912ad(T-87), 2c07318(T-88), 53673ed(T-89), d7a039f(T-90), 70844c5(T-91)
 > 결정: 메뉴바 사용량/잔여/절약모드/임계값 알림/게이지 색 전부 오늘 기준 (팝오버 게이지와 통일). 할당량 미설정 시 총 사용량 유지. v0.21에서 totalGB로 변경된 것을 복원.
+> 정리: Info.plist는 루트 Resources/ 단일 원본 (배포 버전 0.13.0→0.23.1 정상화). AGENTS.macos.md/DESIGN.md 신설.
 
 
 > 참고: DebugPanelView는 개발자 전용 다크 패널이라 토큰 대상 제외, 히트맵 그라데이션/지도 핀 색은 시각화 고유 로직으로 유지

@@ -13,6 +13,15 @@
 ### Refactored
 - 미사용 `totalGB` 변수/계산 제거
 
+### Chore (에이전트 규칙/구조 정리)
+- **Info.plist 단일화** — 배포 번들이 실제 사용하는 루트 `Resources/Info.plist`를 0.23.1/24로 갱신, `Sources/TetherLens/Info.plist`(v0.13.0 방치된 죽은 파일) 삭제 → **배포 번들 버전 0.13.0 → 0.23.1 정상화**
+- 루트 `tetherlens.db`(0바이트, 런타임 산출물) git 추적 해제 + `.gitignore` 추가, 빈 `Sources/TetherLens/Resources/` 삭제
+- `AGENTS.macos.md` 신설 (플랫폼 특화 규칙 — 읽기 순서에 명시됐으나 없던 파일)
+- `docs/DESIGN.md` 신설 (아키텍처/데이터 흐름/스키마/디자인 시스템)
+- `AGENTS.local.md` 정정 (CLAUDE.md ❌, 테스트 타겟 32개 반영)
+- `docs/PLAN.md` symlink(→v0.1.0) 해제 → 버전 이력 로드맵 문서로 전환
+- `docs/icon.png` → `images/` 이동
+
 ### Changed
 - 설정 라벨 `showTotalInMenuBar`: "메뉴바에 총 사용량 표시" → **"메뉴바에 사용량 표시"** (할당량 있으면 오늘/없으면 총 사용량이므로 중립화)
 
