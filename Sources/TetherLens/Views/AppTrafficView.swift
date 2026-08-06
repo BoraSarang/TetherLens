@@ -12,7 +12,7 @@ struct AppTrafficView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: TLSpace.xl) {
             headerView
             if monitor.apps.isEmpty {
                 emptyView
@@ -22,26 +22,26 @@ struct AppTrafficView: View {
             Button(Localized.close) { onClose() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .padding(.bottom, 8)
+                .padding(.bottom, TLSpace.md)
         }
-        .padding(16)
-        .frame(width: 320, height: 380)
+        .padding(TLSpace.inset)
+        .frame(width: TLSize.sheetStandard, height: 380)
     }
 
     private var headerView: some View {
         HStack {
             Text(Localized.appTraffic)
-                .font(.headline)
+                .font(TLFont.headline)
             Spacer()
             if isBlockingActive {
                 Label(Localized.blockingOn, systemImage: "hand.raised.fill")
-                    .font(.caption.bold())
-                    .foregroundColor(.red)
+                    .font(TLFont.caption.bold())
+                    .foregroundColor(TLPalette.danger)
             }
             Toggle(Localized.excludeSystem, isOn: $showSystemProcesses)
                 .toggleStyle(.checkbox)
                 .controlSize(.small)
-                .font(.caption)
+                .font(TLFont.caption)
             Button(Localized.resetTraffic) { monitor.resetAccumulated() }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -52,8 +52,8 @@ struct AppTrafficView: View {
         VStack {
             Spacer()
             Text(Localized.trafficCollecting)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(TLFont.caption)
+                .foregroundColor(TLPalette.textSecondary)
             Spacer()
         }
     }
@@ -79,20 +79,20 @@ struct AppTrafficView: View {
     private var headerRow: some View {
         HStack(spacing: 0) {
             Text(Localized.process)
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.secondary)
+                .font(TLFont.smallBold)
+                .foregroundColor(TLPalette.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(Localized.block)
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.red)
+                .font(TLFont.smallBold)
+                .foregroundColor(TLPalette.danger)
                 .frame(width: 36, alignment: .center)
             Text(Localized.upload)
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.orange)
+                .font(TLFont.smallBold)
+                .foregroundColor(TLPalette.upload)
                 .frame(width: 64, alignment: .trailing)
             Text(Localized.download)
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.blue)
+                .font(TLFont.smallBold)
+                .foregroundColor(TLPalette.download)
                 .frame(width: 64, alignment: .trailing)
         }
     }
@@ -101,7 +101,7 @@ struct AppTrafficView: View {
         let isBlocked = blockedApps.contains(app.processName)
         return HStack(spacing: 0) {
             Text(app.processName)
-                .font(.system(size: 10))
+                .font(TLFont.medium)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,17 +109,17 @@ struct AppTrafficView: View {
                 toggleBlock(app.processName)
             } label: {
                 Image(systemName: isBlocked ? "hand.raised.fill" : "hand.raised")
-                    .foregroundColor(isBlocked ? .red : .secondary)
+                    .foregroundColor(isBlocked ? TLPalette.danger : TLPalette.textSecondary)
             }
             .buttonStyle(.plain)
             .frame(width: 36, alignment: .center)
             Text(formatByteRate(app.bytesIn))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.orange)
+                .font(TLFont.mediumMono)
+                .foregroundColor(TLPalette.upload)
                 .frame(width: 64, alignment: .trailing)
             Text(formatByteRate(app.bytesOut))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.blue)
+                .font(TLFont.mediumMono)
+                .foregroundColor(TLPalette.download)
                 .frame(width: 64, alignment: .trailing)
         }
         .padding(.vertical, 2)

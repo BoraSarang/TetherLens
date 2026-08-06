@@ -20,6 +20,7 @@ enum TLPalette {
     static let copyHint      = Color.secondary.opacity(0.4) // 복사 아이콘 단서
     static let separator     = Color(nsColor: .separatorColor)
     static let textBackground = Color(nsColor: .textBackgroundColor) // 요약 행 배경
+    static let windowBackground = Color(nsColor: .windowBackgroundColor) // 확인 다이얼로그 배경
 }
 
 enum TLFont {
@@ -62,7 +63,8 @@ enum TLSize {
     // 시트/표준 폭 (현행 값 유지 — 값 변경은 회귀 위험으로 이번 버전에서 보류)
     static let popoverWidth:   CGFloat = 280
     static let sheetCompact:   CGFloat = 280   // 팝오버/프로필/DNS/IP히스토리/알림
-    static let sheetStandard:  CGFloat = 320   // 설정/절약/트래픽
+    static let sheetSaving:    CGFloat = 300   // 절약 모드
+    static let sheetStandard:  CGFloat = 320   // 설정/트래픽
     static let sheetWide:      CGFloat = 640   // 사용량 리포트
 
     // 테이블 컬럼

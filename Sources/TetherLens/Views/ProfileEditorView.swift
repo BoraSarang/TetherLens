@@ -26,41 +26,41 @@ struct ProfileEditorView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            VStack(spacing: 16) {
+            VStack(spacing: TLSpace.xxl) {
                 Text(Localized.profileEdit)
-                    .font(.headline)
-                    .padding(.top, 16)
+                    .font(TLFont.headline)
+                    .padding(.top, TLSpace.xxl)
 
-                VStack(spacing: 10) {
+                VStack(spacing: TLSpace.lg) {
                     HStack {
-                        Text(Localized.nameLabel).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
+                        Text(Localized.nameLabel).font(TLFont.body).foregroundColor(TLPalette.textSecondary).frame(width: 72, alignment: .trailing)
                         TextField(Localized.namePlaceholder, text: $editName)
                             .textFieldStyle(.roundedBorder)
                     }
                     if let nameError = nameError {
                         Text(nameError)
-                            .font(.caption)
-                            .foregroundColor(.red)
+                            .font(TLFont.caption)
+                            .foregroundColor(TLPalette.danger)
                             .padding(.leading, 88)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     HStack {
-                        Text(Localized.ssidLabel).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
+                        Text(Localized.ssidLabel).font(TLFont.body).foregroundColor(TLPalette.textSecondary).frame(width: 72, alignment: .trailing)
                         VStack(alignment: .leading, spacing: 0) {
-                            HStack(spacing: 6) {
-                                Text(profile.ssid).font(.body).foregroundColor(.primary)
+                            HStack(spacing: TLSpace.sm) {
+                                Text(profile.ssid).font(TLFont.body).foregroundColor(TLPalette.textPrimary)
                                 if profile.isHotspot {
-                                    Text("(\(Localized.hotspot))").font(.body).foregroundColor(.orange)
+                                    Text("(\(Localized.hotspot))").font(TLFont.body).foregroundColor(TLPalette.upload)
                                 }
                             }
                             Text(Localized.string("네트워크 이름 (읽기전용)", "Network name (read-only)"))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                                .font(TLFont.caption2)
+                                .foregroundColor(TLPalette.textSecondary)
                         }
                         Spacer()
                     }
                     HStack {
-                        Text(Localized.quotaLabel).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
+                        Text(Localized.quotaLabel).font(TLFont.body).foregroundColor(TLPalette.textSecondary).frame(width: 72, alignment: .trailing)
                         Toggle(Localized.quotaEnabled, isOn: $editQuotaEnabled)
                             .toggleStyle(.switch)
                             .controlSize(.small)
@@ -72,7 +72,7 @@ struct ProfileEditorView: View {
                     }
                     if editQuotaEnabled {
                         HStack {
-                            Text(Localized.quotaGB).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
+                            Text(Localized.quotaGB).font(TLFont.body).foregroundColor(TLPalette.textSecondary).frame(width: 72, alignment: .trailing)
                             TextField(Localized.quotaPlaceholder, text: $editQuotaValue)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 80)
@@ -80,17 +80,17 @@ struct ProfileEditorView: View {
                         }
                         if let error = quotaError {
                             Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
+                                .font(TLFont.caption)
+                                .foregroundColor(TLPalette.danger)
                                 .padding(.leading, 88)
                         }
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, TLSpace.xxl)
 
                 Spacer()
 
-                HStack(spacing: 8) {
+                HStack(spacing: TLSpace.md) {
                     Button(Localized.delete, role: .destructive) {
                         confirmDelete = true
                     }
@@ -138,22 +138,22 @@ struct ProfileEditorView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, TLSpace.xxl)
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, TLSpace.xxxl)
             .frame(maxHeight: .infinity)
-            .frame(width: 280)
+            .frame(width: TLSize.sheetCompact)
 
             if confirmDelete {
                 Color.black.opacity(0.25)
                     .ignoresSafeArea()
 
-                VStack(spacing: 16) {
-                    Text(Localized.confirm).font(.headline)
+                VStack(spacing: TLSpace.xxl) {
+                    Text(Localized.confirm).font(TLFont.headline)
                     Text(Localized.profileDeleteConfirm)
-                        .font(.body)
+                        .font(TLFont.body)
                         .multilineTextAlignment(.center)
-                    HStack(spacing: 12) {
+                    HStack(spacing: TLSpace.xl) {
                         Button(Localized.cancel) { confirmDelete = false }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -169,9 +169,9 @@ struct ProfileEditorView: View {
                         .controlSize(.small)
                     }
                 }
-                .padding(20)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .cornerRadius(10)
+                .padding(TLSpace.xxxl)
+                .background(TLPalette.windowBackground)
+                .cornerRadius(TLRound.medium)
                 .shadow(radius: 10)
             }
 
@@ -179,12 +179,12 @@ struct ProfileEditorView: View {
                 Color.black.opacity(0.25)
                     .ignoresSafeArea()
 
-                VStack(spacing: 16) {
-                    Text(Localized.confirm).font(.headline)
+                VStack(spacing: TLSpace.xxl) {
+                    Text(Localized.confirm).font(TLFont.headline)
                     Text(Localized.profileResetConfirm)
-                        .font(.body)
+                        .font(TLFont.body)
                         .multilineTextAlignment(.center)
-                    HStack(spacing: 12) {
+                    HStack(spacing: TLSpace.xl) {
                         Button(Localized.cancel) { confirmDataReset = false }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -198,12 +198,12 @@ struct ProfileEditorView: View {
                         .controlSize(.small)
                     }
                 }
-                .padding(20)
-                .background(Color(nsColor: .windowBackgroundColor))
-                .cornerRadius(10)
+                .padding(TLSpace.xxxl)
+                .background(TLPalette.windowBackground)
+                .cornerRadius(TLRound.medium)
                 .shadow(radius: 10)
             }
         }
-        .frame(width: 280, height: 220)
+        .frame(width: TLSize.sheetCompact, height: 220)
     }
 }

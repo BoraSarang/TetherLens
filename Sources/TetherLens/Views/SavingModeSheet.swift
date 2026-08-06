@@ -16,19 +16,19 @@ struct SavingModeSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: TLSpace.xxl) {
             Text(Localized.savingModeTitle)
-                .font(.headline)
-                .padding(.top, 20)
+                .font(TLFont.headline)
+                .padding(.top, TLSpace.xxxl)
                 .frame(maxWidth: .infinity)
 
-            VStack(spacing: 12) {
+            VStack(spacing: TLSpace.xl) {
                 Toggle(isOn: $isEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(Localized.enableSavingMode)
                         Text(Localized.savingModeDescription)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(TLFont.caption2)
+                            .foregroundColor(TLPalette.textSecondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -40,8 +40,8 @@ struct SavingModeSheet: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(Localized.autoActivate)
                         Text(Localized.autoActivateDescription)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(TLFont.caption2)
+                            .foregroundColor(TLPalette.textSecondary)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -49,23 +49,23 @@ struct SavingModeSheet: View {
                     SavingModeManager.shared.autoActivate = newValue
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, TLSpace.xxxl)
 
             Divider()
-                .padding(.horizontal, 20)
+                .padding(.horizontal, TLSpace.xxxl)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(Localized.systemControl).font(.subheadline).foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: TLSpace.md) {
+                Text(Localized.systemControl).font(TLFont.subheadline).foregroundColor(TLPalette.textSecondary)
 
                 statusSection
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, TLSpace.xxxl)
 
             if let msg = statusMessage {
                 Text(msg)
-                    .font(.caption)
-                    .foregroundColor(isApplying ? .secondary : controllerActive ? .green : .red)
-                    .padding(.horizontal, 20)
+                    .font(TLFont.caption)
+                    .foregroundColor(isApplying ? TLPalette.textSecondary : controllerActive ? TLPalette.success : TLPalette.danger)
+                    .padding(.horizontal, TLSpace.xxxl)
             }
 
             Spacer()
@@ -73,11 +73,11 @@ struct SavingModeSheet: View {
             Button(Localized.close, action: onClose)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .padding(.bottom, 20)
+                .padding(.bottom, TLSpace.xxxl)
                 .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.trailing, 20)
+                .padding(.trailing, TLSpace.xxxl)
         }
-        .frame(width: 300, height: 380)
+        .frame(width: TLSize.sheetSaving, height: 380)
         .onAppear {
             controllerActive = SavingModeController.shared.isActive()
         }
@@ -86,16 +86,16 @@ struct SavingModeSheet: View {
     @ViewBuilder
     private var statusSection: some View {
         if controllerActive {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: TLSpace.xs) {
                 Label(Localized.stopSoftwareUpdates, systemImage: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                    .font(.caption)
+                    .foregroundColor(TLPalette.success)
+                    .font(TLFont.caption)
                 Label(Localized.stopTimeMachine, systemImage: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                    .font(.caption)
+                    .foregroundColor(TLPalette.success)
+                    .font(TLFont.caption)
                 Label(Localized.blockUpdateServers, systemImage: "checkmark.circle.fill")
-                    .foregroundColor(.green)
-                    .font(.caption)
+                    .foregroundColor(TLPalette.success)
+                    .font(TLFont.caption)
             }
 
             Button(Localized.deactivateSavingMode, role: .destructive) {
@@ -105,19 +105,19 @@ struct SavingModeSheet: View {
             .controlSize(.small)
             .disabled(isApplying)
         } else {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: TLSpace.xs) {
                 Text(Localized.controlDescription)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
                 Text(Localized.controlItem1)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
                 Text(Localized.controlItem2)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
                 Text(Localized.controlItem3)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
             }
 
             Button(Localized.activateSavingMode) {
