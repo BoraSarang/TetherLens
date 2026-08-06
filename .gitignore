@@ -4,3 +4,4 @@ TetherLens.app/
 *.xcuserdata
 *.xcworkspace
 xcuserdata/
+tetherlens.db
