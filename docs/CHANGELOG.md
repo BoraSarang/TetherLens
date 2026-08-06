@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.22.2] — 2026-08-06 — MenuBarView 속성 캐싱 재적용 (성능 P0)
+
+### Performance
+- **MenuBarView 속성 캐싱 실제 적용** — `PERFORMANCE_OPTIMIZATION.md`에 "적용 완료"로 기록됐으나 실제 코드에 미반영(P3 static 캐싱의 절반만 커밋)된 부분을 재적용:
+  - `cacheAttributesIfNeeded(fontSize:)` 도입 — `menuBarFontSize` 변경 시에만 폰트/문단스타일/속성/컬럼 폭 재생성. 동일 fontSize면 매초 재생성하던 폰트 2개 + `NSMutableParagraphStyle` + 속성 딕셔너리 4개를 제거
+  - `upArrow`/`downArrow` `sizeToFit()` — 캐시 갱신 또는 문자열 변경 시에만 호출 (매초 호출 제거)
+  - `col2FixedW`/`col3FixedW` computed property → `cachedCol2W`/`cachedCol3W` 캐시로 대체 (width 측정 2회/초 제거)
+  - `totalAttr`만 매초 가변 색상(`colorForRatio`)이라 재생성 유지, `boldFont`는 캐시 재사용
+
+### Docs
+- `docs/plans/PLAN_v0.22.2_macos.md`, TODO T-77~T-78, `PERFORMANCE_OPTIMIZATION.md` P3 항목 정정 + v0.22.2 섹션 추가
+
+### Platform
+- [macOS]
+
 ## [0.22.1] — 2026-08-06 — Android 핫스팟 감지 보강
 
 ### Fixed

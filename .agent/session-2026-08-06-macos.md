@@ -1,14 +1,14 @@
-# Session — 2026-08-06 (macOS) — v0.22.1
+# Session — 2026-08-06 (macOS) — v0.22.2
 
-1. 무엇을: **v0.22.1 Android 핫스팟 감지 보강 (T-74~T-76)** + 수동 테스트 전체 통과. 사용자 수동 테스트 중 "Android 핫스팟인데 Wi-Fi로 표시" 발견 → `HotspotDetector` 감지 개선. 이전: v0.22.0 자동화 테스트 도입 (T-67~73), v0.21.1 Low 6건, 온보딩 크래시 수정.
+1. 무엇을: **v0.22.2 MenuBarView 속성 캐싱 재적용 (T-77~T-78)** — 성능 조사에서 `PERFORMANCE_OPTIMIZATION.md`에 "적용 완료"로 기록됐으나 실제 코드에 미반영된 P3 캐싱을 재적용. 이전: v0.22.1 핫스팟 감지(T-74~76) + 3개 커밋/v0.22.1 태그 완료.
 2. 플랫폼: [macOS]
-3. 빌드: swift test 32/32 통과 (7스위트, +HotspotDetectorTests 4개), build-macos.sh debug 성공. 수동 체크리스트 10항목 전부 ✅ (연결 타입 정상 표시, hosts 차단 4줄 확인, 알림/배터리 정상).
-4. 남은 TODO: T-47 위젯(Xcode 전환 필요, 제외). **v0.21.1+v0.22.0+v0.22.1 커밋/태그/릴리즈 대기** (v0.22.0 자동화 포함 전부 미커밋).
+3. 빌드: swift test 32개/7스위트 통과, build-macos.sh debug 성공. 수동: 메뉴바 표시 정상, 글자 크기 변경 즉시 반영(캐시 무효화 정상).
+4. 남은 TODO: 성능 후보(P1) 화면 슬립 시 폴링 중지 / 팝오버 닫힘 tick 중지 / refreshCache 비동기 — 미착수. 위젯 T-47은 SwiftPM 불가능 확정(대안 C안 메뉴바 강화 추천). 다음 버전 기획(Sparkle/공증/Launch Agent) 미착수. **커밋/태그 대기 (v0.22.2)**.
 5. 전달 로그:
-   - **Android 핫스팟 오분류 원인**: 감지가 게이트웨이 대역(`192.168.43/80/42`) + 제한적 SSID 키워드에만 의존. 사용자 환경 게이트웨이 `10.229.78.251`(비표준) + SSID `OkStart`(키워드 없음) → `normalWiFi`로 분류됨.
-   - **수정**: `isAndroidHotspotGateway(_:)` 신설(43/42/44/49/80/81/111.x), `isAndroidSSID(_:)` 키워드 확장(okstart/oppo/vivo/realme/infinix/tecno/tp-link), 분기 순서 개선(게이트웨이→iOS 대역→Android SSID→isExpensive→normalWiFi). `isPersonalRange` 제거. `private` → internal로 바꿔 테스트 가능.
-   - **테스트 함정**: `TP-LINK_1234`가 `tplink` 키워드와 하이픈 때문에 매칭 안 됨 → `tp-link` 키워드 추가.
-   - 수동 검증: `route -n get default`(gateway 10.229.78.251, en0) + `/etc/hosts`에 `# TetherLens SavingMode` 마커 + `127.0.0.1` 4줄 추가 확인.
-6. 문서: TODO T-74~76, CHANGELOG v0.22.1, docs/tests/v0.22.0_macos.md 갱신(32개/수동 결과 테이블).
+   - **P3 불일치**: 문서는 static let 캐싱 완료로 기록했지만 실제는 `setText()` 문자열 비교만 적용. `menuBarFontSize`가 가변이라 static let 부적합 → fontSize별 재생성으로 해결.
+   - **수정**: `cacheAttributesIfNeeded(fontSize:) -> Bool` — fontSize 변경 시에만 폰트/문단스타일/속성/컬럼폭 재생성, 화살표 `sizeToFit()`은 캐시 갱신 시에만(초기값 "▲"와 동일해 스킵되던 문제 → 반환값으로 강제).
+   - `col2FixedW`/`col3FixedW` computed property → `cachedCol2W`/`cachedCol3W`. `totalAttr`만 매초 가변 색상이라 재생성 유지.
+   - **조사 결과**: 위젯은 SwiftPM으로 `.appex` 생성 시 `chronod` 거부(실증). 유일 경로는 Xcode 서브프로젝트(App Group + 샌드박스 필수). 성능 다음 후보: 슬립 시 폴링 중지(P1, 이득 최대), 팝오버 닫힘 tick 중지, Timer tolerance, ping watchdog cancel 누락, TrafficMonitor accumulated 무한 성장.
+6. 문서: PLAN_v0.22.2, TODO T-77~78, CHANGELOG v0.22.2, PERFORMANCE_OPTIMIZATION.md P3 정정 + v0.22.2 섹션.
 7. 오프라인 큐: N/A.
-8. E2E/k6: N/A — 자동화 단위 테스트(32개) + 수동 체크리스트 10항목 전부 통과.
+8. E2E/k6: N/A — 자동화 단위 테스트(32개) + 수동 확인.

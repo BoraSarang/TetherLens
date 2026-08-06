@@ -130,3 +130,10 @@
 | 74 | Android 핫스팟 감지 보강 (SSID 키워드 확장 + 게이트웨이 대역 + 분기 순서) | P1 | ✅ |
 | 75 | isAndroidSSID/isAndroidHotspotGateway 단위 테스트 | P2 | ✅ |
 | 76 | 수동 재확인 (OkStart 연결 시 타입 표시) | P1 | ✅ |
+
+## ✅ v0.22.2 — MenuBarView 속성 캐싱 재적용 (성능 P0, 2026-08-06)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 77 | MenuBarView fontSize 캐싱 (폰트/스타일/속성/width 재생성 최소화) | P0 | ✅ |
+| 78 | 성능 검증 (빌드 + 수동 확인 + 문서 정합) | P1 | ✅ |

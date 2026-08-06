@@ -695,15 +695,36 @@ class MenuBarView: NSView {
 
     private var currentFontSize: Double = 9
 
-    private var col2FixedW: CGFloat {
-        let f = NSFont.monospacedDigitSystemFont(ofSize: currentFontSize, weight: .regular)
-        return ceil(NSString(string: "999.0 MB/s").size(withAttributes: [.font: f]).width) + 2
-    }
-    private var col3FixedW: CGFloat {
-        let f = NSFont.monospacedDigitSystemFont(ofSize: currentFontSize, weight: .bold)
-        let sample = Localized.string("잔여 999.9 GB", "Remaining 999.9 GB")
-        let base = NSString(string: sample).size(withAttributes: [.font: f]).width
-        return ceil(base)
+    private var cachedBoldFont: NSFont?
+    private var cachedRegFont: NSFont?
+    private var cachedRightStyle: NSMutableParagraphStyle?
+    private var cachedUpAttr: [NSAttributedString.Key: Any]?
+    private var cachedDownAttr: [NSAttributedString.Key: Any]?
+    private var cachedSpeedAttr: [NSAttributedString.Key: Any]?
+    private var cachedCol2W: CGFloat = 0
+    private var cachedCol3W: CGFloat = 0
+
+    private func cacheAttributesIfNeeded(fontSize: Double) -> Bool {
+        guard cachedBoldFont == nil || fontSize != currentFontSize else { return false }
+        currentFontSize = fontSize
+
+        let boldFont = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .bold)
+        let regFont = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .regular)
+        let rightStyle = NSMutableParagraphStyle()
+        rightStyle.alignment = .right
+
+        cachedBoldFont = boldFont
+        cachedRegFont = regFont
+        cachedRightStyle = rightStyle
+        cachedUpAttr = [.font: boldFont, .foregroundColor: NSColor.systemOrange]
+        cachedDownAttr = [.font: boldFont, .foregroundColor: NSColor.systemBlue]
+        cachedSpeedAttr = [.font: regFont, .foregroundColor: NSColor.labelColor, .paragraphStyle: rightStyle]
+
+        let col2Sample = NSString(string: "999.0 MB/s").size(withAttributes: [.font: regFont]).width
+        cachedCol2W = ceil(col2Sample) + 2
+        let col3Sample = Localized.string("잔여 999.9 GB", "Remaining 999.9 GB")
+        cachedCol3W = ceil(NSString(string: col3Sample).size(withAttributes: [.font: boldFont]).width)
+        return true
     }
 
     var onClick: (() -> Void)?
@@ -728,33 +749,35 @@ class MenuBarView: NSView {
 
     func update(upSpeed s1: String, downSpeed s2: String, col3Top t1: String, col3Bottom t2: String, totalRatio: Double = 0) {
         let fontSize = SettingsManager.shared.menuBarFontSize
-        currentFontSize = fontSize
+        let attributesRefreshed = cacheAttributesIfNeeded(fontSize: fontSize)
 
-        let boldFont = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .bold)
-        let regFont = NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: .regular)
-        let rightStyle = NSMutableParagraphStyle()
-        rightStyle.alignment = .right
-
-        let upAttr: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: NSColor.systemOrange]
-        let downAttr: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: NSColor.systemBlue]
-        let speedAttr: [NSAttributedString.Key: Any] = [.font: regFont, .foregroundColor: NSColor.labelColor, .paragraphStyle: rightStyle]
+        guard let boldFont = cachedBoldFont,
+              let regFont = cachedRegFont,
+              let rightStyle = cachedRightStyle,
+              let upAttr = cachedUpAttr,
+              let downAttr = cachedDownAttr,
+              let speedAttr = cachedSpeedAttr else { return }
 
         let totalColor = totalRatio < 0 ? NSColor.clear : colorForRatio(totalRatio)
         let totalAttr: [NSAttributedString.Key: Any] = totalRatio < 0 ? [:] : [.font: boldFont, .foregroundColor: totalColor, .paragraphStyle: rightStyle]
 
-        upArrow.attributedStringValue = NSAttributedString(string: "▲", attributes: upAttr)
-        downArrow.attributedStringValue = NSAttributedString(string: "▼", attributes: downAttr)
-        upArrow.sizeToFit()
-        downArrow.sizeToFit()
+        if attributesRefreshed || upArrow.attributedStringValue.string != "▲" {
+            upArrow.attributedStringValue = NSAttributedString(string: "▲", attributes: upAttr)
+            upArrow.sizeToFit()
+        }
+        if attributesRefreshed || downArrow.attributedStringValue.string != "▼" {
+            downArrow.attributedStringValue = NSAttributedString(string: "▼", attributes: downAttr)
+            downArrow.sizeToFit()
+        }
         setText(upSpeed, value: s1, attrs: speedAttr)
         setText(downSpeed, value: s2, attrs: speedAttr)
         setText(upTotal, value: t1, attrs: totalAttr)
         setText(downTotal, value: t2, attrs: totalAttr)
 
-        let col3W = totalRatio < 0 ? 0 : col3FixedW
+        let col3W = totalRatio < 0 ? 0 : cachedCol3W
         let col1X: CGFloat = 1
         let col2X = col1X + upArrow.frame.width + 2
-        let col3X = col2X + col2FixedW + 3
+        let col3X = col2X + cachedCol2W + 3
         let w = col3X + col3W + 1
 
         let h = NSStatusBar.system.thickness
@@ -764,8 +787,8 @@ class MenuBarView: NSView {
 
         upArrow.setFrameOrigin(NSPoint(x: col1X, y: baseY + lineHeight))
         downArrow.setFrameOrigin(NSPoint(x: col1X, y: baseY))
-        upSpeed.frame = NSRect(x: col2X, y: baseY + lineHeight, width: col2FixedW, height: lineHeight)
-        downSpeed.frame = NSRect(x: col2X, y: baseY, width: col2FixedW, height: lineHeight)
+        upSpeed.frame = NSRect(x: col2X, y: baseY + lineHeight, width: cachedCol2W, height: lineHeight)
+        downSpeed.frame = NSRect(x: col2X, y: baseY, width: cachedCol2W, height: lineHeight)
         upTotal.frame = NSRect(x: col3X, y: baseY + lineHeight, width: col3W, height: lineHeight)
         downTotal.frame = NSRect(x: col3X, y: baseY, width: col3W, height: lineHeight)
 

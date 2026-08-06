@@ -90,6 +90,26 @@ TetherLens 초기 CPU 사용량 **4.6~5.5%** 를 **0.5~1.5%** 로 약 **4% 감�
 
 ---
 
+## P3 — MenuBarView fontSize 캐싱 재적용 (v0.22.2, 효과: -0.1~0.3%)
+
+### 배경
+P3 문서에는 "static let 캐싱 완료"로 기록됐으나 실제 코드에는 `setText()` 문자열 비교만 적용되고, `update()`가 **매초** 폰트/문단스타일/속성 딕셔너리 4개를 재생성하고 있었다. `menuBarFontSize`가 설정에서 가변이라 static let이 부적합해 캐싱이 빠진 것으로 추정.
+
+### 해결 (v0.22.2)
+- `cacheAttributesIfNeeded(fontSize:)` 도입 — fontSize 변경 시에만 폰트/문단스타일/속성/컬럼 폭(`cachedCol2W`/`cachedCol3W`) 재생성, 동일 fontSize면 재사용
+- `totalAttr`만 `colorForRatio(totalRatio)`가 매초 가변이라 매번 생성 (boldFont는 캐시 재사용)
+- `upArrow`/`downArrow` `sizeToFit()` — 캐시 갱신 시 또는 문자열 변경 시에만 호출
+- `col2FixedW`/`col3FixedW` computed property 제거 → `cachedCol2W`/`cachedCol3W`로 대체
+
+### 검증
+- swift test 32개/7스위트 통과
+- 수동: 메뉴바 속도/잔여 표시 정상, 설정에서 글자 크기 변경 시 즉시 반영 (캐시 무효화 정상)
+
+### 변경 파일
+- `Sources/TetherLens/App/MenuBarManager.swift`
+
+---
+
 ## 폴링 주기 설정 옵션 (사용자 선택 가능)
 
 ### 추가 기능
