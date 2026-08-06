@@ -58,11 +58,26 @@
 - **T-101** DebugPanelView: 선택 추적을 UUID 기반으로 (V6)
 - **T-102** 검증: 테스트 전체 실행 + 재분석 반복 + 문서 마무리
 
+### 3차 발견 (3차 재분석 — 서브에이전트 + 직접 검증 확정)
+
+| # | 위치 | 문제 |
+|---|------|------|
+| W1 | MenuBarManager.swift:419-453 | SSID 전환 시 `cachedProfile`(이전 프로필) short-circuit → 새 세션이 이전 프로필 소유로 생성, usage_log 프로필 오염 (High) |
+| W2 | MenuBarManager.swift:481-486,645-672 | autoActivate(80%)가 "할당량 초과" 알림 발송 → 80% 시점 오정보 + 임계 알림과 중복 |
+| W3 | NetworkMonitor.swift:33-39 | 속도 계산 `elapsed` 하드코딩 1.0 → 타이머 지연 시 과대계상 |
+| W4 | TrafficMonitor.swift:47-59 + MenuBarManager:123-127 | 종료 시 `saveAccumulated`가 queue.async라 마지막 구간 app_traffic_log 유실 가능 |
+| W5 | PingMonitor.swift:98-110 | 연결 토글 알림에 쿨다운 없음 → 플래핑 시 알림 폭주 |
+
+- **T-103** MenuBarManager: SSID 전환 시 `cachedProfile` 즉시 무효화 (W1) + autoActivate의 "초과" 알림 제거(임계 알림과 통합) (W2)
+- **T-104** NetworkMonitor: 실제 경과 시간 기반 속도 계산 (W3)
+- **T-105** TrafficMonitor: 종료용 동기 flush 추가 + handleAppTermination에 호출 (W4)
+- **T-106** PingMonitor: 연결 토글 알림 최소 간격(쿨다운) 적용 (W5)
+
 ## 4. 테스트 계획 (TC)
 
 - 기존 테스트 수정: `recordUsage_누적_델타_계산` (H2 동작 변경 반영 — 음수 방향만 재시드)
 - 신규 테스트: resetCounter 후 이중 계상 방지, 자정 경계 캐시(날짜 변경), CSV 따옴표 쿼팅, cleanup 활성 세션
-- 2차 수정(V1~V6)은 뷰/비동기 계층이라 자동 테스트 대상 아님 — 빌드 + 수동 확인
+- 2차 수정(V1~V6)·3차 수정(W1~W5)은 뷰/비동기/알림 계층이라 자동 테스트 대상 아님 — 빌드 + 수동 확인
 - TC-102: `swift test` 전체 통과, `build-macos.sh debug` 성공, 테스트 반복 실행으로 회귀 0
 
 ## 5. 롤백 계획

@@ -184,9 +184,13 @@
 | 100 | SettingsView: 폰트 슬라이더 onEditingChanged (V4) / AppBlockManager: ObservableObject + AppTrafficView 구독 (V5) | P2 | ⬜ |
 | 101 | DebugPanelView: 선택 추적 UUID 기반 (V6) | P2 | ⬜ |
 | 102 | 검증: 테스트 전체 + 재분석 반복 + 문서 마무리 (CHANGELOG/세션/TODO) | P1 | ⬜ |
+| 103 | MenuBarManager: SSID 전환 시 cachedProfile 무효화 (W1) + autoActivate "초과" 알림 제거 (W2) | P0 | ⬜ |
+| 104 | NetworkMonitor: 실제 경과 시간 기반 속도 계산 (W3) | P1 | ⬜ |
+| 105 | TrafficMonitor: 종료용 동기 flush + handleAppTermination 호출 (W4) | P1 | ⬜ |
+| 106 | PingMonitor: 연결 토글 알림 쿨다운 (W5) | P1 | ⬜ |
 
 > 커밋: [T-92~98 코드/테스트/문서 각각 분리], [T-99~101 코드], [T-102 문서]
-> 상태: 92~98 완료 (efedfd6), 99~101 코드 완료 (미커밋, 테스트 36개 통과)
+> 상태: 92~98 완료 (efedfd6), 99~101 완료 (2838361), 102 문서 완료 (4402758), 103~106 코드 진행 중
 
 
 > 참고: DebugPanelView는 개발자 전용 다크 패널이라 토큰 대상 제외, 히트맵 그라데이션/지도 핀 색은 시각화 고유 로직으로 유지
