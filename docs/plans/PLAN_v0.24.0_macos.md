@@ -73,6 +73,16 @@
 - **T-105** TrafficMonitor: 종료용 동기 flush 추가 + handleAppTermination에 호출 (W4)
 - **T-106** PingMonitor: 연결 토글 알림 최소 간격(쿨다운) 적용 (W5)
 
+### 4차 발견 (4차 재분석 — 서브에이전트 + 직접 검증 확정)
+
+| # | 위치 | 문제 |
+|---|------|------|
+| X1 | MenuBarManager.swift:640-647 + Profile.swift:27-38 | `connectionTypeString(for:)`가 카멜케이스("iOSHotspot") 반환, `Profile.isHotspot`은 스네이크("ios_hotspot")만 인식 → 재접속 시 autoRegisterIfNeeded가 연결 타입을 덮어써 데이터 파괴 (High) |
+| X2 | MenuBarManager.swift:420-430,432 | autoSwitchProfile OFF 시 SSID 변경에도 cachedProfile 미무효화 → 새 트래픽이 이전 프로필 세션에 귀속 (High) |
+
+- **T-107** MenuBarManager: `connectionTypeString(for:)` 스네이크케이스 통일 (X1) / DataStore: v9 마이그레이션으로 카멜→스네이크 정규화 (X1) / 테스트 추가
+- **T-108** MenuBarManager: SSID 변경 시 cachedProfile·cachedUsage·cachedTotalUsage를 autoSwitchProfile과 무관하게 즉시 무효화 (X2)
+
 ## 4. 테스트 계획 (TC)
 
 - 기존 테스트 수정: `recordUsage_누적_델타_계산` (H2 동작 변경 반영 — 음수 방향만 재시드)

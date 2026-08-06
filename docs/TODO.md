@@ -188,9 +188,11 @@
 | 104 | NetworkMonitor: 실제 경과 시간 기반 속도 계산 (W3) | P1 | ⬜ |
 | 105 | TrafficMonitor: 종료용 동기 flush + handleAppTermination 호출 (W4) | P1 | ⬜ |
 | 106 | PingMonitor: 연결 토글 알림 쿨다운 (W5) | P1 | ⬜ |
+| 107 | MenuBarManager: connectionTypeString 스네이크 통일 + DataStore v9 정규화 마이그레이션 + 테스트 (X1) | P0 | ⬜ |
+| 108 | MenuBarManager: SSID 변경 시 캐시 무효화를 autoSwitchProfile과 무관하게 (X2) | P0 | ⬜ |
 
 > 커밋: [T-92~98 코드/테스트/문서 각각 분리], [T-99~101 코드], [T-102 문서]
-> 상태: 92~98 완료 (efedfd6), 99~101 완료 (2838361), 102 문서 완료 (4402758), 103~106 코드 진행 중
+> 상태: 92~98 완료 (efedfd6), 99~101 완료 (2838361), 102 문서 완료 (4402758), 103~106 완료 (839ad14, 141cc4d), 107~108 코드/테스트 완료 (미커밋, 테스트 38개 통과)
 
 
 > 참고: DebugPanelView는 개발자 전용 다크 패널이라 토큰 대상 제외, 히트맵 그라데이션/지도 핀 색은 시각화 고유 로직으로 유지
