@@ -35,7 +35,7 @@ CODESIGN_IDENTITY="Apple Development: leeborasarang@gmail.com (HLQNBZHQQN)"
 | `DESIGN.md` | `docs/` | ❌ | 필요 시 생성 |
 | `CHANGELOG.md` | `docs/` | ✅ | 변경 이력 |
 | `TODO.md` | `docs/` | ✅ | 작업 추적 (bd 우선, 보조 참조) |
-| `CLAUDE.md` | `docs/` | ✅ | Claude 에이전트 지침 |
+| `CLAUDE.md` | `docs/` | ❌ | 존재하지 않음 (필요 시 생성) |
 | `tests/v0.1.0.md` | `docs/tests/` | ✅ | Phase 0 PoC 테스트 계획 |
 
 ## 5. Beads (bd) 이슈 트래커
@@ -100,7 +100,7 @@ rm -rf directory        # NOT: rm -r directory
 - Info.plist는 `Resources/Info.plist`에서 관리
 - 빌드/실행: `./build_and_run.sh debug macos` (v1.6 디스패처)
 - 실제 빌드 로직: `scripts/build-macos.sh`
-- 테스트는 `swift build`로 컴파일 확인 (별도 테스트 타겟 없음)
+- 테스트: `./scripts/test.sh` — `Tests/TetherLensTests/` (Swift Testing, 32개/7스위트, v0.22 도입)
 
 ## 9. Git 브랜치 네이밍 (v1.6)
 
