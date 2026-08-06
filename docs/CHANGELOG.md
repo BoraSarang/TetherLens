@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.23.0] — 2026-08-06 — 디자인 시스템 + 팝오버 재설계 (UI/UX P0)
+
+### Added
+- **디자인 시스템 도입** — `DesignSystem/Theme.swift` (T-79)
+  - `TLPalette`: 시맨틱 색상 (upload/download/success/danger/accent, textPrimary/Secondary, copyHint/separator/textBackground/windowBackground)
+  - `TLFont`: 고정 스케일 (8~11px 밀집 UI) + semantic 스케일 (caption~headline/speed)
+  - `TLSpace` (4~20), `TLRound` (6/10), `TLSize` (시트 폭 240~640, 테이블 컬럼 폭)
+- **팝오버 요약/상세 2단 재설계** (T-80/81)
+  - `popover_summary_mode` 기본 요약 모드 — 속도/SSID/할당량 게이지만 표시, 하단 `▾/▴` 토글 버튼으로 상세 펼치기
+  - 연결 정보/주소 정보는 접이식 섹션(치프론)으로 유지, DNS 행에 chevron.right 단서 추가
+  - QoS 미설정 시 `할당량 설정` 버튼 표시 (프로필 선택 여부에 따라 편집/프로필 관리로 분기)
+- **배너 상단 고정** — 핫스팟 감지 상태 배너가 팝오버 최상단에 고정 표시
+
+### Refactored
+- **하드코딩 값 전면 토큰 치환** (T-82/83) — 팝오버 포함 13개 뷰에서 폰트 크기·색상·간격·모서리·시트/라벨 폭 숫자를 Theme 토큰으로 대체
+  - PopoverView, UsageReportView, SettingsView, AppTrafficView, SavingModeSheet, ProfileEditorView, HeatmapGridView, SessionTimelineView, AboutView, NotificationListView, IPHistoryView, ConnectionDetailView, HeatmapMapView, OnboardingView
+  - DebugPanelView는 개발자 전용 다크 패널(로그 레벨별 고유 색상)이라 시맨틱 토큰 대상에서 제외
+  - 히트맵 그라데이션/지도 핀 색은 시각화 고유 로직이라 유지, 시스템 표준 폰트(title2/title3/largeTitle)는 난립 대상이 아니라 유지
+  - 시트 폭 값은 현행 유지 (토큰 참조만 — 회귀 위험으로 값 변경은 후속 버전)
+
+### Infra
+- `Info.plist` — CFBundleShortVersionString `0.20.0` → `0.23.0`, CFBundleVersion `20` → `23` (0.21~0.22 미동기화 해소)
+
+### Tests
+- 자동화 테스트 32개 / 7개 스위트 전부 통과 (Swift Testing)
+
+### Docs
+- `docs/plans/PLAN_v0.23.0_uiux.md`, TODO T-79~T-84, 세션 로그
+
+### Platform
+- [macOS]
+
 ## [0.22.2] — 2026-08-06 — MenuBarView 속성 캐싱 재적용 (성능 P0)
 
 ### Performance
