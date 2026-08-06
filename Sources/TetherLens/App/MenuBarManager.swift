@@ -404,7 +404,6 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         var totalStr = ""
         var remainingStr = ""
         var todayGB: Double = 0
-        var totalGB: Double = 0
 
         if let ssid = ssid, !ssid.isEmpty {
             if ssid != lastAutoRegisterSSID {
@@ -448,15 +447,13 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
             let todayUsage = cachedUsage ?? (0, 0)
             let totalUsage = cachedTotalUsage ?? cachedUsage ?? (0, 0)
-            let totalBytes = totalUsage.upload + totalUsage.download
-            totalGB = Double(totalBytes) / 1_000_000_000
             let todayBytes = todayUsage.upload + todayUsage.download
             todayGB = Double(todayBytes) / 1_000_000_000
 
             if let quota = totalQuotaGB, quota > 0 {
                 if SettingsManager.shared.showTotalColumn {
-                    totalStr = formatBytes(totalUsage.upload + totalUsage.download)
-                    let remaining = max(quota - totalGB, 0)
+                    totalStr = formatBytes(todayBytes)
+                    let remaining = max(quota - todayGB, 0)
                     let remainLabel = Localized.string("잔여 ", "Remaining ")
                     if remaining >= 1.0 {
                         remainingStr = remainLabel + String(format: "%.1f GB", remaining)
@@ -465,14 +462,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                     }
                 }
 
-                if SavingModeManager.shared.shouldAutoActivate(used: totalGB, quota: quota) {
+                if SavingModeManager.shared.shouldAutoActivate(used: todayGB, quota: quota) {
                     if !SavingModeManager.shared.isEnabled {
                         SavingModeManager.shared.isEnabled = true
-                        sendQuotaNotification(used: totalGB, quota: quota)
+                        sendQuotaNotification(used: todayGB, quota: quota)
                     }
                 }
 
-                checkQuotaThresholds(totalGB: totalGB, quota: quota)
+                checkQuotaThresholds(usedGB: todayGB, quota: quota)
             } else if SettingsManager.shared.showTotalColumn {
                 totalStr = formatBytes(totalUsage.upload + totalUsage.download)
                 remainingStr = ""
@@ -491,7 +488,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
         let quotaRatio: Double
         if let quota = totalQuotaGB, quota > 0 {
-            quotaRatio = min(totalGB / quota, 1.0)
+            quotaRatio = min(todayGB / quota, 1.0)
         } else if SettingsManager.shared.showTotalColumn, !totalStr.isEmpty {
             quotaRatio = 0
         } else {
@@ -629,9 +626,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         }
     }
 
-    private func checkQuotaThresholds(totalGB: Double, quota: Double) {
+    private func checkQuotaThresholds(usedGB: Double, quota: Double) {
         let thresholds = [50, 80, 95, 100]
-        let pct = min(Int(totalGB / quota * 100), 100)
+        let pct = min(Int(usedGB / quota * 100), 100)
         guard let profileId = cachedProfile?.id else { return }
         var notified = Self.loadNotifiedThresholds(profileId: profileId)
         var hasNewNotification = false
@@ -640,14 +637,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             notified.insert(t)
             hasNewNotification = true
             if t == 100 {
-                sendQuotaNotification(used: totalGB, quota: quota)
-                postQuotaAlert(type: .quotaExceeded, message: Localized.quotaExceeded(String(format: "%.1f", totalGB), String(format: "%.1f", quota)))
+                sendQuotaNotification(used: usedGB, quota: quota)
+                postQuotaAlert(type: .quotaExceeded, message: Localized.quotaExceeded(String(format: "%.1f", usedGB), String(format: "%.1f", quota)))
                 if !SavingModeManager.shared.isEnabled {
                     SavingModeManager.shared.isEnabled = true
                 }
             } else {
-                sendThresholdNotification(used: totalGB, quota: quota, threshold: Double(t) / 100)
-                postQuotaAlert(type: .quotaWarning, message: Localized.quotaReached(t, String(format: "%.1f", totalGB), String(format: "%.1f", quota)))
+                sendThresholdNotification(used: usedGB, quota: quota, threshold: Double(t) / 100)
+                postQuotaAlert(type: .quotaWarning, message: Localized.quotaReached(t, String(format: "%.1f", usedGB), String(format: "%.1f", quota)))
             }
         }
         if hasNewNotification {

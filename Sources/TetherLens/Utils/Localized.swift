@@ -139,7 +139,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var debugPanel: String { value(kr: "🐛 디버그 패널", en: "🐛 Debug Panel") }
 
   // MARK: - Settings
-  static var showTotalInMenuBar: String { value(kr: "메뉴바에 총 사용량 표시", en: "Show Total in Menu Bar") }
+  static var showTotalInMenuBar: String { value(kr: "메뉴바에 사용량 표시", en: "Show Usage in Menu Bar") }
   static var menuBarDisplayMode: String { value(kr: "메뉴바 표시 항목", en: "Menu Bar Display") }
   static var menuBarModeSpeedOnly: String { value(kr: "속도만", en: "Speed Only") }
   static var menuBarModeSpeedTotal: String { value(kr: "속도 + 사용량", en: "Speed + Usage") }
