@@ -15,21 +15,6 @@ struct HeatmapMapView: View {
     markedSessions.max { $0.session.startTime < $1.session.startTime }
   }
 
-  private var region: MKCoordinateRegion? {
-    let coords = markedSessions.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng) }
-    guard !coords.isEmpty else { return nil }
-    let minLat = coords.map(\.latitude).min()!
-    let maxLat = coords.map(\.latitude).max()!
-    let minLng = coords.map(\.longitude).min()!
-    let maxLng = coords.map(\.longitude).max()!
-    let spanLat = max(maxLat - minLat, 0.05) * 1.5
-    let spanLng = max(maxLng - minLng, 0.05) * 1.5
-    return MKCoordinateRegion(
-      center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2),
-      span: MKCoordinateSpan(latitudeDelta: spanLat, longitudeDelta: spanLng)
-    )
-  }
-
   private var latestRegion: MKCoordinateRegion? {
     guard let last = lastMarker else { return nil }
     return MKCoordinateRegion(
@@ -38,13 +23,45 @@ struct HeatmapMapView: View {
     )
   }
 
-  private func timeLabel(_ date: Date) -> String {
-    let f = DateFormatter()
-    f.dateFormat = "HH:mm"
-    return f.string(from: date)
+  private func sourceLabel(_ source: String?) -> String {
+    switch source {
+    case "gps": return Localized.string("GPS", "GPS")
+    case "ip": return Localized.string("IP", "IP")
+    default: return Localized.string("알 수 없음", "Unknown")
+    }
+  }
+
+  private func sourceColor(_ source: String?) -> Color {
+    switch source {
+    case "gps": return TLPalette.success
+    case "ip": return TLPalette.accent
+    default: return TLPalette.textSecondary
+    }
   }
 
   @State private var cameraPosition: MapCameraPosition = .automatic
+
+  /// 동일 좌표(정밀도 3자리)로 그룹핑한 클러스터. 세션 수 > 1이면 숫자 배지.
+  private var clusters: [(lat: Double, lng: Double, sessions: [Session])] {
+    var groups: [String: (lat: Double, lng: Double, sessions: [Session])] = [:]
+    for item in markedSessions {
+      let keyLat = String(format: "%.3f", item.lat)
+      let keyLng = String(format: "%.3f", item.lng)
+      let key = "\(keyLat),\(keyLng)"
+      if var g = groups[key] {
+        g.sessions.append(item.session)
+        groups[key] = g
+      } else {
+        groups[key] = (item.lat, item.lng, [item.session])
+      }
+    }
+    return groups.values.map { ($0.lat, $0.lng, $0.sessions) }
+      .sorted { $0.sessions.first?.startTime ?? .distantPast < $1.sessions.first?.startTime ?? .distantPast }
+  }
+
+  private var latestCluster: (lat: Double, lng: Double, sessions: [Session])? {
+    clusters.last
+  }
 
   var body: some View {
     Group {
@@ -60,29 +77,57 @@ struct HeatmapMapView: View {
           Spacer()
         }
       } else {
-        Map(initialPosition: latestRegion.map { .region($0) } ?? .automatic) {
-          ForEach(Array(markedSessions.enumerated()), id: \.offset) { _, item in
-            if let last = lastMarker, last.lat == item.lat, last.lng == item.lng, last.session.startTime == item.session.startTime {
-              Annotation(Localized.string("최근 위치", "Latest"), coordinate: CLLocationCoordinate2D(latitude: item.lat, longitude: item.lng)) {
+        Map(initialPosition: latestCluster.map { .region(MKCoordinateRegion(
+          center: CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng),
+          span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+        )) } ?? .automatic) {
+          ForEach(Array(clusters.enumerated()), id: \.offset) { _, cluster in
+            let isLatest = latestCluster.map { $0.lat == cluster.lat && $0.lng == cluster.lng } ?? false
+            let isCluster = cluster.sessions.count > 1
+            let coordinate = CLLocationCoordinate2D(latitude: cluster.lat, longitude: cluster.lng)
+            Annotation(sourceLabel(cluster.sessions.last?.locationSource), coordinate: coordinate) {
+              VStack(spacing: 2) {
                 ZStack {
+                  if isLatest {
+                    Circle()
+                      .fill(Color.red.opacity(0.25))
+                      .frame(width: 44, height: 44)
+                  }
                   Circle()
-                    .fill(Color.red.opacity(0.25))
-                    .frame(width: 44, height: 44)
-                  Circle()
-                    .fill(Color.red)
-                    .frame(width: 14, height: 14)
+                    .fill(markerColor(cluster.sessions.last?.locationSource))
+                    .frame(width: isCluster ? 30 : 14, height: isCluster ? 30 : 14)
                     .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                    .shadow(color: .red.opacity(0.7), radius: 6)
+                    .shadow(color: .black.opacity(0.35), radius: 4)
+                  if isCluster {
+                    Text("\(cluster.sessions.count)")
+                      .font(TLFont.smallBold)
+                      .foregroundColor(.white)
+                  }
+                }
+                if cluster.sessions.last?.locationSource != nil {
+                  HStack(spacing: 2) {
+                    Circle()
+                      .fill(sourceColor(cluster.sessions.last?.locationSource))
+                      .frame(width: 6, height: 6)
+                    Text(sourceLabel(cluster.sessions.last?.locationSource))
+                      .font(TLFont.small)
+                      .foregroundColor(TLPalette.textSecondary)
+                  }
                 }
               }
-            } else {
-              Marker(timeLabel(item.session.startTime),
-                     coordinate: CLLocationCoordinate2D(latitude: item.lat, longitude: item.lng))
             }
           }
         }
         .padding(.horizontal, TLSpace.xl)
       }
+    }
+  }
+
+  private func markerColor(_ source: String?) -> Color {
+    switch source {
+    case "gps": return TLPalette.download
+    case "ip": return TLPalette.upload
+    default: return TLPalette.accent
     }
   }
 }

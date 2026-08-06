@@ -306,7 +306,7 @@ import GRDB
         let p = makeProfile()
         pm.saveProfile(p)
         let start = Date().addingTimeInterval(-600)
-        let s = Session(id: UUID(), profileId: p.id, startTime: start, endTime: nil, latitude: nil, longitude: nil)
+        let s = Session(id: UUID(), profileId: p.id, startTime: start, endTime: nil, latitude: nil, longitude: nil, locationSource: nil)
         try q.write { db in
             try s.insert(db)
             try IPLog(id: UUID(), profileId: p.id, ipAddress: "8.8.8.8", country: "US", latitude: 1, longitude: 1,
@@ -341,7 +341,7 @@ import GRDB
         let oldSession = Session(id: UUID(), profileId: p.id,
                                  startTime: Date().addingTimeInterval(-367 * 86_400),
                                  endTime: Date().addingTimeInterval(-366 * 86_400),
-                                 latitude: nil, longitude: nil)
+                                 latitude: nil, longitude: nil, locationSource: nil)
         let oldUsage = UsageLog(id: UUID(), profileId: p.id, uploadDelta: 100, downloadDelta: 100,
                                 recordedAt: oldSession.startTime, sessionId: oldSession.id)
         try q.write { db in
@@ -380,7 +380,7 @@ import GRDB
         pm.saveProfile(p)
         let stale = Session(id: UUID(), profileId: p.id,
                             startTime: Date().addingTimeInterval(-367 * 86_400),
-                            endTime: nil, latitude: nil, longitude: nil)
+                            endTime: nil, latitude: nil, longitude: nil, locationSource: nil)
         try q.write { db in
             try stale.insert(db)
         }

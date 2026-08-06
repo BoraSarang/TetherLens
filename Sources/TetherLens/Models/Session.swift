@@ -10,6 +10,7 @@ struct Session: Identifiable, Codable, Equatable, FetchableRecord, PersistableRe
     var endTime: Date?
     var latitude: Double?
     var longitude: Double?
+    var locationSource: String?  // "gps" | "ip" | nil
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -18,5 +19,6 @@ struct Session: Identifiable, Codable, Equatable, FetchableRecord, PersistableRe
         case endTime = "end_time"
         case latitude
         case longitude
+        case locationSource = "location_source"
     }
 }

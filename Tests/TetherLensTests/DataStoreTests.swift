@@ -37,4 +37,13 @@ import GRDB
             #expect(names.contains("profile_id"))
         }
     }
+
+    @Test func v10_세션_위치출처_컬럼() throws {
+        let q = try makeQueue()
+        try q.read { db in
+            let cols = try db.columns(in: "session")
+            let names = cols.map(\.name)
+            #expect(names.contains("location_source"), "v10에서 location_source 추가")
+        }
+    }
 }

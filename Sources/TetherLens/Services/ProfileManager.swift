@@ -538,8 +538,8 @@ final class ProfileManager: @unchecked Sendable {
 
     // MARK: - Session Tracking
 
-    func startSession(profileId: UUID, latitude: Double? = nil, longitude: Double? = nil) -> Session {
-        let session = Session(id: UUID(), profileId: profileId, startTime: Date(), endTime: nil, latitude: latitude, longitude: longitude)
+    func startSession(profileId: UUID, latitude: Double? = nil, longitude: Double? = nil, locationSource: String? = nil) -> Session {
+        let session = Session(id: UUID(), profileId: profileId, startTime: Date(), endTime: nil, latitude: latitude, longitude: longitude, locationSource: locationSource)
         try! db.write { db in
             try session.insert(db)
         }

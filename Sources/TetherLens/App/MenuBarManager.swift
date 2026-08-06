@@ -264,7 +264,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 currentSession = ProfileManager.shared.startSession(
                     profileId: profile.id,
                     latitude: bestLocation.latitude,
-                    longitude: bestLocation.longitude
+                    longitude: bestLocation.longitude,
+                    locationSource: bestLocation.source
                 )
             }
             ProfileManager.shared.resetCounter(
@@ -459,7 +460,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                         ?? ProfileManager.shared.startSession(
                             profileId: pid,
                             latitude: bestLocation.latitude,
-                            longitude: bestLocation.longitude
+                            longitude: bestLocation.longitude,
+                            locationSource: bestLocation.source
                         )
                 } else {
                     currentSession = nil
@@ -640,14 +642,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         }
     }
 
-    private var bestLocation: (latitude: Double?, longitude: Double?) {
+    private var bestLocation: (latitude: Double?, longitude: Double?, source: String?) {
         if let lat = locationManager.lastLatitude, let lng = locationManager.lastLongitude {
-            return (lat, lng)
+            return (lat, lng, "gps")
         }
         if let ipLoc = ipResolver.resolvedLocation {
-            return (ipLoc.latitude, ipLoc.longitude)
+            return (ipLoc.latitude, ipLoc.longitude, "ip")
         }
-        return (nil, nil)
+        return (nil, nil, nil)
     }
 
     private func connectionTypeString(for type: ConnectionType?) -> String? {

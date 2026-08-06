@@ -143,6 +143,12 @@ final class DataStore: @unchecked Sendable {
             try db.execute(sql: "UPDATE profile SET connection_type = 'ios_hotspot' WHERE connection_type = 'iOSHotspot'")
             try db.execute(sql: "UPDATE profile SET connection_type = 'android_hotspot' WHERE connection_type = 'AndroidHotspot'")
         }
+        m.registerMigration("v10_session_location_source") { db in
+            // 지도 GPS/IP 출처 배지용. GPS(기기 위치) vs IP(geo 추정) 구분 메타데이터.
+            try db.alter(table: "session") { t in
+                t.add(column: "location_source", .text)
+            }
+        }
         return m
     }
 }
