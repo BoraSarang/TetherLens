@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.23.1] — 2026-08-06 — 메뉴바 할당량 기준 "오늘" 통일 (버그 수정)
+
+### Fixed
+- **메뉴바 상태바 할당량 수치가 "총 누적 사용량"으로 표시되던 버그** — v0.21에서 기준이 `todayGB`(오늘) → `totalGB`(총 누적)로 변경됐으나 팝오버 QoS 게이지는 여전히 오늘 기준이라 동일 할당량이 위치별로 다른 값/비율/색으로 표시됨
+  - 메뉴바 오른쪽 상단: 총 누적 → **오늘 사용량** (`getTodayUsage`)
+  - 잔여: `quota - totalGB` → **`quota - todayGB`** (오늘 기준)
+  - 절약모드 자동활성·임계값 알림(50/80/95/100%)·게이지 색 경계 전부 **오늘 기준**으로 통일 → 팝오버 QoS 게이지와 일치
+  - `checkQuotaThresholds` 파라미터명 `totalGB` → `usedGB`로 명확화
+- **유지**: 할당량 미설정 시 "총 사용량" 컬럼은 현행 동작 보존 (`cachedTotalUsage` 캐시 유지)
+
+### Refactored
+- 미사용 `totalGB` 변수/계산 제거
+
+### Changed
+- 설정 라벨 `showTotalInMenuBar`: "메뉴바에 총 사용량 표시" → **"메뉴바에 사용량 표시"** (할당량 있으면 오늘/없으면 총 사용량이므로 중립화)
+
+### Infra
+- `Info.plist` — `0.23.1` / build `24`
+
+### Tests
+- 자동화 테스트 32개 / 7개 스위트 전부 통과, `build-macos.sh debug` 성공
+
+### Docs
+- `docs/plans/PLAN_v0.23.1_macos.md`, TODO T-85~T-87, 세션 로그
+
+### Platform
+- [macOS]
+
 ## [0.23.0] — 2026-08-06 — 디자인 시스템 + 팝오버 재설계 (UI/UX P0)
 
 ### Added
