@@ -3,7 +3,6 @@ import SwiftUI
 struct QoSGauge: View {
     let used: Double
     let total: Double
-    var saving: Bool = false
 
     private var ratio: Double {
         guard total > 0 else { return 0 }
@@ -11,8 +10,8 @@ struct QoSGauge: View {
     }
 
     private var gaugeColor: Color {
-        let greenBoundary = saving ? 0.4 : 0.6
-        let orangeBoundary = saving ? 0.65 : 0.85
+        let greenBoundary = SavingModeManager.shared.greenThreshold
+        let orangeBoundary = SavingModeManager.shared.orangeThreshold
         if ratio < greenBoundary {
             return .green
         } else if ratio < orangeBoundary {

@@ -270,7 +270,7 @@ struct UsageReportView: View {
         } else {
             let maxBytes = (dailyUsage.map { max($0.upload, $0.download) }.max() ?? 1) * 2
             let yDomain: ClosedRange<Int64> = 0 ... maxBytes
-            Chart(dailyUsage.reversed()) { usage in
+            Chart(dailyUsage) { usage in
                 BarMark(
                     x: .value("Date", usage.date, unit: .day),
                     y: .value("Upload", usage.upload)
@@ -700,6 +700,7 @@ struct UsageReportView: View {
             return
         }
         let loadAllSessions = viewMode == .heatmap || (viewMode == .session && selectedPeriod.days == 1)
+        let loadAppTraffic = viewMode == .appTraffic
         if pid == allProfilesId {
             var allUsage: [String: ProfileManager.DailyUsage] = [:]
             var allMonthly: [String: ProfileManager.MonthlyUsage] = [:]
@@ -740,7 +741,7 @@ struct UsageReportView: View {
             sessions = allSessions.sorted { $0.startTime > $1.startTime }
             dailySessionSummary = allDailySess.values.sorted { $0.date < $1.date }
             monthlySessionSummary = allMonthlySess.values.sorted { $0.date < $1.date }
-            appTrafficData = ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days)
+            appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
             return
         }
         dailyUsage = ProfileManager.shared.getDailyUsage(profileId: pid, days: selectedPeriod.days)
@@ -758,12 +759,12 @@ struct UsageReportView: View {
             dailySessionSummary = []
             monthlySessionSummary = []
         }
-        appTrafficData = ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days)
+        appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
     }
 
     private func sessionStartTimeFormatted(_ date: Date) -> String {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss"
+        f.setLocalizedDateFormatFromTemplate("HHmmss")
         return f.string(from: date)
     }
 

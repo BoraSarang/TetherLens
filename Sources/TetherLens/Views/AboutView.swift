@@ -33,23 +33,15 @@ struct AboutView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                detailRow(label: Localized.createdBy, value: "OkStart")
+                detailRow(label: Localized.createdBy, value: "BoRaSaRang")
 
-                Button("okstart@gmail.com") {
-                    NSWorkspace.shared.open(URL(string: "mailto:okstart@gmail.com")!)
+                Button("leeborasarang@gmail.com") {
+                    NSWorkspace.shared.open(URL(string: "mailto:leeborasarang@gmail.com")!)
                 }
                 .buttonStyle(.plain)
                 .font(.caption)
                 .foregroundColor(.blue)
                 .underline()
-
-                Button(Localized.donateButton) {
-                    NSWorkspace.shared.open(URL(string: "https://buymeacoffee.com/okstart")!)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(.orange)
-                .padding(.top, 4)
             }
 
             Spacer()

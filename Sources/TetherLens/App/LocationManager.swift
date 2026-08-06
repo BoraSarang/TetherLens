@@ -70,9 +70,9 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    private func startUpdating() {
+    func startUpdating() {
         manager.startUpdatingLocation()
-        DebugLogger.shared.system("Location", "연속 위치 업데이트 시작")
+        DebugLogger.shared.system("Location", "위치 업데이트 시작")
         locationTimeoutTask?.cancel()
         locationTimeoutTask = Task {
             try? await Task.sleep(nanoseconds: 60_000_000_000)
@@ -80,6 +80,12 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
                 DebugLogger.shared.warn("Location", "60초 내 위치 미획득, CoreLocation 포기")
             }
         }
+    }
+
+    func stopUpdating() {
+        locationTimeoutTask?.cancel()
+        locationTimeoutTask = nil
+        manager.stopUpdatingLocation()
     }
 
     func requestAuthorizationAsync() async -> Bool {
@@ -98,6 +104,8 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
             UserDefaults.standard.set(loc.coordinate.latitude, forKey: Self.latKey)
             UserDefaults.standard.set(loc.coordinate.longitude, forKey: Self.lngKey)
             locationTimeoutTask?.cancel()
+            locationTimeoutTask = nil
+            manager.stopUpdatingLocation()
             DebugLogger.shared.system("Location", "위치 획득: \(loc.coordinate.latitude), \(loc.coordinate.longitude)")
         }
     }

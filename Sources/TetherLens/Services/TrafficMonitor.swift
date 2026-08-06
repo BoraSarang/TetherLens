@@ -27,29 +27,37 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         accumulated = [:]
         lastSavedAccumulated = [:]
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: SettingsManager.shared.trafficMonitorInterval, repeats: true) { [weak self] _ in
+        let refreshTimer = Timer(timeInterval: SettingsManager.shared.trafficMonitorInterval, repeats: true) { [weak self] _ in
             self?.refresh()
         }
-        saveTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+        RunLoop.main.add(refreshTimer, forMode: .common)
+        timer = refreshTimer
+        let saveTimer = Timer(timeInterval: 300, repeats: true) { [weak self] _ in
             self?.saveAccumulated()
         }
+        RunLoop.main.add(saveTimer, forMode: .common)
+        self.saveTimer = saveTimer
     }
 
     func stop() {
-        saveAccumulated()
         saveTimer?.invalidate()
         saveTimer = nil
         timer?.invalidate()
         timer = nil
-        accumulated = [:]
-        DispatchQueue.main.async { [weak self] in
-            self?.apps = []
+        saveAccumulated()
+        queue.async { [weak self] in
+            self?.accumulated = [:]
+            self?.lastSavedAccumulated = [:]
+            DispatchQueue.main.async { [weak self] in
+                self?.apps = []
+            }
         }
     }
 
     func resetAccumulated() {
         queue.async { [weak self] in
             self?.accumulated = [:]
+            self?.lastSavedAccumulated = [:]
         }
     }
 
@@ -74,10 +82,14 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             }
             self.lastSavedAccumulated = self.accumulated
             guard !logs.isEmpty else { return }
-            try! DataStore.shared.dbQueue.write { db in
-                for log in logs {
-                    try log.insert(db)
+            do {
+                try DataStore.shared.dbQueue.write { db in
+                    for log in logs {
+                        try log.insert(db)
+                    }
                 }
+            } catch {
+                DebugLogger.shared.error("Traffic", "트래픽 로그 저장 실패: \(error.localizedDescription)")
             }
         }
     }
@@ -112,11 +124,12 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
                     totalBytesIn: acc.in,
                     totalBytesOut: acc.out
                 ))
-                AppBlockManager.shared.check(
-                    name,
-                    bytesIn: currentBytes.bytesIn,
-                    bytesOut: currentBytes.bytesOut
-                )
+            }
+            let blockedCandidates = merged.filter { $0.value.bytesIn > 0 || $0.value.bytesOut > 0 }
+            DispatchQueue.main.async {
+                for (name, current) in blockedCandidates {
+                    AppBlockManager.shared.check(name, bytesIn: current.bytesIn, bytesOut: current.bytesOut)
+                }
             }
             apps = apps.filter { $0.bytesIn > 0 || $0.bytesOut > 0 || $0.totalBytesIn > 0 || $0.totalBytesOut > 0 }
             apps.sort { $0.bytesIn + $0.bytesOut > $1.bytesIn + $1.bytesOut }
@@ -134,7 +147,19 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         let pipe = Pipe()
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice
-        task.launch()
+        do {
+            try task.run()
+        } catch {
+            Task { @MainActor in
+                DebugLogger.shared.error("Traffic", "nettop 실행 실패: \(error.localizedDescription)")
+            }
+            return ""
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 15) { [weak task] in
+            if task?.isRunning == true {
+                task?.terminate()
+            }
+        }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
         return String(data: data, encoding: .utf8) ?? ""

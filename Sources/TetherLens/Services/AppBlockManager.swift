@@ -1,12 +1,15 @@
 import Foundation
 import UserNotifications
 
-final class AppBlockManager: @unchecked Sendable {
+@MainActor
+final class AppBlockManager {
     static let shared = AppBlockManager()
 
     private let defaults = UserDefaults.standard
     private let blockedKey = "blocked_apps"
     private var notified: Set<String> = []
+
+    private init() {}
 
     var blockedApps: Set<String> {
         get {

@@ -15,7 +15,7 @@ final class SavingModeController: @unchecked Sendable {
 
     func activate(completion: @escaping @Sendable (Bool, String) -> Void) {
         DispatchQueue.global().async {
-            let hostEntries = self.blockedDomains.map { "127.0.0.1\t\($0)" }.joined(separator: "\\n")
+            let hostEntries = self.blockedDomains.map { "127.0.0.1\t\($0)" }.joined(separator: "\n")
             let script = """
             do shell script "
                 /usr/sbin/softwareupdate --schedule off 2>/dev/null

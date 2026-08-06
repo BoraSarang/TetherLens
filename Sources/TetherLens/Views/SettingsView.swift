@@ -304,17 +304,7 @@ struct SettingsView: View {
             refreshPermissions()
         }
         .onDisappear {
-            let s = SettingsManager.shared
-            if s.menuBarRefreshInterval != menuBarInterval
-                || s.cacheRefreshInterval != cacheInterval
-                || s.trafficMonitorInterval != trafficInterval
-                || s.pingInterval != pingInterval {
-                s.menuBarRefreshInterval = menuBarInterval
-                s.cacheRefreshInterval = cacheInterval
-                s.trafficMonitorInterval = trafficInterval
-                s.pingInterval = pingInterval
-                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-            }
+            applyPollingIntervals()
         }
     }
 
@@ -333,6 +323,23 @@ struct SettingsView: View {
             }
             .pickerStyle(.menu)
             .fixedSize()
+            .onChange(of: selection.wrappedValue) { _, newValue in
+                applyPollingIntervals()
+            }
+        }
+    }
+
+    private func applyPollingIntervals() {
+        let s = SettingsManager.shared
+        if s.menuBarRefreshInterval != menuBarInterval
+            || s.cacheRefreshInterval != cacheInterval
+            || s.trafficMonitorInterval != trafficInterval
+            || s.pingInterval != pingInterval {
+            s.menuBarRefreshInterval = menuBarInterval
+            s.cacheRefreshInterval = cacheInterval
+            s.trafficMonitorInterval = trafficInterval
+            s.pingInterval = pingInterval
+            NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
         }
     }
 

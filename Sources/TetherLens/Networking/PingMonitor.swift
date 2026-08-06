@@ -2,8 +2,10 @@ import Foundation
 import Network
 import UserNotifications
 
-class PingMonitor: @unchecked Sendable {
+@MainActor
+class PingMonitor {
     private var task: Task<Void, Never>?
+    private var gatewayTask: Task<Void, Never>?
 
     private(set) var gatewayRTT: TimeInterval?
     private(set) var dnsRTT: TimeInterval?
@@ -33,11 +35,19 @@ class PingMonitor: @unchecked Sendable {
     private let recoveryDuration: TimeInterval = 10.0
     private let consecutiveCount = 5
     private let packetLossThreshold = 0.1
+    private let pingProcessTimeout: TimeInterval = 5.0
 
     private let notiCenter = UNUserNotificationCenter.current()
 
     func start() {
-        gatewayAddress = resolveGateway()
+        if task != nil {
+            task?.cancel()
+            task = nil
+        }
+        gatewayTask?.cancel()
+        gatewayTask = Task { [weak self] in
+            self?.gatewayAddress = await self?.resolveGateway()
+        }
         task = Task { [weak self] in
             await self?.pingLoop()
         }
@@ -46,6 +56,8 @@ class PingMonitor: @unchecked Sendable {
     func stop() {
         task?.cancel()
         task = nil
+        gatewayTask?.cancel()
+        gatewayTask = nil
     }
 
     func resetState() {
@@ -60,9 +72,9 @@ class PingMonitor: @unchecked Sendable {
     }
 
     private func pingLoop() async {
-        let interval = SettingsManager.shared.pingInterval
         var useDNS = true
         while !Task.isCancelled {
+            let interval = max(SettingsManager.shared.pingInterval, 1.0)
             let target = useDNS ? "8.8.8.8" : (gatewayAddress ?? "8.8.8.8")
             let rtt = await performPing(host: target)
             if useDNS {
@@ -70,7 +82,7 @@ class PingMonitor: @unchecked Sendable {
             } else {
                 gatewayRTT = rtt
             }
-            isReachable = (dnsRTT ?? 1) < 2.0 || (gatewayRTT ?? 1) < 2.0
+            isReachable = (dnsRTT ?? .infinity) < 2.0 || (gatewayRTT ?? .infinity) < 2.0
             if useDNS {
                 await checkAndNotify()
             }
@@ -134,7 +146,8 @@ class PingMonitor: @unchecked Sendable {
             if recoveryStart == nil {
                 recoveryStart = Date()
             }
-            if Date().timeIntervalSince(recoveryStart!) >= recoveryDuration {
+            if let recovery = recoveryStart,
+               Date().timeIntervalSince(recovery) >= recoveryDuration {
                 let msg = "\(Localized.pingRecoveryTitle)\n\(Localized.pingRecoveryBody)"
                 await postPingAlert(type: .pingRecovery, level: 0, message: msg)
                 lastAlertLevel = 0
@@ -164,13 +177,13 @@ class PingMonitor: @unchecked Sendable {
     }
 
     private func classifyLatency() -> Int {
-        let dns = dnsRTT ?? 999
-        let gw = gatewayRTT ?? 999
+        let dns = dnsRTT
+        let gw = gatewayRTT
 
-        if dns >= criticalThreshold { return 2 }
-        if gw >= gatewayCriticalThreshold { return 2 }
-        if dns >= warningThreshold { return 1 }
-        if gw >= gatewayWarningThreshold { return 1 }
+        if let dns = dns, dns >= criticalThreshold { return 2 }
+        if let gw = gw, gw >= gatewayCriticalThreshold { return 2 }
+        if let dns = dns, dns >= warningThreshold { return 1 }
+        if let gw = gw, gw >= gatewayWarningThreshold { return 1 }
         return 0
     }
 
@@ -210,8 +223,8 @@ class PingMonitor: @unchecked Sendable {
         return "\(Localized.pingWarningTitle)\n\(Localized.pingWarningBody(dns))"
     }
 
-    private func performPing(host: String) async -> TimeInterval? {
-        return await withCheckedContinuation { continuation in
+    private nonisolated func performPing(host: String) async -> TimeInterval? {
+        await withCheckedContinuation { continuation in
             let task = Process()
             task.launchPath = "/sbin/ping"
             task.arguments = ["-c", "1", "-W", "2000", host]
@@ -220,23 +233,34 @@ class PingMonitor: @unchecked Sendable {
             task.standardOutput = pipe
             task.standardError = pipe
 
-            do {
-                try task.run()
-                task.waitUntilExit()
+            let gate = ResumeGate()
+            let watchdog = DispatchWorkItem {
+                task.terminate()
+                gate.resume {
+                    continuation.resume(returning: nil)
+                }
+            }
 
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            task.terminationHandler = { _ in
+                let data = (try? pipe.fileHandleForReading.readDataToEndOfFile()) ?? Data()
                 let output = String(data: data, encoding: .utf8) ?? ""
-
                 if task.terminationStatus == 0,
                    let line = output.components(separatedBy: "\n").first(where: { $0.contains("time=") }),
                    let msPart = line.components(separatedBy: "time=").last?.components(separatedBy: " ").first,
                    let ms = Double(msPart) {
-                    continuation.resume(returning: ms / 1000.0)
-                    return
+                    gate.resume { continuation.resume(returning: ms / 1000.0) }
+                } else {
+                    gate.resume { continuation.resume(returning: nil) }
                 }
-                continuation.resume(returning: nil)
+            }
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + pingProcessTimeout, execute: watchdog)
+
+            do {
+                try task.run()
             } catch {
-                continuation.resume(returning: nil)
+                watchdog.cancel()
+                gate.resume { continuation.resume(returning: nil) }
             }
         }
     }
@@ -260,26 +284,56 @@ class PingMonitor: @unchecked Sendable {
         try? await notiCenter.add(request)
     }
 
-    private func resolveGateway() -> String? {
-        let task = Process()
-        task.launchPath = "/usr/sbin/route"
-        task.arguments = ["-n", "get", "default"]
+    private nonisolated func resolveGateway() async -> String? {
+        await withCheckedContinuation { continuation in
+            let task = Process()
+            task.launchPath = "/usr/sbin/route"
+            task.arguments = ["-n", "get", "default"]
 
-        let pipe = Pipe()
-        task.standardOutput = pipe
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = FileHandle.nullDevice
 
-        do {
-            try task.run()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-
-            for line in output.components(separatedBy: "\n") {
-                if line.contains("gateway:") {
-                    return line.components(separatedBy: ":").last?.trimmingCharacters(in: .whitespaces)
-                }
+            let gate = ResumeGate()
+            let watchdog = DispatchWorkItem {
+                task.terminate()
+                gate.resume { continuation.resume(returning: nil) }
             }
-        } catch {}
 
-        return nil
+            task.terminationHandler = { _ in
+                let data = (try? pipe.fileHandleForReading.readDataToEndOfFile()) ?? Data()
+                let output = String(data: data, encoding: .utf8) ?? ""
+                for line in output.components(separatedBy: "\n") {
+                    if line.contains("gateway:") {
+                        let gw = line.components(separatedBy: ":").last?.trimmingCharacters(in: .whitespaces)
+                        gate.resume { continuation.resume(returning: gw) }
+                        return
+                    }
+                }
+                gate.resume { continuation.resume(returning: nil) }
+            }
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + pingProcessTimeout, execute: watchdog)
+
+            do {
+                try task.run()
+            } catch {
+                watchdog.cancel()
+                gate.resume { continuation.resume(returning: nil) }
+            }
+        }
+    }
+}
+
+private final class ResumeGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var isResumed = false
+
+    func resume(_ body: @escaping @Sendable () -> Void) {
+        lock.lock()
+        guard !isResumed else { lock.unlock(); return }
+        isResumed = true
+        lock.unlock()
+        body()
     }
 }

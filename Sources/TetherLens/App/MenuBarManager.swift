@@ -34,6 +34,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
     private var lastTrackedSSID: String?
     private var currentSession: Session?
+    private var isMonitoring = false
+    private var debugPanelMonitor: Any?
 
     private var cachedProfile: Profile?
     private var cachedUsage: (upload: Int64, download: Int64)?
@@ -71,6 +73,32 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             self, selector: #selector(handleAppTermination),
             name: NSApplication.willTerminateNotification, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleSettingsChanged),
+            name: .init("settingsChanged"), object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleResignActive),
+            name: NSApplication.didResignActiveNotification, object: nil
+        )
+    }
+
+    @objc private func handleSettingsChanged() {
+        guard isMonitoring else { return }
+        timer?.invalidate()
+        timer = nil
+        cacheTimer?.invalidate()
+        cacheTimer = nil
+        recordTimer?.invalidate()
+        recordTimer = nil
+        ipRefreshTimer?.invalidate()
+        ipRefreshTimer = nil
+        locationTimer?.invalidate()
+        locationTimer = nil
+        TrafficMonitor.shared.stop()
+        TrafficMonitor.shared.start()
+        setupTimers()
+        updateMenuBarText()
     }
 
     @objc private func handleResignActive() {
@@ -92,6 +120,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
     @objc private func handleAppTermination() {
         ProfileManager.shared.endAllActiveSessions()
+        stopMonitoring()
     }
 
     private func setupLocationCallback() {
@@ -105,8 +134,76 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
     private func setupMenuBar() {
         menuBarView.onClick = { [weak self] in self?.togglePopover() }
+        menuBarView.onRightClick = { [weak self] in self?.showMoreMenu() }
         statusItem.view = menuBarView
         updateMenuBarText()
+    }
+
+    private func showMoreMenu() {
+        let menu = NSMenu()
+        let lowPower = SavingModeManager.shared.isLowPowerMode
+        menu.addItem(moreMenuItem(Localized.usageReport) { [weak self] in
+            self?.openPopoverAndTrigger("usageReport")
+        })
+        menu.addItem(moreMenuItem(Localized.appTrafficButton) { [weak self] in
+            self?.openPopoverAndTrigger("appTraffic")
+        })
+        menu.addItem(moreMenuItem(Localized.notificationList) { [weak self] in
+            self?.openPopoverAndTrigger("notifications")
+        })
+        menu.addItem(.separator())
+        menu.addItem(moreMenuItem(Localized.dnsPresetApply) { [weak self] in
+            self?.openPopoverAndTrigger("dnsPreset")
+        })
+        let savingLabel = SavingModeManager.shared.isEnabled ? Localized.savingModeOn : Localized.savingModeOff
+        menu.addItem(moreMenuItem(savingLabel) { [weak self] in
+            self?.openPopoverAndTrigger("savingMode")
+        })
+        menu.addItem(moreMenuItem(lowPower ? Localized.lowPowerModeOn : Localized.lowPowerModeOff) {
+            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.battery")!)
+        })
+        menu.addItem(.separator())
+        menu.addItem(moreMenuItem(Localized.settings) { [weak self] in
+            self?.openPopoverAndTrigger("settings")
+        })
+        menu.addItem(moreMenuItem(Localized.checkUpdates) {
+            UpdaterManager.shared.openDownloadPage()
+        })
+        menu.addItem(moreMenuItem(Localized.about) { [weak self] in
+            self?.openPopoverAndTrigger("about")
+        })
+        #if DEBUG
+        menu.addItem(.separator())
+        menu.addItem(moreMenuItem(Localized.debugPanel) {
+            DebugPanelController.shared.toggle()
+        })
+        #endif
+
+        if let button = statusItem.button {
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height + 4), in: button)
+        } else {
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: menuBarView.bounds.height + 4), in: menuBarView)
+        }
+    }
+
+    private func moreMenuItem(_ title: String, _ handler: @escaping () -> Void) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: #selector(moreMenuAction(_:)), keyEquivalent: "")
+        item.target = self
+        item.representedObject = handler
+        return item
+    }
+
+    @objc private func moreMenuAction(_ sender: NSMenuItem) {
+        (sender.representedObject as? () -> Void)?()
+    }
+
+    private func openPopoverAndTrigger(_ action: String) {
+        if !popover.isShown {
+            togglePopover()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            NotificationCenter.default.post(name: .init("moreAction"), object: nil, userInfo: ["action": action])
+        }
     }
 
     private func setupPopover() {
@@ -182,13 +279,16 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             await ipResolver.refresh()
         }
 
-        recordTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.recordCurrentUsage()
-            }
+        isMonitoring = true
+        setupTimers()
+    }
+
+    private func setupTimers() {
+        recordTimer = scheduleTimer(300) { [weak self] in
+            self?.recordCurrentUsage()
         }
 
-        ipRefreshTimer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in
+        ipRefreshTimer = scheduleTimer(1800) { [weak self] in
             Task { [weak self] in
                 guard let self else { return }
                 if SavingModeManager.shared.isLowPowerMode {
@@ -199,28 +299,37 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             }
         }
 
-        locationTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+        locationTimer = scheduleTimer(300) { [weak self] in
             guard let self else { return }
             if SavingModeManager.shared.isLowPowerMode {
-                Task { await DebugLogger.shared.system("Power", "저전력 모드 - 위치 조회 건너뜀 (2hr 간격)") }
+                self.locationManager.stopUpdating()
+            } else {
+                self.locationManager.startUpdating()
             }
         }
 
-        cacheTimer = Timer.scheduledTimer(withTimeInterval: SettingsManager.shared.cacheRefreshInterval, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.refreshCache()
-            }
+        cacheTimer = scheduleTimer(SettingsManager.shared.cacheRefreshInterval) { [weak self] in
+            self?.refreshCache()
         }
 
-        timer = Timer.scheduledTimer(withTimeInterval: SettingsManager.shared.menuBarRefreshInterval, repeats: true) { [weak self] _ in
-            DispatchQueue.main.async {
-                self?.updateMenuBarText()
+        timer = scheduleTimer(SettingsManager.shared.menuBarRefreshInterval) { [weak self] in
+            self?.updateMenuBarText()
+        }
+    }
+
+    private func scheduleTimer(_ interval: Double, _ block: @escaping @MainActor () -> Void) -> Timer {
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in
+            Task { @MainActor in
+                block()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        return timer
     }
 
     func stopMonitoring() {
         DebugLogger.shared.system("App", "모니터링 중지")
+        isMonitoring = false
         timer?.invalidate()
         timer = nil
         cacheTimer?.invalidate()
@@ -231,6 +340,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         ipRefreshTimer = nil
         locationTimer?.invalidate()
         locationTimer = nil
+        if let monitor = debugPanelMonitor {
+            NSEvent.removeMonitor(monitor)
+            debugPanelMonitor = nil
+        }
         networkMonitor.stop()
         hotspotDetector.stop()
         pingMonitor.stop()
@@ -291,6 +404,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         var totalStr = ""
         var remainingStr = ""
         var todayGB: Double = 0
+        var totalGB: Double = 0
 
         if let ssid = ssid, !ssid.isEmpty {
             if ssid != lastAutoRegisterSSID {
@@ -306,6 +420,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
             if ssid != lastTrackedSSID {
                 if let oldSession = currentSession {
+                    if let oldProfile = lastTrackedSSID.flatMap({ ProfileManager.shared.getProfile(ssid: $0) }) {
+                        ProfileManager.shared.recordUsage(
+                            totalUpload: networkMonitor.totalUpload,
+                            totalDownload: networkMonitor.totalDownload,
+                            profileId: oldProfile.id,
+                            sessionId: oldSession.id
+                        )
+                    }
                     ProfileManager.shared.endSession(oldSession)
                 }
                 if let pid = profile?.id {
@@ -327,14 +449,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             let todayUsage = cachedUsage ?? (0, 0)
             let totalUsage = cachedTotalUsage ?? cachedUsage ?? (0, 0)
             let totalBytes = totalUsage.upload + totalUsage.download
-            let totalGB = Double(totalBytes) / 1_000_000_000
+            totalGB = Double(totalBytes) / 1_000_000_000
             let todayBytes = todayUsage.upload + todayUsage.download
             todayGB = Double(todayBytes) / 1_000_000_000
 
             if let quota = totalQuotaGB, quota > 0 {
                 if SettingsManager.shared.showTotalColumn {
-                    totalStr = formatBytes(todayBytes)
-                    let remaining = max(quota - todayGB, 0)
+                    totalStr = formatBytes(totalUsage.upload + totalUsage.download)
+                    let remaining = max(quota - totalGB, 0)
                     let remainLabel = Localized.string("잔여 ", "Remaining ")
                     if remaining >= 1.0 {
                         remainingStr = remainLabel + String(format: "%.1f GB", remaining)
@@ -350,7 +472,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                     }
                 }
 
-                checkQuotaThresholds(totalGB: todayGB, quota: quota)
+                checkQuotaThresholds(totalGB: totalGB, quota: quota)
             } else if SettingsManager.shared.showTotalColumn {
                 totalStr = formatBytes(totalUsage.upload + totalUsage.download)
                 remainingStr = ""
@@ -369,7 +491,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
         let quotaRatio: Double
         if let quota = totalQuotaGB, quota > 0 {
-            quotaRatio = min(todayGB / quota, 1.0)
+            quotaRatio = min(totalGB / quota, 1.0)
         } else if SettingsManager.shared.showTotalColumn, !totalStr.isEmpty {
             quotaRatio = 0
         } else {
@@ -402,16 +524,16 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
     private func sendQuotaNotification(used: Double, quota: Double) {
         sendNotification(
-            title: "데이터 할당량 초과",
-            body: "\(String(format: "%.1f", used))GB / \(String(format: "%.1f", quota))GB 사용"
+            title: Localized.dataQuotaExceeded,
+            body: Localized.dataQuotaBody(String(format: "%.1f", used), String(format: "%.1f", quota))
         )
     }
 
     private func sendThresholdNotification(used: Double, quota: Double, threshold: Double) {
         let pct = Int(threshold * 100)
         sendNotification(
-            title: "데이터 할당량 \(pct)% 도달",
-            body: "\(String(format: "%.1f", used))GB / \(String(format: "%.1f", quota))GB 사용 (\(pct)%)"
+            title: Localized.quotaPercentTitle(pct),
+            body: Localized.quotaPercentBody(String(format: "%.1f", used), String(format: "%.1f", quota), pct)
         )
     }
 
@@ -548,8 +670,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     }
 
     private func setupDebugPanelShortcut() {
+        guard debugPanelMonitor == nil else { return }
         // LSUIElement 앱은 메뉴바가 없어 NSMenuItem 단축키가 안 먹음 → event monitor 사용
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+        debugPanelMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.modifierFlags.contains(.command) && event.keyCode == 2 {
                 Task { @MainActor in
                     DebugPanelController.shared.toggle()
@@ -578,11 +701,13 @@ class MenuBarView: NSView {
     }
     private var col3FixedW: CGFloat {
         let f = NSFont.monospacedDigitSystemFont(ofSize: currentFontSize, weight: .bold)
-        let base = NSString(string: "잔여 999.9 GB").size(withAttributes: [.font: f]).width
+        let sample = Localized.string("잔여 999.9 GB", "Remaining 999.9 GB")
+        let base = NSString(string: sample).size(withAttributes: [.font: f]).width
         return ceil(base)
     }
 
     var onClick: (() -> Void)?
+    var onRightClick: (() -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -612,7 +737,7 @@ class MenuBarView: NSView {
 
         let upAttr: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: NSColor.systemOrange]
         let downAttr: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: NSColor.systemBlue]
-        let speedAttr: [NSAttributedString.Key: Any] = [.font: regFont, .foregroundColor: NSColor.white, .paragraphStyle: rightStyle]
+        let speedAttr: [NSAttributedString.Key: Any] = [.font: regFont, .foregroundColor: NSColor.labelColor, .paragraphStyle: rightStyle]
 
         let totalColor = totalRatio < 0 ? NSColor.clear : colorForRatio(totalRatio)
         let totalAttr: [NSAttributedString.Key: Any] = totalRatio < 0 ? [:] : [.font: boldFont, .foregroundColor: totalColor, .paragraphStyle: rightStyle]
@@ -658,9 +783,13 @@ class MenuBarView: NSView {
         onClick?()
     }
 
+    override func rightMouseDown(with event: NSEvent) {
+        onRightClick?()
+    }
+
     private func colorForRatio(_ ratio: Double) -> NSColor {
-        let greenBoundary = SavingModeManager.shared.isEnabled ? 0.4 : 0.6
-        let orangeBoundary = SavingModeManager.shared.isEnabled ? 0.65 : 0.85
+        let greenBoundary = SavingModeManager.shared.greenThreshold
+        let orangeBoundary = SavingModeManager.shared.orangeThreshold
         if ratio < greenBoundary {
             return .systemGreen
         } else if ratio < orangeBoundary {

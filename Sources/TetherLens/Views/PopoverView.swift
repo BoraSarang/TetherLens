@@ -115,6 +115,19 @@ struct PopoverView: View {
                 savingModeActive = SavingModeManager.shared.isEnabled
                 tick = Date()
             }
+        .onReceive(NotificationCenter.default.publisher(for: .init("moreAction"))) { notification in
+            guard let action = notification.userInfo?["action"] as? String else { return }
+            switch action {
+            case "usageReport": openStatistics()
+            case "appTraffic": showTraffic = true
+            case "notifications": showNotifications = true
+            case "dnsPreset": showDNSPicker = true
+            case "savingMode": openSavingMode()
+            case "settings": showSettings = true
+            case "about": showAbout = true
+            default: break
+            }
+        }
     }
 
     private var mainContent: some View {
@@ -507,7 +520,7 @@ struct PopoverView: View {
         let totalUsedGB = Double(todayUsage.upload + todayUsage.download) / 1_000_000_000
         let quotaGB = profile?.quotaGB
         if let quotaGB = quotaGB {
-            QoSGauge(used: totalUsedGB, total: quotaGB, saving: SavingModeManager.shared.isEnabled)
+            QoSGauge(used: totalUsedGB, total: quotaGB)
         } else {
             HStack {
                 Spacer()
@@ -540,7 +553,7 @@ struct PopoverView: View {
     }
 
     private var appTrafficPreview: some View {
-        let top3 = Array(trafficMonitor.apps.prefix(3))
+        let top3 = Array(trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }.prefix(3))
         return VStack(spacing: 4) {
             HStack(spacing: 0) {
                 Text(Localized.process)
@@ -742,9 +755,6 @@ struct PopoverView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             Spacer()
-            Button(Localized.donate) { openDonation() }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
             Button(Localized.quit) { NSApplication.shared.terminate(nil) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
@@ -956,11 +966,6 @@ struct PopoverView: View {
 
     private func openSavingMode() {
         showSavingMode = true
-    }
-
-    private func openDonation() {
-        let url = URL(string: "https://buymeacoffee.com/okstart")!
-        NSWorkspace.shared.open(url)
     }
 
     private func flag(from countryCode: String) -> String {

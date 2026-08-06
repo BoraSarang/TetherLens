@@ -10,18 +10,20 @@ struct DebugPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("🐛 [MAC] Debug Logs [\(logger.logs.count)]")
+                Text("🐛 [MAC] \(Localized.string("디버그 로그", "Debug Logs")) [\(logger.logs.count)]")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.white)
                 Spacer()
-                Button(selectedLineIndices.isEmpty ? "선택 복사" : "선택 복사 (\(selectedLineIndices.count)줄)") {
+                Button(selectedLineIndices.isEmpty
+                    ? Localized.string("선택 복사", "Copy Selected")
+                    : String(format: Localized.string("선택 복사 (%d줄)", "Copy Selected (%d lines)"), selectedLineIndices.count)) {
                     copySelection()
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 10))
                 .foregroundColor(selectedLineIndices.isEmpty ? .white.opacity(0.4) : .white.opacity(0.7))
                 .disabled(selectedLineIndices.isEmpty)
-                Button("선택 해제") {
+                Button(Localized.string("선택 해제", "Deselect")) {
                     selectedLineIndices.removeAll()
                     lastSelectedIndex = nil
                 }
@@ -33,12 +35,14 @@ struct DebugPanelView: View {
                     .buttonStyle(.plain)
                     .font(.system(size: 11))
                     .foregroundColor(autoScroll ? .green : .white.opacity(0.3))
-                    .help(autoScroll ? "자동 스크롤 켜짐 (클릭시 끔)" : "자동 스크롤 꺼짐 (클릭시 켬)")
-                Button("전체 복사") { copyAll() }
+                    .help(autoScroll
+                        ? Localized.string("자동 스크롤 켜짐 (클릭시 끔)", "Auto-scroll on (click to turn off)")
+                        : Localized.string("자동 스크롤 꺼짐 (클릭시 켬)", "Auto-scroll off (click to turn on)"))
+                Button(Localized.string("전체 복사", "Copy All")) { copyAll() }
                     .buttonStyle(.plain)
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.7))
-                Button("클리어") {
+                Button(Localized.string("클리어", "Clear")) {
                     logger.clear()
                     selectedLineIndices.removeAll()
                     lastSelectedIndex = nil

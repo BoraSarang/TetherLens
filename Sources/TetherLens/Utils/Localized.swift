@@ -16,7 +16,6 @@ enum Localized {
   static var settings: String { value(kr: "설정", en: "Settings") }
   static var statistics: String { value(kr: "통계", en: "Statistics") }
   static var more: String { value(kr: "더보기", en: "More") }
-  static var donate: String { value(kr: "☕️ 후원", en: "☕️ Donate") }
   static var quit: String { value(kr: "종료", en: "Quit") }
   static var copied: String { value(kr: "복사되었습니다.", en: "Copied.") }
 
@@ -83,6 +82,8 @@ enum Localized {
   static var quotaEnabled: String { value(kr: "사용", en: "Enabled") }
   static var quotaGB: String { value(kr: "GB:", en: "GB:") }
   static var quotaPlaceholder: String { value(kr: "예: 3.0", en: "e.g. 3.0") }
+  static var quotaInvalid: String { value(kr: "할당량을 숫자로 입력하세요 (예: 3.0)", en: "Enter a valid quota number (e.g. 3.0)") }
+  static var nameRequired: String { value(kr: "이름을 입력하세요", en: "Please enter a name") }
   static var namePlaceholder: String { value(kr: "이름", en: "Name") }
 
   // MARK: - DNS Preset
@@ -174,7 +175,6 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   }
   static var appDescription: String { value(kr: "macOS 핫스팟/테더링 데이터 사용량 모니터", en: "macOS Hotspot & Tethering Data Monitor") }
   static var createdBy: String { value(kr: "제작", en: "Created by") }
-  static var donateButton: String { value(kr: "☕️ 후원하기", en: "☕️ Buy me a coffee") }
 
   // MARK: - Saving Mode
   static var savingModeTitle: String { value(kr: "절약 모드", en: "Saving Mode") }
@@ -276,7 +276,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
 
   // MARK: - App Traffic View
   static var trafficCollecting: String { value(kr: "트래픽 데이터를 수집 중입니다...", en: "Collecting traffic data...") }
-  static var excludeSystem: String { value(kr: "시스템 프로세스 제외", en: "Exclude System Processes") }
+  static var excludeSystem: String { value(kr: "시스템 프로세스 포함", en: "Include System Processes") }
   static var resetTraffic: String { value(kr: "초기화", en: "Reset") }
   static var block: String { value(kr: "차단", en: "Block") }
   static var blockingOn: String { value(kr: "차단 중", en: "Blocking") }

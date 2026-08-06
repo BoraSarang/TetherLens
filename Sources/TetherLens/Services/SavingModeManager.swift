@@ -3,7 +3,24 @@ import Foundation
 final class SavingModeManager: @unchecked Sendable {
     static let shared = SavingModeManager()
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        defaults.register(defaults: [
+            "savingMode": false,
+            "savingModeAuto": true
+        ])
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("com.apple.system.lowPowerModeDidChange"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .init("powerStateChanged"), object: nil)
+            }
+        }
+    }
 
     var isEnabled: Bool {
         get { defaults.bool(forKey: "savingMode") }
@@ -26,22 +43,6 @@ final class SavingModeManager: @unchecked Sendable {
     func shouldAutoActivate(used: Double, quota: Double) -> Bool {
         guard autoActivate, quota > 0 else { return false }
         return used / quota >= autoActivateThreshold
-    }
-
-    private init() {
-        defaults.register(defaults: [
-            "savingMode": false,
-            "savingModeAuto": true
-        ])
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("com.apple.system.lowPowerModeDidChange"),
-            object: nil,
-            queue: .main
-        ) { _ in
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .init("powerStateChanged"), object: nil)
-            }
-        }
     }
 
     var isLowPowerMode: Bool {

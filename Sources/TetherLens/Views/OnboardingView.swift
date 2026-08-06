@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
-  let onComplete: () -> Void
+  let onComplete: @MainActor () -> Void
 
   var body: some View {
     VStack(spacing: 20) {

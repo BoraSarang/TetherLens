@@ -59,7 +59,7 @@ struct HeatmapGridView: View {
 
       if let day = selectedDay, let hour = selectedHour {
         let data = gridData[day][hour]
-        Text("\(Localized.dayLabels[day]) \(hour):00 — \(data.totalMinutes)분 (\(data.count)회)")
+        Text(Localized.string("\(data.totalMinutes)분 (\(data.count)회)", "\(data.totalMinutes)min (\(data.count) times)"))
           .font(.caption2)
           .foregroundColor(.primary)
           .padding(.bottom, 4)
@@ -95,13 +95,21 @@ struct HeatmapGridView: View {
             RoundedRectangle(cornerRadius: 3)
               .fill(colorForMinutes(data.totalMinutes))
               .frame(width: 18, height: 18)
-              .overlay(selectedDay == day && selectedHour == hour ? RoundedRectangle(cornerRadius: 3).stroke(Color.white, lineWidth: 1) : nil)
+              .overlay(selectedDay == day && selectedHour == hour ? RoundedRectangle(cornerRadius: 3).stroke(colorScheme == .dark ? Color.white : Color.black, lineWidth: 1) : nil)
               .onHover { hovering in
                 if hovering {
-                  selectedDay = day
-                  selectedHour = hour
+                  select(day: day, hour: hour)
                 }
               }
+              .onTapGesture {
+                select(day: day, hour: hour)
+              }
+              .focusable()
+              .onKeyPress(.return) {
+                select(day: day, hour: hour)
+                return .handled
+              }
+              .accessibilityLabel(cellAccessibilityLabel(day: day, hour: hour, data: data))
           }
         }
       }
@@ -109,27 +117,37 @@ struct HeatmapGridView: View {
     .padding(.horizontal, 8)
   }
 
+  private func select(day: Int, hour: Int) {
+    selectedDay = day
+    selectedHour = hour
+  }
+
+  private func cellAccessibilityLabel(day: Int, hour: Int, data: CellData) -> String {
+    let dayLabel = Localized.dayLabels.indices.contains(day) ? Localized.dayLabels[day] : "\(day)"
+    let time = String(format: Localized.string("%d시 %d분 (%d회)", "%d:00 %d min (%d times)"), hour, data.totalMinutes, data.count)
+    return "\(dayLabel) \(time)"
+  }
+
   private var legendView: some View {
     HStack(spacing: 8) {
       Text(Localized.string("0분", "0min"))
         .font(.system(size: 8))
         .foregroundColor(.secondary)
-      RoundedRectangle(cornerRadius: 2)
-        .fill(Color.gray.opacity(0.25))
-        .frame(width: 12, height: 12)
-      RoundedRectangle(cornerRadius: 2)
-        .fill(Color.blue.opacity(0.35))
-        .frame(width: 12, height: 12)
-      RoundedRectangle(cornerRadius: 2)
-        .fill(Color.blue.opacity(0.6))
-        .frame(width: 12, height: 12)
-      RoundedRectangle(cornerRadius: 2)
-        .fill(Color.blue)
-        .frame(width: 12, height: 12)
+      legendSwatch(colorForMinutes(0))
+      legendSwatch(colorForMinutes(7))
+      legendSwatch(colorForMinutes(22))
+      legendSwatch(colorForMinutes(37))
+      legendSwatch(colorForMinutes(60))
       Text(Localized.string("60분", "60min"))
         .font(.system(size: 8))
         .foregroundColor(.secondary)
     }
     .padding(.vertical, 6)
+  }
+
+  private func legendSwatch(_ color: Color) -> some View {
+    RoundedRectangle(cornerRadius: 2)
+      .fill(color)
+      .frame(width: 12, height: 12)
   }
 }

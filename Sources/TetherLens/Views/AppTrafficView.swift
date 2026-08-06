@@ -3,7 +3,7 @@ import SwiftUI
 struct AppTrafficView: View {
     @ObservedObject private var monitor = TrafficMonitor.shared
     let onClose: () -> Void
-    @State private var showSystemProcesses = false
+    @AppStorage("appTraffic_show_system") private var showSystemProcesses = false
 
     private var blockedApps: Set<String> { AppBlockManager.shared.blockedApps }
 

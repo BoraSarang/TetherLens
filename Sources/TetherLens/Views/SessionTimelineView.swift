@@ -38,7 +38,7 @@ private struct SessionRow: View {
   }
 
   private var durationString: String {
-    guard let end = session.endTime else { return Localized.inProgress }
+    guard let end = session.endTime else { return "" }
     let interval = end.timeIntervalSince(session.startTime)
     let hours = Int(interval) / 3600
     let minutes = (Int(interval) % 3600) / 60
@@ -49,7 +49,7 @@ private struct SessionRow: View {
 
   private var timeRangeString: String {
     let f = DateFormatter()
-    f.dateFormat = "HH:mm"
+    f.setLocalizedDateFormatFromTemplate("HHmm")
     let start = f.string(from: session.startTime)
     guard let end = session.endTime else { return "\(start) → ..." }
     return "\(start) → \(f.string(from: end))"
@@ -74,9 +74,11 @@ private struct SessionRow: View {
         Text(timeRangeString)
           .font(.caption.monospacedDigit().bold())
         HStack(spacing: 4) {
-          Text(durationString)
-            .font(.caption2.monospacedDigit())
-            .foregroundColor(.secondary)
+          if session.endTime != nil {
+            Text(durationString)
+              .font(.caption2.monospacedDigit())
+              .foregroundColor(.secondary)
+          }
           if let ip = ipAddress {
             Text("· \(ip)")
               .font(.caption2.monospacedDigit())

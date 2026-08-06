@@ -11,6 +11,8 @@ struct ProfileEditorView: View {
     @State private var editQuotaValue: String
     @State private var confirmDelete = false
     @State private var confirmDataReset = false
+    @State private var quotaError: String?
+    @State private var nameError: String?
 
     init(profile: Profile, currentSSID: String?, onClose: @escaping () -> Void, onProfilesChanged: @escaping () -> Void) {
         self.profile = profile
@@ -35,6 +37,13 @@ struct ProfileEditorView: View {
                         TextField(Localized.namePlaceholder, text: $editName)
                             .textFieldStyle(.roundedBorder)
                     }
+                    if let nameError = nameError {
+                        Text(nameError)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.leading, 88)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     HStack {
                         Text(Localized.ssidLabel).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
                         VStack(alignment: .leading, spacing: 0) {
@@ -52,10 +61,13 @@ struct ProfileEditorView: View {
                     }
                     HStack {
                         Text(Localized.quotaLabel).font(.body).foregroundColor(.secondary).frame(width: 72, alignment: .trailing)
-                        Toggle(isOn: $editQuotaEnabled) { EmptyView() }
+                        Toggle(Localized.quotaEnabled, isOn: $editQuotaEnabled)
                             .toggleStyle(.switch)
                             .controlSize(.small)
-                        Text(Localized.quotaEnabled).font(.body).foregroundColor(.secondary)
+                            .onChange(of: editQuotaEnabled) { _, _ in
+                                quotaError = nil
+                                nameError = nil
+                            }
                         Spacer()
                     }
                     if editQuotaEnabled {
@@ -65,6 +77,12 @@ struct ProfileEditorView: View {
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 80)
                             Spacer()
+                        }
+                        if let error = quotaError {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .padding(.leading, 88)
                         }
                     }
                 }
@@ -92,15 +110,29 @@ struct ProfileEditorView: View {
                         .controlSize(.small)
 
                     Button(Localized.save) {
+                        quotaError = nil
+                        nameError = nil
                         var updated = profile
-                        updated.name = editName
+                        let trimmedName = editName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !trimmedName.isEmpty else {
+                            nameError = Localized.nameRequired
+                            return
+                        }
+                        updated.name = trimmedName
                         if editQuotaEnabled {
-                            updated.quotaGB = Double(editQuotaValue.replacingOccurrences(of: ",", with: "."))
+                            let trimmed = editQuotaValue.replacingOccurrences(of: ",", with: ".")
+                                .trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard let quota = Double(trimmed), quota > 0 else {
+                                quotaError = Localized.quotaInvalid
+                                return
+                            }
+                            updated.quotaGB = quota
                         } else {
                             updated.quotaGB = nil
                         }
                         ProfileManager.shared.saveProfile(updated)
                         onProfilesChanged()
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                         onClose()
                     }
                     .buttonStyle(.borderedProminent)
