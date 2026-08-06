@@ -2,8 +2,8 @@ import SwiftUI
 
 struct DebugPanelView: View {
     @ObservedObject var logger = DebugLogger.shared
-    @State private var selectedLineIndices: Set<Int> = []
-    @State private var lastSelectedIndex: Int?
+    @State private var selectedIDs: Set<UUID> = []
+    @State private var lastSelectedID: UUID?
     @State private var autoScroll = true
     @State private var pauseWork: DispatchWorkItem?
 
@@ -14,23 +14,23 @@ struct DebugPanelView: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.white)
                 Spacer()
-                Button(selectedLineIndices.isEmpty
+                Button(selectedIDs.isEmpty
                     ? Localized.string("선택 복사", "Copy Selected")
-                    : String(format: Localized.string("선택 복사 (%d줄)", "Copy Selected (%d lines)"), selectedLineIndices.count)) {
+                    : String(format: Localized.string("선택 복사 (%d줄)", "Copy Selected (%d lines)"), selectedIDs.count)) {
                     copySelection()
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 10))
-                .foregroundColor(selectedLineIndices.isEmpty ? .white.opacity(0.4) : .white.opacity(0.7))
-                .disabled(selectedLineIndices.isEmpty)
+                .foregroundColor(selectedIDs.isEmpty ? .white.opacity(0.4) : .white.opacity(0.7))
+                .disabled(selectedIDs.isEmpty)
                 Button(Localized.string("선택 해제", "Deselect")) {
-                    selectedLineIndices.removeAll()
-                    lastSelectedIndex = nil
+                    selectedIDs.removeAll()
+                    lastSelectedID = nil
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 10))
-                .foregroundColor(selectedLineIndices.isEmpty ? .white.opacity(0.4) : .white.opacity(0.7))
-                .disabled(selectedLineIndices.isEmpty)
+                .foregroundColor(selectedIDs.isEmpty ? .white.opacity(0.4) : .white.opacity(0.7))
+                .disabled(selectedIDs.isEmpty)
                 Button("📌") { autoScroll.toggle() }
                     .buttonStyle(.plain)
                     .font(.system(size: 11))
@@ -44,8 +44,8 @@ struct DebugPanelView: View {
                     .foregroundColor(.white.opacity(0.7))
                 Button(Localized.string("클리어", "Clear")) {
                     logger.clear()
-                    selectedLineIndices.removeAll()
-                    lastSelectedIndex = nil
+                    selectedIDs.removeAll()
+                    lastSelectedID = nil
                 }
                     .buttonStyle(.plain)
                     .font(.system(size: 10))
@@ -62,19 +62,19 @@ struct DebugPanelView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 1) {
-                        ForEach(Array(logger.logs.enumerated()), id: \.offset) { index, entry in
+                        ForEach(logger.logs) { entry in
                             Text("[\(entry.timestamp)] [\(entry.level.rawValue)] [\(entry.platform)] [\(entry.category)] \(entry.message)\(entry.meta.map { " | meta=\($0)" } ?? "")")
                                 .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(selectedLineIndices.contains(index) ? .white : textColor(for: entry.level))
+                                .foregroundColor(selectedIDs.contains(entry.id) ? .white : textColor(for: entry.level))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 1)
-                                .background(selectedLineIndices.contains(index) ? Color.accentColor : Color.clear)
+                                .background(selectedIDs.contains(entry.id) ? Color.accentColor : Color.clear)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
-                                    handleTap(at: index)
+                                    handleTap(entry)
                                 }
-                                .id(index)
+                                .id(entry.id)
                         }
                     }
                 }
@@ -85,9 +85,9 @@ struct DebugPanelView: View {
                     }
                 )
                 .onChange(of: logger.logs.count) { _, _ in
-                    guard autoScroll else { return }
+                    guard autoScroll, let lastID = logger.logs.last?.id else { return }
                     withAnimation(.easeOut(duration: 0.1)) {
-                        proxy.scrollTo(logger.logs.count - 1, anchor: .bottom)
+                        proxy.scrollTo(lastID, anchor: .bottom)
                     }
                 }
             }
@@ -102,17 +102,21 @@ struct DebugPanelView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: work)
     }
 
-    private func handleTap(at index: Int) {
+    private func handleTap(_ entry: DebugLogEntry) {
         pauseAutoScroll()
-        if NSEvent.modifierFlags.contains(.shift), let last = lastSelectedIndex {
-            let range = min(last, index)...max(last, index)
-            selectedLineIndices.formUnion(range)
+        if NSEvent.modifierFlags.contains(.shift), let last = lastSelectedID {
+            let ids = logger.logs.map(\.id)
+            if let currentIdx = ids.firstIndex(of: entry.id),
+               let lastIdx = ids.firstIndex(of: last) {
+                let range = min(lastIdx, currentIdx)...max(lastIdx, currentIdx)
+                selectedIDs.formUnion(logger.logs[range].map(\.id))
+            }
         } else if NSEvent.modifierFlags.contains(.command) {
-            selectedLineIndices.toggle(index)
-            lastSelectedIndex = index
+            selectedIDs.toggle(entry.id)
+            lastSelectedID = entry.id
         } else {
-            selectedLineIndices = [index]
-            lastSelectedIndex = index
+            selectedIDs = [entry.id]
+            lastSelectedID = entry.id
         }
     }
 
@@ -123,8 +127,8 @@ struct DebugPanelView: View {
     }
 
     private func copySelection() {
-        let text = selectedLineIndices.sorted()
-            .compactMap { logger.logs[safe: $0] }
+        let text = logger.logs
+            .filter { selectedIDs.contains($0.id) }
             .map { "[\($0.timestamp)] [\($0.level.rawValue)] [\($0.platform)] [\($0.category)] \($0.message)\($0.meta.map { " | meta=\($0)" } ?? "")" }
             .joined(separator: "\n")
         NSPasteboard.general.clearContents()
@@ -148,12 +152,6 @@ extension Set {
     mutating func toggle(_ element: Element) {
         if contains(element) { remove(element) }
         else { insert(element) }
-    }
-}
-
-extension Collection {
-    subscript(safe index: Index) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }
 

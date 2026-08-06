@@ -1,8 +1,9 @@
 import Foundation
 import UserNotifications
+import Combine
 
 @MainActor
-final class AppBlockManager {
+final class AppBlockManager: ObservableObject {
     static let shared = AppBlockManager()
 
     private let defaults = UserDefaults.standard
@@ -19,6 +20,7 @@ final class AppBlockManager {
         set {
             defaults.set(newValue.sorted().joined(separator: ","), forKey: blockedKey)
             notified.removeAll()
+            objectWillChange.send()
         }
     }
 

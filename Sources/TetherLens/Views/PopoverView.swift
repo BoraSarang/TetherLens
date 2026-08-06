@@ -46,6 +46,9 @@ struct PopoverView: View {
     @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
     @AppStorage("popover_summary_mode") private var summaryMode = true
 
+    // publisher 정체성 고정 (body 재평가마다 새 Timer가 만들어지는 것을 방지)
+    private static let tickTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
     var body: some View {
         mainContent
             .sheet(isPresented: $showDNSPicker) {
@@ -96,9 +99,13 @@ struct PopoverView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("quotaAlert"))) { notification in
             if let msg = notification.userInfo?["message"] as? String {
+                let expected = msg
                 quotaAlertMessage = msg
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                    self.quotaAlertMessage = nil
+                    // 5초 내 새 알림이 온 경우 이전 클리어가 새 알림을 지우지 않도록 현재 값 비교
+                    if self.quotaAlertMessage == expected {
+                        self.quotaAlertMessage = nil
+                    }
                 }
             }
         }
@@ -106,9 +113,12 @@ struct PopoverView: View {
             if let msg = notification.userInfo?["message"] as? String {
                 let typeRaw = notification.userInfo?["type"] as? String ?? ""
                 let type = AppNotification.NotificationType(rawValue: typeRaw) ?? .pingWarning
-                pingAlert = PingAlert(message: msg, type: type)
+                let expected = PingAlert(message: msg, type: type)
+                pingAlert = expected
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                    self.pingAlert = nil
+                    if self.pingAlert?.message == expected.message {
+                        self.pingAlert = nil
+                    }
                 }
             }
         }
@@ -145,7 +155,7 @@ struct PopoverView: View {
         }
         .padding(TLSpace.inset)
         .frame(width: TLSize.popoverWidth)
-        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+        .onReceive(Self.tickTimer) { _ in
             tick = Date()
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("connectionChanged"))) { _ in

@@ -116,12 +116,14 @@ struct SettingsView: View {
                                     .font(TLFont.caption2)
                                     .foregroundColor(TLPalette.textSecondary)
                                 Spacer()
-                                Slider(value: $fontSize, in: 7...14, step: 1)
-                                    .frame(width: 80)
-                                    .onChange(of: fontSize) { _, newValue in
-                                        SettingsManager.shared.menuBarFontSize = newValue
+                                Slider(value: $fontSize, in: 7...14, step: 1,
+                                       onEditingChanged: { editing in
+                                    if !editing {
+                                        SettingsManager.shared.menuBarFontSize = fontSize
                                         NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                                     }
+                                })
+                                .frame(width: 80)
                                 Text("\(Int(fontSize))pt")
                                     .font(TLFont.caption).monospacedDigit()
                                     .frame(width: 28, alignment: .trailing)

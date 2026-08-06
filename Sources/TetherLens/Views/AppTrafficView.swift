@@ -2,10 +2,11 @@ import SwiftUI
 
 struct AppTrafficView: View {
     @ObservedObject private var monitor = TrafficMonitor.shared
+    @ObservedObject private var blockManager = AppBlockManager.shared
     let onClose: () -> Void
     @AppStorage("appTraffic_show_system") private var showSystemProcesses = false
 
-    private var blockedApps: Set<String> { AppBlockManager.shared.blockedApps }
+    private var blockedApps: Set<String> { blockManager.blockedApps }
 
     private var isBlockingActive: Bool {
         !blockedApps.isEmpty || SavingModeManager.shared.isEnabled

@@ -390,13 +390,12 @@ final class ProfileManager: @unchecked Sendable {
 
     func getIPForSession(_ session: Session) -> IPLog? {
         try! db.read { db in
-            let start = session.startTime
-            let end = session.endTime ?? Date()
-            let logs = try IPLog
+            try IPLog
                 .filter(Column("profile_id") == session.profileId)
+                .filter(Column("first_seen_at") <= (session.endTime ?? Date()))
+                .filter(Column("last_seen_at") >= session.startTime)
                 .order(Column("first_seen_at").desc)
-                .fetchAll(db)
-            return logs.first { $0.firstSeenAt <= end && $0.lastSeenAt >= start }
+                .fetchOne(db)
         }
     }
 
