@@ -6,6 +6,7 @@
 
 ### Changed
 - **슬립 시 폴링 일시중지 (T-119)** — 시스템 슬립(`willSleepNotification`) 진입 시 네트워크/핫스팟/핑/트래픽 측정과 타이머를 일시중지하고 마지막 사용량을 기록, 깨어남(`didWakeNotification`) 시 자동 재개. 슬립 직전 사용량 유실 방지
+- **팝오버 닫힘 시 tick 중지 (T-120)** — 1초 갱신 타이머를 autoconnect → onAppear connect/onDisappear cancel로 변경해 닫힌 동안 갱신 루프 제거
 
 ## [0.25.0] — 2026-08-06 — 통계 전면 개편
 

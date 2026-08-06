@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct PopoverView: View {
     let networkMonitor: NetworkMonitor
@@ -47,7 +48,9 @@ struct PopoverView: View {
     @AppStorage("popover_summary_mode") private var summaryMode = true
 
     // publisher 정체성 고정 (body 재평가마다 새 Timer가 만들어지는 것을 방지)
-    private static let tickTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    // 자동 시작(autoconnect) 대신 onAppear에서 connect, 닫힘(onDisappear)에서 cancel해 배터리 절감
+    @State private var tickPublisher = Timer.publish(every: 1, on: .main, in: .common)
+    @State private var tickSubscription: Cancellable?
 
     var body: some View {
         mainContent
@@ -155,7 +158,7 @@ struct PopoverView: View {
         }
         .padding(TLSpace.inset)
         .frame(width: TLSize.popoverWidth)
-        .onReceive(Self.tickTimer) { _ in
+        .onReceive(tickPublisher) { _ in
             tick = Date()
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("connectionChanged"))) { _ in
@@ -166,6 +169,13 @@ struct PopoverView: View {
         }
         .onAppear {
             updateSessionStartTime()
+            if tickSubscription == nil {
+                tickSubscription = tickPublisher.connect()
+            }
+        }
+        .onDisappear {
+            tickSubscription?.cancel()
+            tickSubscription = nil
         }
     }
 
