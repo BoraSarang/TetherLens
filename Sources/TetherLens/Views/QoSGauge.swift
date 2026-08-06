@@ -49,6 +49,9 @@ struct QoSGauge: View {
                 Text(Localized.remaining(formatGB(remaining)))
                     .font(.caption2)
                     .foregroundColor(gaugeColor)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(.secondary)
             }
         }
     }
