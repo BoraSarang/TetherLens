@@ -12,3 +12,22 @@
 6. 문서: PLAN_v0.22.2, TODO T-77~78, CHANGELOG v0.22.2, PERFORMANCE_OPTIMIZATION.md P3 정정 + v0.22.2 섹션.
 7. 오프라인 큐: N/A.
 8. E2E/k6: N/A — 자동화 단위 테스트(32개) + 수동 확인.
+
+---
+
+# Session — 2026-08-06 (macOS) — v0.23.0
+
+1. 무엇을: **v0.23.0 디자인 시스템 + 팝오버 재설계 (T-79~T-84)** — 팝오버 감사 보고서(구조/직관성/통일성)에서 도출. 전 뷰 하드코딩 값(폰트 8~11px, 색상, 간격, 모서리, 시트/라벨 폭)을 `DesignSystem/Theme.swift` 토큰으로 치환 + 팝오버 요약/상세 2단 재설계.
+2. 플랫폼: [macOS]
+3. 빌드: swift test 32개/7스위트 통과, build-macos.sh debug 성공(번들 생성 + 앱 실행, DebugPanel ON). turbo 캐시: SwiftPM이라 N/A. [PERF] 이슈 없음.
+4. 남은 TODO: v0.23.0 완료. 다음 후보(미착수): 시트 폭 값 자체 변경(현행 유지 — 회귀 위험), DebugPanelView 토큰화(개발자 패널이라 제외 결정), 성능 후보(슬립 폴링 중지 등 P1), Sparkle/공증/Launch Agent.
+5. 전달 로그:
+   - **Info.plist 버전 0.20.0/20 → 0.23.0/23 동기화** — 0.21~0.22에서 버전 누락이 있었음.
+   - **팝오버 재설계 확정**: `popover_summary_mode` 기본 true(요약), 하단 `▾/▴` 토글 버튼, 배너 상단 고정, QoS 미설정 시 `할당량 설정` 버튼(프로필 있으면 editingProfile/없으면 showProfileManager), DNS 행 chevron.right 단서. 연결/주소 정보는 접이식 유지.
+   - **토큰 치환 원칙**: 시맨틱 색(upload/download/success/danger/accent) + 텍스트/구분 + 폰트 스케일(8~11px) + 간격(4~20) + 시트/컬럼 폭. 시트 폭 값은 현행 유지(토큰 참조만).
+   - **제외 3종**: DebugPanelView(개발자 전용 다크 패널), 히트맵 그라데이션/지도 핀 색(시각화 고유), 시스템 표준 폰트 title2/title3/largeTitle(난립 아님).
+   - **커밋**: 38e9788(v0.22.2 선커밋), c03fe4b(PLAN/TODO), 7660951(T-79), 92b6c44(T-80/81), 9439fc9(T-82), 886de39/5707425/a47a596(T-83 전반), 2f78ee8(T-83 후반 8개 뷰), 7a87fd2(T-84 문서).
+   - **검증**: 테스트 32/32 통과, 빌드 완료. GUI 수동 확인(토글/배너/할당량 버튼)은 사용자 확인 필요.
+6. 문서: PLAN_v0.23.0_uiux.md, TODO T-79~84 ✅, CHANGELOG v0.23.0.
+7. 오프라인 큐: N/A.
+8. E2E/k6: N/A — 자동화 단위 테스트(32개) + 수동 확인.
