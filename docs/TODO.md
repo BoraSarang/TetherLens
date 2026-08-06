@@ -81,3 +81,52 @@
 | 45 | 앱 트래픽 차단/허용 (AppBlockManager + 감지 알림) | P2 | ✅ |
 | 46 | 프로필 자동전환 학습 (autoSwitchProfile 토글) | P2 | ✅ |
 | 47 | 위젯 (WidgetKit) — SwiftPM이 .appex 미지원, Xcode 전환 필요로 제외 | P3 | ❌ |
+
+## ✅ v0.21 — 2차 반복 분석 버그 수정 (2026-08-06)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 48 | 절약모드 hosts 차단 `\\n` 리터럴 버그 수정 | P0 | ✅ |
+| 49 | v8 유니크 인덱스 충돌 회귀 + DB 삭제 fallback 개선 | P0 | ✅ |
+| 50 | 온보딩 표시(데드 코드) + 위치 권한 요청 시점 이동 | P0 | ✅ |
+| 51 | handleSettingsChanged guard 역전 + TrafficMonitor 주기 반영 | P1 | ✅ |
+| 52 | TrafficMonitor.stop() 마지막 300초 flush 복원 + nettop 타임아웃 | P1 | ✅ |
+| 53 | SSID 전환 시 마지막 사용량 flush | P1 | ✅ |
+| 54 | 할당량 의미론 누적 기준 통일 (잔여/게이지/알림) | P1 | ✅ |
+| 55 | LocationManager 배터리 개선 (첫 획득 후 중지 + 저전력) | P2 | ✅ |
+| 56 | HotspotDetector 10.x 오분류 수정 | P1 | ✅ |
+| 57 | PingMonitor gatewayTask/클램프/nil 폴백 | P2 | ✅ |
+| 58 | UI 소소한 버그 (legend/로케일/CSV 이스케이프/빈 이름) | P2 | ✅ |
+| 59 | 수동 테스트 가이드 문서화 (docs/tests/v0.21.0_macos.md) | P1 | ✅ |
+| 60 | 메뉴바 오른쪽 클릭 → 더보기 드롭다운 메뉴 | P1 | ✅ |
+
+## ✅ v0.21.1 — Low 후보 6건 개선 (2026-08-06)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 61 | QoS 임계값 단일화 (QoSGauge + MenuBarManager → SavingModeManager) | P2 | ✅ |
+| 62 | AppTrafficView 상태 @AppStorage 유지 | P2 | ✅ |
+| 63 | SettingsView 폴링 간격 즉시 저장 (onDisappear 의존 제거) | P2 | ✅ |
+| 64 | UsageReportView appTraffic 조건부 로드 | P2 | ✅ |
+| 65 | HeatmapGridView 키보드 접근성 | P3 | ✅ |
+| 66 | DebugPanelView 하드코딩 문자열 로컬라이즈 | P3 | ✅ |
+
+## 🔄 v0.22 — 자동화 테스트 도입 (2026-08-06)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 67 | 주입 리팩토링 (DataStore/ProfileManager/SettingsManager/SavingModeManager) | P1 | ✅ |
+| 68 | Package.swift 테스트 타겟 추가 | P1 | ✅ |
+| 69 | DataStore/ProfileManager 테스트 | P1 | ✅ |
+| 70 | SettingsManager/SavingModeManager 테스트 | P1 | ✅ |
+| 71 | SystemProcesses/Localized 테스트 | P2 | ✅ |
+| 72 | scripts/test.sh 자동화 스크립트 | P1 | ✅ |
+| 73 | 문서화 (PLAN/TODO/CHANGELOG/TEST) | P1 | ✅ |
+
+## 🔄 v0.22.1 — Android 핫스팟 감지 보강 (2026-08-06)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 74 | Android 핫스팟 감지 보강 (SSID 키워드 확장 + 게이트웨이 대역 + 분기 순서) | P1 | ✅ |
+| 75 | isAndroidSSID/isAndroidHotspotGateway 단위 테스트 | P2 | ✅ |
+| 76 | 수동 재확인 (OkStart 연결 시 타입 표시) | P1 | ✅ |

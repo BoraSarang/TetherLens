@@ -1,5 +1,106 @@
 # Changelog
 
+## [0.22.1] — 2026-08-06 — Android 핫스팟 감지 보강
+
+### Fixed
+- **Android 핫스팟이 "일반 WiFi"로 오분류되는 버그** — 감지가 게이트웨이 대역(`192.168.43/80/42`)과 제한적 SSID 키워드에만 의존해, 비표준 게이트웨이(`10.229.78.x`) + 비키워드 SSID(예: `OkStart`) 연결 시 `normalWiFi`로 분류되던 문제
+  - `isAndroidHotspotGateway(_:)` 신설 — `192.168.43/42/44/49/80/81/111.x` 대역 처리
+  - `isAndroidSSID(_:)` 키워드 확장 — `okstart`, `oppo`, `vivo`, `realme`, `infinix`, `tecno`, `tp-link` 추가
+  - 분기 순서 개선 — 게이트웨이 대역 → iOS(172.20.10.x) → Android SSID → isExpensive(iOS) → normalWiFi 순으로 판정. SSID 기반 Android 판정이 isExpensive보다 우선해 Android 핫스팟이 iOS로 오분류되는 것을 방지
+
+### Tests
+- `HotspotDetectorTests` 스위트 추가 (4개 테스트): 안드로이드 SSID/비안드로이드 SSID/게이트웨이 대역/비안드로이드 대역 — 총 32개 테스트, 7개 스위트 통과
+
+### Docs
+- TODO T-74~T-76
+
+### Platform
+- [macOS]
+
+## [0.22.0] — 2026-08-06 — 자동화 테스트 도입
+
+### Added
+- **자동화 테스트 (Swift Testing)** — `Tests/TetherLensTests/`에 28개 테스트, 6개 스위트:
+  - DataStore: v1~v8 마이그레이션 스키마(테이블/인덱스/FK) 검증
+  - ProfileManager: 프로필 CRUD, autoRegister, 누적 델타 계산, 일/월 요약, 세션 시작·종료·활성·사용량 연결, IP 로그 1800초 dedup·merge·getIPForSession, cleanupOldLogs(세션 연쇄 삭제), exportData CSV 이스케이프, appTraffic 집계
+  - SettingsManager: 기본값/저장/잘못된 모드 폴백/resetPollingIntervals/MenuBarMode
+  - SavingModeManager: 절약모드 임계값 단일화(green/orange), shouldAutoActivate
+  - SystemProcesses: 주요 시스템 프로세스 포함/사용자 앱 제외
+  - Localized: ko/en 반환
+- **`scripts/test.sh` 자동화 스크립트** — `swift test` 실행 → 통과 시 자동화 불가 수동 체크리스트 10항목 안내, 실패 시 실패 목록 출력 후 exit 1 (macOS bash 3.2 유니코드 파싱 이슈로 ASCII + hex 이스케이프 사용)
+
+### Changed
+- 테스트 가능한 주입 리팩토링 (동작 변경 없음):
+  - `DataStore.init(dbQueue:)` + `makeMigrator` internal 노출
+  - `ProfileManager.init(db:)` DB 주입
+  - `SettingsManager.init(defaults:)` / `SavingModeManager.init(defaults:)` UserDefaults 주입
+
+### Docs
+- `docs/plans/PLAN_v0.22.0_macos.md`, TODO T-67~T-73
+
+### Platform
+- [macOS]
+
+## [0.21.1] — 2026-08-06 — Low 후보 6건 개선 (코드 품질·접근성)
+
+### Fixed
+- **QoS 게이지 임계값 3중 중복 제거** — `QoSGauge`·`MenuBarManager.colorForRatio`가 하드코딩하던 초록/주황 경계(0.4/0.6, 0.65/0.85)를 `SavingModeManager.greenThreshold/orangeThreshold`로 단일화. 절약모드 ON/OFF에 따른 색상 경계가 메뉴바·팝오버·게이지 전부 일치
+- **AppTrafficView "시스템 프로세스 제외" 토글 상태 비유지** → `@State` → `@AppStorage("appTraffic_show_system")` 전환 (팝오버 닫아도 유지)
+- **SettingsView 폴링 간격 저장 유실** — `onDisappear` 단독 저장(강제 닫힘 시 유실) → 각 Picker `onChange` 즉시 저장 + 방어적 `onDisappear` 유지
+- **UsageReportView 불필요 appTraffic 로드** — `getAppTrafficLogs`를 `viewMode == .appTraffic`일 때만 쿼리 (탭 전환/프로필 변경 시 불필요한 DB 조회 제거)
+
+### Accessibility
+- **HeatmapGridView 키보드 접근성** — 셀에 `.focusable()` + `.onKeyPress(.return)` + `.onTapGesture` + `.accessibilityLabel`(요일·시간·분·횟수) 추가. 기존 hover 선택과 동일 동작
+- **DebugPanelView 하드코딩 문자열 로컬라이즈** — "선택 복사/선택 해제/전체 복사/클리어/자동 스크롤/디버그 로그"를 `Localized.string(ko, en)`으로 전환
+
+### Changed
+- **후원 버튼 제거** — 팝오버 하단 "☕️ 후원" + 정보 창 "☕️ 후원하기" 버튼, `openDonation()`, `Localized.donate/donateButton` 제거 (향후 별도 후원 링크 도입 예정)
+- **제작자/문의 메일 변경** — AboutView 제작자 OkStart → BoRaSaRang, 이메일 okstart@gmail.com → leeborasarang@gmail.com (mailto 링크 동기화)
+
+### Docs
+- `docs/plans/PLAN_v0.21.1_macos.md`, TODO T-61~T-66
+
+### Platform
+- [macOS]
+
+## [0.21.0] — 2026-08-06 — 2차 반복 분석 버그 수정 (데이터 유실·크래시 회귀 제거)
+
+### Fixed (High)
+- **절약모드 hosts 차단 무효 버그** — `SavingModeController`의 `"\\n"` 리터럴로 도메인이 한 줄로 붙어 차단 안 되던 버그 → `"\n"` 개행으로 수정 (`docs/tests/v0.21.0_macos.md` T-41~T-43)
+- **v8 마이그레이션 유니크 인덱스 충돌 회귀** — `addIPLog` 1800s 후 재접속 시 `SQLITE_CONSTRAINT` 크래시 + 마이그레이션 실패 시 DB 전체 삭제(데이터 유실) → 유니크 인덱스 제거, 손상 DB는 `.corrupt-{ts}` 백업 후 재생성 (T-20, T-44)
+- **온보딩 절대 표시 안 되던 버그** — `Settings` 씬 onAppear(설정 메뉴 없는 액세서리 앱에선 미호출) → AppDelegate 첫 실행 시 NSWindow 표시 + 위치 권한 요청 시점을 온보딩 완료 시로 이동 (T-01~T-03)
+
+### Fixed (Medium)
+- `handleSettingsChanged` guard 역전 (`guard !isMonitoring`) → 설정 변경 미반영 + 이중 타이머 위험, TrafficMonitor 갱신 주기 즉시 반영 (T-26)
+- `TrafficMonitor.stop()` 마지막 300초 트래픽 유실 → stop()에서 flush 후 초기화 (T-25)
+- nettop 타임아웃 부재(큐 스레드 블로킹) → 15s watchdog + launch 오류 처리
+- SSID 전환 시 마지막 사용량 미기록 → 이전 프로필/세션으로 recordUsage flush (T-19)
+- `handleResignActive` 미등록 → 팝오버 자동 닫힘 (T-06)
+- 할당량 의미론 통일 — 잔여/게이지/알림/절약모드 전부 누적(totalGB) 기준 (T-14~T-16)
+- `showTotalColumn` 기본값 true (menuBarMode 기본과 일치) (T-05)
+- LocationManager 연속 위치 갱신(배터리) → 첫 획득 후 중지 + 5분/저전력 반영 (T-49~T-50)
+- PopoverView 트래픽 미리보기에 시스템 프로세스 필터 (T-22)
+- HotspotDetector 10.x 전체 안드로이드 오분류 → 192.168.43/80/42 + SSID 키워드 보완 (T-27~T-29)
+
+### Fixed (Low)
+- PingMonitor: gatewayTask 저장·취소, pingInterval 1s 클램프, classifyLatency nil 폴백(단발 실패 오알림 방지)
+- HeatmapGridView legend 색상 일치 + "분/회" 로컬라이즈 (T-39~T-40)
+- MenuBarView `NSColor.white` → `labelColor` (라이트 모드 가독) (T-04)
+- DateFormatter 하드코딩 "HH:mm" → 로케일 템플릿 (T-35)
+- exportData CSV 이스케이프 (프로필명 콤마/따옴표) (T-37)
+- ProfileEditorView 빈 이름 검증 + 토글 접근성 라벨 + 에러 리셋 (T-08, T-11)
+- MenuBarView col3 폭 영어 로케일 클리핑 방지
+
+### Changed
+- DataStore v8: `usage_log` session_id FK + 복합 인덱스 유지 (유니크 인덱스만 제거), `cleanupOldLogs`가 세션·IP 포함 정리 (T-46)
+- **메뉴바 오른쪽 클릭 → "더보기" 드롭다운 메뉴** — `MenuBarView.rightMouseDown` + `MenuBarManager.showMoreMenu()` (NSMenu), 선택 시 팝오버 열고 해당 시트 트리거 (`moreAction` notification). 팝오버 내부 "더보기" 메뉴와 동일한 항목 (T-51~T-58)
+
+### Docs
+- `docs/plans/PLAN_v0.21.0_macos.md`, `docs/tests/v0.21.0_macos.md` (T-01~T-58)
+
+### Platform
+- [macOS]
+
 ## [0.20.0] — 2026-08-06 — 세션 IP + 내보내기 + 메뉴바 커스텀 + 트래픽 차단
 
 ### Added
@@ -164,7 +265,7 @@
   - "더보기..." 클릭 → 전체 리스트 시트 (`AppTrafficView`)
   - 더보기 메뉴에서 "앱별 트래픽" 항목
   - 통계 창 사이드바에 "앱별 트래픽" 모드 — 누적 업로드/다운로드 표시
-- **정보 창** (`AboutView`) — 앱 버전, 제작자(OkStart), 이메일, ☕️ 후원하기
+- **정보 창** (`AboutView`) — 앱 버전, 제작자(BoRaSaRang), 문의 메일, ☕️ 후원하기
 - **프로필 통계 버튼** — 팝오버 프로필 영역 + 프로필 관리 목록에 "통계" 버튼
   - 클릭 시 해당 프로필이 선택된 UsageReportView로 이동
 - **프로필 관리 마지막 접속 시간** — 비접속 중 프로필에 "마지막 접속: N분 전" 표시

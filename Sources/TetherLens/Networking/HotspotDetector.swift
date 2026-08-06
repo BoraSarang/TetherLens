@@ -153,16 +153,12 @@ class HotspotDetector: @unchecked Sendable {
 
             let detectedType: ConnectionType
 
-            if let gw = gatewayIP {
-                if gw.hasPrefix("192.168.43.") || gw.hasPrefix("10.") {
-                    detectedType = .androidHotspot(ssid: wifi.ssid)
-                } else if gw.hasPrefix("172.20.10.") {
-                    detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
-                } else if isExpensive {
-                    detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
-                } else {
-                    detectedType = .normalWiFi(ssid: wifi.ssid, bssid: wifi.bssid)
-                }
+            if isAndroidHotspotGateway(gatewayIP) {
+                detectedType = .androidHotspot(ssid: wifi.ssid)
+            } else if gatewayIP?.hasPrefix("172.20.10.") == true {
+                detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
+            } else if isAndroidSSID(wifi.ssid) {
+                detectedType = .androidHotspot(ssid: wifi.ssid)
             } else if isExpensive {
                 detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
             } else {
@@ -268,19 +264,25 @@ class HotspotDetector: @unchecked Sendable {
         return appleOUIs.contains(oui) ? .iOSPersonalHotspot(ssid: nil) : .androidHotspot(ssid: nil)
     }
 
-    private func isPersonalRange(_ ip: String) -> Bool {
-        let personalPrefixes = ["172.16.", "172.17.", "172.18.", "172.19.",
-                                "172.20.", "172.21.", "172.22.", "172.23.",
-                                "172.24.", "172.25.", "172.26.", "172.27.",
-                                "172.28.", "172.29.", "172.30.", "172.31.",
-                                "192.168."]
-        return personalPrefixes.contains { ip.hasPrefix($0) }
+    func isAndroidHotspotGateway(_ ip: String?) -> Bool {
+        guard let ip = ip else { return false }
+        let prefixes = [
+            "192.168.43.",  // Samsung
+            "192.168.42.",  // LG 등
+            "192.168.44.",  // 기타
+            "192.168.49.",  // Xiaomi / Pixel
+            "192.168.80.",  // 기타
+            "192.168.81.",  // Android 14+ 일부
+            "192.168.111."  // Pixel 일부
+        ]
+        return prefixes.contains { ip.hasPrefix($0) }
     }
 
-    private func isAndroidSSID(_ ssid: String?) -> Bool {
+    func isAndroidSSID(_ ssid: String?) -> Bool {
         guard let ssid = ssid?.lowercased() else { return false }
         let keywords = ["galaxy", "android", "sm-", "samsung", "oneplus", "xiaomi",
-                        "redmi", "huawei", "pixel", "motog", "asus", "tplink"]
+                        "redmi", "huawei", "pixel", "motog", "asus", "tplink", "tp-link",
+                        "okstart", "oppo", "vivo", "realme", "infinix", "tecno"]
         return keywords.contains { ssid.contains($0) }
     }
 
