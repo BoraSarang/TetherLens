@@ -130,3 +130,21 @@
 6. 문서: PLAN_v0.25.0_macos.md (T-112~118), TODO T-112~118 ✅, CHANGELOG v0.25.0 (T-112~117).
 7. 오프라인 큐: N/A.
 8. E2E/k6: N/A — 자동화 단위 테스트(43개) + 수동 확인.
+
+---
+
+# Session — 2026-08-06 (macOS) — v0.25.0 그래프 버그 수정 (사용자 확인)
+
+1. 무엇을: **7일 그래프 버그 + 누적 라인 창 벗어남 수정 (커밋 96655a7)** — 사용자가 "7일 막대가 1개 + X축 라벨 없음, 누적 라인이 창 위로 넘침" 리포트.
+2. 플랫폼: [macOS]
+3. 빌드: swift build 성공, swift test 43개/7스위트 통과, build-macos.sh debug 재실행. 사용자 GUI 확인 "잘 나오는 것 같아".
+4. 남은 TODO: 없음 (v0.25.0 마무리). 다음 후보(미착수): 성능 후보(슬립 폴링 중지 등 P1), Sparkle/공증/Launch Agent.
+5. 전달 로그:
+   - **원인 1 (7일)**: `weeklyChartData`가 `date=nil`·`hour=요일idx`로 생성했는데 차트 비1일 분기가 `BarMark(x: usage.date ?? Date.distantPast)` 사용 → 7개 요일이 전부 한 지점에 겹쳐 "막대 1개", X축 라벨은 `dateLabel`이 nil이라 빈 문자열.
+   - **수정 1**: chartView에 `isWeekly` 분기 추가 — weekly는 `BarMark(x: usage.hour)` 요일 기반 렌더링, `ChartEntry.weekdayLabel`(shortStandaloneWeekdaySymbols[hour+1], 0=일~6=토)로 7개 라벨 항상 표시, 요일 정렬 `wd % 7`→`wd - 1` 정정(기존엔 토=0이던 버그).
+   - **원인 2 (Y 넘침)**: `yDomain = max(업/다운) * 2`만 계산 → 누적 LineMark(총합)·할당량 RuleMark가 차트 영역 벗어남.
+   - **수정 2**: `yTop = max(peakBar*2, peakCumulative, peakQuota) * 11 / 10`으로 yDomain 확장.
+   - **검증**: 빌드/테스트 43개 통과, 사용자 "확인 했어 / 잘 나오는 것 같아".
+6. 문서: CHANGELOG v0.25.0 Fixed 섹션 추가. TODO/PLAN 변경 없음.
+7. 오프라인 큐: N/A.
+8. E2E/k6: N/A — 자동화 단위 테스트(43개) + 수동 확인.
