@@ -112,6 +112,11 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
                     totalBytesIn: acc.in,
                     totalBytesOut: acc.out
                 ))
+                AppBlockManager.shared.check(
+                    name,
+                    bytesIn: currentBytes.bytesIn,
+                    bytesOut: currentBytes.bytesOut
+                )
             }
             apps = apps.filter { $0.bytesIn > 0 || $0.bytesOut > 0 || $0.totalBytesIn > 0 || $0.totalBytesOut > 0 }
             apps.sort { $0.bytesIn + $0.bytesOut > $1.bytesIn + $1.bytesOut }

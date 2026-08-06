@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import UniformTypeIdentifiers
 
 struct UsageReportView: View {
     @State private var profiles: [Profile] = []
@@ -33,6 +34,10 @@ struct UsageReportView: View {
 
     let onClose: () -> Void
     let preselectedProfileId: UUID?
+
+    enum ExportFormat {
+        case csv, json
+    }
 
     init(onClose: @escaping () -> Void, preselectedProfileId: UUID? = nil) {
         self.onClose = onClose
@@ -94,6 +99,16 @@ struct UsageReportView: View {
                     .font(.headline)
                     .padding(.leading, 16)
                 Spacer()
+                Menu {
+                    Button(Localized.exportCSV) { exportData(format: .csv) }
+                    Button(Localized.exportJSON) { exportData(format: .json) }
+                } label: {
+                    Label(Localized.export, systemImage: "square.and.arrow.up")
+                        .font(.caption)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .padding(.trailing, 16)
             }
             .padding(.top, 16)
             .padding(.bottom, 8)
@@ -769,5 +784,23 @@ struct UsageReportView: View {
         if b >= 1_000_000 { return String(format: "%.1f MB", b / 1_000_000) }
         if b >= 1_000 { return String(format: "%.1f KB", b / 1_000) }
         return "\(bytes) B"
+    }
+
+    private func exportData(format: ExportFormat) {
+        let pid = selectedProfileId == allProfilesId ? nil : selectedProfileId
+        let data = ProfileManager.shared.exportData(profileId: pid)
+        let content = format == .csv ? data.csv : data.json
+        let ext = format == .csv ? "csv" : "json"
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "TetherLens-export.\(ext)"
+        panel.allowedContentTypes = [UTType(filenameExtension: ext) ?? .data]
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                try content.write(to: url, atomically: true, encoding: .utf8)
+                DebugLogger.shared.action("Export", "\(format) 내보내기 완료: \(url.lastPathComponent)")
+            } catch {
+                DebugLogger.shared.error("Export", "내보내기 실패: \(error.localizedDescription)")
+            }
+        }
     }
 }

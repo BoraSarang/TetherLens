@@ -17,6 +17,26 @@ final class SettingsManager: @unchecked Sendable {
         set { defaults.set(newValue, forKey: "showTotalColumn") }
     }
 
+    enum MenuBarMode: String, CaseIterable {
+        case speedOnly = "speed"
+        case speedAndTotal = "speed_total"
+        case speedAndSSID = "speed_ssid"
+    }
+
+    var menuBarMode: MenuBarMode {
+        get {
+            if let raw = defaults.string(forKey: "menuBarMode"),
+               let mode = MenuBarMode(rawValue: raw) { return mode }
+            return .speedAndTotal
+        }
+        set { defaults.set(newValue.rawValue, forKey: "menuBarMode") }
+    }
+
+    var showSSIDInMenuBar: Bool {
+        get { defaults.bool(forKey: "showSSIDInMenuBar") }
+        set { defaults.set(newValue, forKey: "showSSIDInMenuBar") }
+    }
+
     var menuBarFontSize: Double {
         get { defaults.object(forKey: "menuBarFontSize") as? Double ?? Self.defaultMenuBarFontSize }
         set { defaults.set(newValue, forKey: "menuBarFontSize") }
@@ -52,6 +72,11 @@ final class SettingsManager: @unchecked Sendable {
         set { defaults.set(newValue, forKey: "pingLatencyNotificationEnabled") }
     }
 
+    var autoSwitchProfile: Bool {
+        get { defaults.object(forKey: "autoSwitchProfile") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "autoSwitchProfile") }
+    }
+
     func resetPollingIntervals() {
         menuBarRefreshInterval = Self.defaultMenuBarRefreshInterval
         cacheRefreshInterval = Self.defaultCacheRefreshInterval
@@ -69,11 +94,14 @@ final class SettingsManager: @unchecked Sendable {
     private init() {
         defaults.register(defaults: [
             "showTotalColumn": false,
+            "menuBarMode": MenuBarMode.speedAndTotal.rawValue,
+            "showSSIDInMenuBar": false,
             "menuBarRefreshInterval": Self.defaultMenuBarRefreshInterval,
             "cacheRefreshInterval": Self.defaultCacheRefreshInterval,
             "trafficMonitorInterval": Self.defaultTrafficMonitorInterval,
             "pingInterval": Self.defaultPingInterval,
-            "pingLatencyNotificationEnabled": true
+            "pingLatencyNotificationEnabled": true,
+            "autoSwitchProfile": true
         ])
     }
 }

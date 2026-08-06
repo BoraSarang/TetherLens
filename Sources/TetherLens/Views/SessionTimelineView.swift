@@ -33,6 +33,10 @@ private struct SessionRow: View {
     ProfileManager.shared.getSessionUsage(session: session)
   }
 
+  private var ipAddress: String? {
+    ProfileManager.shared.getIPForSession(session)?.ipAddress
+  }
+
   private var durationString: String {
     guard let end = session.endTime else { return Localized.inProgress }
     let interval = end.timeIntervalSince(session.startTime)
@@ -73,6 +77,11 @@ private struct SessionRow: View {
           Text(durationString)
             .font(.caption2.monospacedDigit())
             .foregroundColor(.secondary)
+          if let ip = ipAddress {
+            Text("· \(ip)")
+              .font(.caption2.monospacedDigit())
+              .foregroundColor(.secondary)
+          }
           if session.endTime != nil {
             Text(usageString)
               .font(.caption2.monospacedDigit())

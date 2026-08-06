@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.20.0] — 2026-08-06 — 세션 IP + 내보내기 + 메뉴바 커스텀 + 트래픽 차단
+
+### Added
+- **세션 타임라인 IP 표시** — `ProfileManager.getIPForSession(_:)` 추가, `SessionTimelineView.SessionRow`에 `· IP` 텍스트
+- **CSV/JSON 데이터 내보내기** — `ProfileManager.exportData(profileId:)` (세션+IP 데이터), `UsageReportView` 헤더 Menu(CSV/JSON), `ExportFormat` + `NSSavePanel` + `UTType`
+- **메뉴바 커스텀 모드** — `SettingsManager.MenuBarMode`(속도만/속도+사용량/속도+SSID) + `showSSIDInMenuBar` 토글, `MenuBarManager.updateMenuBarText()` 모드 기반 col3 처리
+- **앱 트래픽 차단/허용** — `AppBlockManager` (차단 목록 UserDefaults), `AppTrafficView` 행별 차단 토글 + 차단 중 배지, 차단된 앱 트래픽 감지 시 로컬 알림
+- **프로필 자동전환 학습** — `SettingsManager.autoSwitchProfile` 토글, 끄면 새 네트워크 자동 등록/재등록 중단
+
+### Fixed
+- `MenuBarManager.updateMenuBarText()` 누락된 중괄호 복구 (빌드 에러)
+
+### Platform
+- [macOS]
+
 ## [0.12.0] — 2026-08-02 — IP 변경 이력 + 한국어 용어 통일
 
 ### Added

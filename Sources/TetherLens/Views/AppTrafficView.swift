@@ -5,6 +5,12 @@ struct AppTrafficView: View {
     let onClose: () -> Void
     @State private var showSystemProcesses = false
 
+    private var blockedApps: Set<String> { AppBlockManager.shared.blockedApps }
+
+    private var isBlockingActive: Bool {
+        !blockedApps.isEmpty || SavingModeManager.shared.isEnabled
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             headerView
@@ -27,6 +33,11 @@ struct AppTrafficView: View {
             Text(Localized.appTraffic)
                 .font(.headline)
             Spacer()
+            if isBlockingActive {
+                Label(Localized.blockingOn, systemImage: "hand.raised.fill")
+                    .font(.caption.bold())
+                    .foregroundColor(.red)
+            }
             Toggle(Localized.excludeSystem, isOn: $showSystemProcesses)
                 .toggleStyle(.checkbox)
                 .controlSize(.small)
@@ -71,34 +82,53 @@ struct AppTrafficView: View {
                 .font(.system(size: 9, weight: .bold))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            Text(Localized.block)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(.red)
+                .frame(width: 36, alignment: .center)
             Text(Localized.upload)
                 .font(.system(size: 9, weight: .bold))
                 .foregroundColor(.orange)
-                .frame(width: 74, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
             Text(Localized.download)
                 .font(.system(size: 9, weight: .bold))
                 .foregroundColor(.blue)
-                .frame(width: 74, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
         }
     }
 
     private func appRow(_ app: TrafficMonitor.AppTraffic) -> some View {
-        HStack(spacing: 0) {
+        let isBlocked = blockedApps.contains(app.processName)
+        return HStack(spacing: 0) {
             Text(app.processName)
                 .font(.system(size: 10))
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                toggleBlock(app.processName)
+            } label: {
+                Image(systemName: isBlocked ? "hand.raised.fill" : "hand.raised")
+                    .foregroundColor(isBlocked ? .red : .secondary)
+            }
+            .buttonStyle(.plain)
+            .frame(width: 36, alignment: .center)
             Text(formatByteRate(app.bytesIn))
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.orange)
-                .frame(width: 74, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
             Text(formatByteRate(app.bytesOut))
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.blue)
-                .frame(width: 74, alignment: .trailing)
+                .frame(width: 64, alignment: .trailing)
         }
         .padding(.vertical, 2)
+        .opacity(isBlocked ? 0.5 : 1)
+    }
+
+    private func toggleBlock(_ name: String) {
+        let isBlocked = blockedApps.contains(name)
+        AppBlockManager.shared.setBlocked(name, blocked: !isBlocked)
     }
 
     private func formatByteRate(_ bytesPerSecond: Int64) -> String {

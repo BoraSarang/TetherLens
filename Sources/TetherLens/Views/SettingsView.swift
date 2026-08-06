@@ -7,6 +7,9 @@ import CoreWLAN
 struct SettingsView: View {
     @State private var showTotalColumn: Bool
     @State private var launchAtLogin: Bool
+    @State private var menuBarModeRaw: String
+    @State private var showSSIDInMenuBar: Bool
+    @State private var autoSwitchProfile: Bool
 
     @State private var menuBarInterval: Double
     @State private var cacheInterval: Double
@@ -25,6 +28,9 @@ struct SettingsView: View {
         let s = SettingsManager.shared
         _showTotalColumn = State(initialValue: s.showTotalColumn)
         _launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled)
+        _menuBarModeRaw = State(initialValue: s.menuBarMode.rawValue)
+        _showSSIDInMenuBar = State(initialValue: s.showSSIDInMenuBar)
+        _autoSwitchProfile = State(initialValue: s.autoSwitchProfile)
         _menuBarInterval = State(initialValue: s.menuBarRefreshInterval)
         _cacheInterval = State(initialValue: s.cacheRefreshInterval)
         _trafficInterval = State(initialValue: s.trafficMonitorInterval)
@@ -57,6 +63,25 @@ struct SettingsView: View {
                                 NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                             }
 
+                        Picker(Localized.menuBarDisplayMode, selection: $menuBarModeRaw) {
+                            ForEach(SettingsManager.MenuBarMode.allCases, id: \.rawValue) { mode in
+                                Text(modeLabel(mode)).tag(mode.rawValue)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .onChange(of: menuBarModeRaw) { _, newValue in
+                            if let mode = SettingsManager.MenuBarMode(rawValue: newValue) {
+                                SettingsManager.shared.menuBarMode = mode
+                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                            }
+                        }
+
+                        Toggle(Localized.showSSIDInMenuBar, isOn: $showSSIDInMenuBar)
+                            .onChange(of: showSSIDInMenuBar) { _, newValue in
+                                SettingsManager.shared.showSSIDInMenuBar = newValue
+                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                            }
+
                         Toggle(Localized.launchAtLogin, isOn: $launchAtLogin)
                             .onChange(of: launchAtLogin) { _, newValue in
                                 do {
@@ -69,6 +94,12 @@ struct SettingsView: View {
                                     launchAtLogin = SMAppService.mainApp.status == .enabled
                             }
                         }
+
+                        Toggle(Localized.autoSwitchProfile, isOn: $autoSwitchProfile)
+                            .onChange(of: autoSwitchProfile) { _, newValue in
+                                SettingsManager.shared.autoSwitchProfile = newValue
+                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                            }
                     }
                     .padding(.horizontal, 20)
 
@@ -307,6 +338,14 @@ struct SettingsView: View {
 
     private func formatInterval(_ interval: Double) -> String {
         Localized.intervalSec(Int(interval))
+    }
+
+    private func modeLabel(_ mode: SettingsManager.MenuBarMode) -> String {
+        switch mode {
+        case .speedOnly: return Localized.menuBarModeSpeedOnly
+        case .speedAndTotal: return Localized.menuBarModeSpeedTotal
+        case .speedAndSSID: return Localized.menuBarModeSpeedSSID
+        }
     }
 
     private func refreshPermissions() {

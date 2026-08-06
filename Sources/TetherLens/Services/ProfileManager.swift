@@ -364,6 +364,59 @@ final class ProfileManager: @unchecked Sendable {
         }
     }
 
+    func getIPForSession(_ session: Session) -> IPLog? {
+        try! db.read { db in
+            let logs = try IPLog
+                .filter(Column("profile_id") == session.profileId)
+                .order(Column("first_seen_at").asc)
+                .fetchAll(db)
+            let end = session.endTime ?? Date()
+            return logs.last { $0.firstSeenAt <= end }
+        }
+    }
+
+    func exportData(profileId: UUID?) -> (csv: String, json: String) {
+        let profiles = profileId.map { [$0].compactMap { getProfile(id: $0) } } ?? getAllProfiles()
+        let df = DateFormatter()
+        df.dateFormat = "yyyy-MM-dd HH:mm"
+
+        var csvHeader = "Profile,Type,Start,End,Value\n"
+        var csvBody = ""
+        var jsonObject: [[String: Any]] = []
+
+        for p in profiles {
+            let sessions = try! db.read { db in
+                try Session
+                    .filter(Column("profile_id") == p.id)
+                    .order(Column("start_time").asc)
+                    .fetchAll(db)
+            }
+            for s in sessions {
+                let usage = getSessionUsage(session: s)
+                let end = s.endTime.map { df.string(from: $0) } ?? ""
+                csvBody += "\"\(p.name)\",Session,\(df.string(from: s.startTime)),\(end),\(usage.download + usage.upload)\n"
+                jsonObject.append([
+                    "profile": p.name, "type": "session",
+                    "start": df.string(from: s.startTime), "end": end,
+                    "bytes": usage.download + usage.upload
+                ])
+            }
+            let logs = getIPLogs(profileId: p.id)
+            for l in logs {
+                csvBody += "\"\(p.name)\",IP,\(df.string(from: l.firstSeenAt)),\(df.string(from: l.lastSeenAt)),\"\(l.ipAddress)\"\n"
+                jsonObject.append([
+                    "profile": p.name, "type": "ip",
+                    "first_seen": df.string(from: l.firstSeenAt),
+                    "last_seen": df.string(from: l.lastSeenAt),
+                    "ip": l.ipAddress
+                ])
+            }
+        }
+
+        let jsonData = try! JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted)
+        return (csvHeader + csvBody, String(data: jsonData, encoding: .utf8) ?? "[]")
+    }
+
     func mergeStaleIPLogs() {
         try! db.write { db in
             let rows = try Row.fetchAll(db, sql: "SELECT DISTINCT profile_id, ip_address FROM ip_log ORDER BY last_seen_at DESC")

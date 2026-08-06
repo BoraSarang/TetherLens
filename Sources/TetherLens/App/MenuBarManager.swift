@@ -83,7 +83,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         lastAutoRegisterSSID = nil
         cacheNeedsInvalidation = true
         refreshCache()
-        _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
+        if SettingsManager.shared.autoSwitchProfile {
+            _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
+        }
         updateMenuBarText()
         NotificationCenter.default.post(name: connectionChanged, object: nil)
     }
@@ -293,8 +295,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         if let ssid = ssid, !ssid.isEmpty {
             if ssid != lastAutoRegisterSSID {
                 lastAutoRegisterSSID = ssid
-                _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
-                cacheNeedsInvalidation = true
+                if SettingsManager.shared.autoSwitchProfile {
+                    _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
+                    cacheNeedsInvalidation = true
+                }
             }
 
             let profile = cachedProfile ?? ProfileManager.shared.getProfile(ssid: ssid)
@@ -372,10 +376,22 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             quotaRatio = -1
         }
 
+        let mode = SettingsManager.shared.menuBarMode
+        let showSSID = SettingsManager.shared.showSSIDInMenuBar
+        var col3Top = totalStr
+        var col3Bottom = remainingStr
+        if showSSID, let ssid = ssid, !ssid.isEmpty {
+            col3Top = ssid
+            col3Bottom = ""
+        } else if mode == .speedOnly {
+            col3Top = ""
+            col3Bottom = ""
+        }
+
         menuBarView.update(
             upSpeed: uploadStr, downSpeed: downloadStr,
-            col3Top: totalStr, col3Bottom: remainingStr,
-            totalRatio: quotaRatio
+            col3Top: col3Top, col3Bottom: col3Bottom,
+            totalRatio: mode == .speedOnly ? -1 : quotaRatio
         )
         statusItem.length = menuBarView.frame.width
     }

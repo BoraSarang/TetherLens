@@ -69,3 +69,15 @@
 | 38 | 핫스팟 히트맵 뷰 (HeatmapView/Grid/Map) | P2 | ✅ |
 | 39 | OnboardingView (첫 실행 권한 안내) | P2 | ✅ |
 | 40 | SettingsView 권한 섹션 + 용어 통일 | P2 | ✅ |
+
+## ✅ v0.20 — Big Features (2026-08-06)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 41 | 버전 v0.20.0 (build 20) Info.plist 동기화 | P0 | ✅ |
+| 42 | 세션 타임라인 IP 표시 (getIPForSession) | P1 | ✅ |
+| 43 | CSV/JSON 데이터 내보내기 (UsageReportView) | P1 | ✅ |
+| 44 | 메뉴바 커스텀 모드 (속도/사용량/SSID 조합) | P1 | ✅ |
+| 45 | 앱 트래픽 차단/허용 (AppBlockManager + 감지 알림) | P2 | ✅ |
+| 46 | 프로필 자동전환 학습 (autoSwitchProfile 토글) | P2 | ✅ |
+| 47 | 위젯 (WidgetKit) — SwiftPM이 .appex 미지원, Xcode 전환 필요로 제외 | P3 | ❌ |

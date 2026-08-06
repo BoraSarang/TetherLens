@@ -134,6 +134,12 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
 
   // MARK: - Settings
   static var showTotalInMenuBar: String { value(kr: "메뉴바에 총 사용량 표시", en: "Show Total in Menu Bar") }
+  static var menuBarDisplayMode: String { value(kr: "메뉴바 표시 항목", en: "Menu Bar Display") }
+  static var menuBarModeSpeedOnly: String { value(kr: "속도만", en: "Speed Only") }
+  static var menuBarModeSpeedTotal: String { value(kr: "속도 + 사용량", en: "Speed + Usage") }
+  static var menuBarModeSpeedSSID: String { value(kr: "속도 + SSID", en: "Speed + SSID") }
+  static var showSSIDInMenuBar: String { value(kr: "메뉴바에 SSID 표시", en: "Show SSID in Menu Bar") }
+  static var autoSwitchProfile: String { value(kr: "새 네트워크에 프로필 자동 등록", en: "Auto-Register Profile on New Network") }
   static var launchAtLogin: String { value(kr: "로그인 시 자동 실행", en: "Launch at Login") }
   static var menuBar: String { value(kr: "메뉴바", en: "Menu Bar") }
   static var fontSize: String { value(kr: "폰트 크기", en: "Font Size") }
@@ -191,6 +197,11 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
 
   // MARK: - Usage Report
   static var usageReportTitle: String { value(kr: "사용량 리포트", en: "Usage Report") }
+  static var export: String { value(kr: "내보내기", en: "Export") }
+  static var exportCSV: String { value(kr: "CSV 내보내기", en: "Export CSV") }
+  static var exportJSON: String { value(kr: "JSON 내보내기", en: "Export JSON") }
+  static var exportDone: String { value(kr: "내보내기 완료", en: "Export complete") }
+  static var exportFailed: String { value(kr: "내보내기 실패", en: "Export failed") }
   static var allProfiles: String { value(kr: "전체 프로필", en: "All Profiles") }
   static var noUsageData: String { value(kr: "사용량 데이터가 없습니다", en: "No usage data") }
   static var noSessionData: String { value(kr: "세션 데이터가 없습니다", en: "No session data") }
@@ -267,6 +278,10 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var trafficCollecting: String { value(kr: "트래픽 데이터를 수집 중입니다...", en: "Collecting traffic data...") }
   static var excludeSystem: String { value(kr: "시스템 프로세스 제외", en: "Exclude System Processes") }
   static var resetTraffic: String { value(kr: "초기화", en: "Reset") }
+  static var block: String { value(kr: "차단", en: "Block") }
+  static var blockingOn: String { value(kr: "차단 중", en: "Blocking") }
+  static var blockedAppNotificationTitle: String { value(kr: "앱 트래픽 차단 감지", en: "App Traffic Blocked") }
+  static var blockedAppNotificationBody: String { value(kr: "%@가 데이터를 사용하려고 합니다. 차단 목록에 있습니다.", en: "%@ is trying to use data but is on the block list.") }
 
   // MARK: - Notification List
   static var notificationListTitle: String { value(kr: "알림 기록", en: "Notifications") }
