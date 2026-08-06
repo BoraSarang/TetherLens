@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.24.0] — 2026-08-06 — 정밀 분석 기반 버그 수정 + 리팩토링
+
+> 5차례 재분석(서브에이전트 5회 + 직접 검증)으로 예상 버그 27건 확정·수정. 자동 테스트 38개 통과.
+
+### Fixed (High)
+- **프로필(SSID) 전환 시 카운터 미재시드로 이전 프로필에 타 프로필 트래픽 이중 계상** — `resetCounter(profileId:totalUpload:totalDownload:)` 신설, SSID 전환 시 호출
+- **음수 델타 시 반대 방향 양수 델타까지 폐기** — 음수 축만 재시드, 양수 축 단독 기록
+- **자정 직후 3초간 전날 사용량 반환**(날짜 미포함 캐시) — 날짜별 캐시 격리
+- **TrafficMonitor `start()` data race** — 리셋을 serial queue로 직렬화
+- **1년 넘은 활성 세션 영구 잔존 / CSV 따옴표 미쿼팅** — cleanup 대상 확대, RFC 4180 쿼팅
+- **프로필 삭제 후 recordUsage FK 위반 크래시** — 삭제 시 세션/추적 리셋
+- **SSID 단절 시 마지막 구간 사용량 유실** — 단절 분기에서도 recordUsage
+- **SSID 전환 시 스테일 캐시로 새 세션이 이전 프로필 소유** — 캐시 무효화를 autoSwitchProfile과 무관하게
+- **connection_type 어휘 불일치(카멜/스네이크)로 핫스팟 분류 붕괴** — 스네이크 통일 + v9 정규화 마이그레이션
+- **nettop 1초 델타만 캡처로 앱 트래픽 과소 집계** — 샘플 윈도우를 refresh 간격으로 확장 + self-rescheduling
+
+### Fixed (Medium)
+- 80% 자동 활성화 시 "할당량 초과" 오정보·중복 알림 제거
+- 네트워크 속도 `elapsed` 하드코딩 → 실제 경과 시간 반영
+- 앱 종료 시 마지막 구간 app_traffic_log 유실 → 종료용 동기 flush
+- 핫스팟 신호 플래핑 시 알림 폭주 → 토글 알림 쿨다운(30초)
+- PingMonitor watchdog 정상 완료 시 미취소 / cooldown 레벨 상승 억제
+- popover 1초 타이머 body 재생성 / 5초 알림 클리어 race / 폰트 슬라이더 설정 폭주
+- 블록 토글 즉시 반영(AppBlockManager ObservableObject) / DebugPanel 선택 인덱스 밀림(UUID)
+
+### Refactored
+- `getIPForSession` 프로필 전체 IPLog `fetchAll` → SQL 쿼리화 (N+1 제거)
+- up/dn 각각 별도 read → 단일 read
+- 죽은 코드 `todayUsage` 제거, v8 rebuild orphan DELETE 위치 정정
+
+### Infra
+- `Info.plist` — `0.24.0` / build `25`
+
+### Tests
+- 자동화 테스트 38개 / 8개 스위트 전부 통과 (신규: 이중계상 방지·자정 경계 캐시·CSV 쿼팅·활성 세션 정리·핫스팟 어휘)
+- 기존 `recordUsage_누적_델타_계산` 기대값을 실제 동작(음수 축만 재시드)에 맞게 수정
+
+### Docs
+- `docs/plans/PLAN_v0.24.0_macos.md` (T-92~111), TODO T-92~111, 세션 로그
+
+### Platform
+- [macOS]
+
 ## [0.23.1] — 2026-08-06 — 메뉴바 할당량 기준 "오늘" 통일 (버그 수정)
 
 ### Fixed

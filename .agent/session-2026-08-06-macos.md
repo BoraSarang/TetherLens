@@ -69,3 +69,24 @@
 6. 문서: TODO T-88~91 ✅, CHANGELOG v0.23.1 Chore 섹션.
 7. 오프라인 큐: N/A.
 8. E2E/k6: N/A — 자동화 단위 테스트(32개) + 수동 확인.
+
+---
+
+# Session — 2026-08-06 (macOS) — v0.24.0
+
+1. 무엇을: **v0.24.0 정밀 분석 기반 버그 수정 + 리팩토링 (T-92~T-111)** — 서브에이전트 5회 재분석(데이터 정합성/타이머·리소스/뷰 계층/High급) + 핵심 파일 직접 검증으로 예상 버그 **27건** 확정·수정. 자동 테스트 32→38개.
+2. 플랫폼: [macOS]
+3. 빌드: `./scripts/test.sh` 38개/8스위트 전부 통과 + 아티팩트 안티체크 PASS, build 성공. Info.plist 0.24.0/25.
+4. 남은 TODO: Y3 nettop 측정은 커버리지 약 50% 간단 개선(사용자 선택) — 100% 커버리지(상시 nettop 데몬)는 v0.25 후보. 기존 성능 후보(슬립 폴링 중지 등 P1)·Sparkle 공증 배포 미착수.
+5. 전달 로그:
+   - **1차(H1~H11)**: 프로필 전환 이중 계상(H1), 음수 델타 시 양수까지 폐기(H2·테스트가 버그 고정), TrafficMonitor data race(H3), 죽은 코드 todayUsage(M1), 자정 경계 캐시(M2), up/dn 분리 read(M3), v8 FK no-op(M4), SSID 전환 중복 세션(M5), watchdog 미취소(M6), cooldown 상승 억제(M7), 캐시/위치 미중지(M8), 1년 활성 세션(M9), refresh 백로그(M10), CSV 쿼팅(M11).
+   - **2차(V1~V6)**: getIPForSession N+1→SQL, popover 타이머 body 재생성→static, 알림 클리어 race, 폰트 슬라이더 폭주→onEditingChanged, 블록 토글 미반영→ObservableObject, DebugPanel 인덱스→UUID.
+   - **3차(W1~W5)**: SSID 스테일 캐시로 세션 오염, 80% "초과" 오정보·중복 알림, elapsed 하드코딩, 종료 시 app 로그 유실, 토글 알림 폭주.
+   - **4차(X1~X2)**: connection_type 카멜/스네이크 혼재로 핫스팟 분류 붕괴(+v9 정규화 마이그레이션), autoSwitchProfile OFF 시 스테일 캐시.
+   - **5차(Y1~Y3)**: 단절 시 마지막 구간 사용량 유실, 프로필 삭제 후 FK 위반 `try!` 크래시, nettop 1초 델타로 과소 집계(간단 개선).
+   - **가드 트레이드오프**: PingMonitor watchdog weak 캡처는 `@Sendable` 컴파일 오류 → `DispatchWorkItem { [weak task] ... }` 패턴으로 우회. TrafficMonitor persistAccumulated는 `@MainActor` DebugLogger 호출을 main async로 dispatch.
+   - **커밋**: efedfd6(T-92~98), 2838361(T-99~101), 4402758(2차 문서), 839ad14+141cc4d(T-103~106), a952f75+f2ce83d(T-107~108), 66c012d+7554f24(T-109~111), +CHANGELOG/세션/Info.plist.
+   - **검증**: 테스트 38/38, 빌드 완료. GUI 수동 확인 필요(메뉴바 할당량·핫스팟 프로필 분류·세션 타임라인·앱 트래픽 리포트).
+6. 문서: PLAN_v0.24.0_macos.md (T-92~111), TODO T-92~111, CHANGELOG v0.24.0.
+7. 오프라인 큐: N/A.
+8. E2E/k6: N/A — 자동화 단위 테스트(38개) + 수동 확인.

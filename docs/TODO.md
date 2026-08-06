@@ -180,22 +180,23 @@
 | 96 | TrafficMonitor: start 리셋 queue 직렬화 (H3) + refresh 백로그 skip (M10) / NetworkMonitor todayUsage 제거 (M1) | P0 | ✅ |
 | 97 | PingMonitor: watchdog 취소 (M6) + cooldown 레벨 상승 허용 (M7) / HotspotDetector start 가드 / MenuBarManager 가드·시드·종료 기록 (M8) | P1 | ✅ |
 | 98 | DataStore v8 orphan 정리 (M4) + 테스트 수정/추가 (H2 기존 테스트 고정 해제) | P1 | ✅ |
-| 99 | ProfileManager: getIPForSession SQL 쿼리화 (V1) / PopoverView: 타이머 publisher static + 알림 클리어 값 비교 (V2, V3) | P2 | ⬜ |
-| 100 | SettingsView: 폰트 슬라이더 onEditingChanged (V4) / AppBlockManager: ObservableObject + AppTrafficView 구독 (V5) | P2 | ⬜ |
-| 101 | DebugPanelView: 선택 추적 UUID 기반 (V6) | P2 | ⬜ |
-| 102 | 검증: 테스트 전체 + 재분석 반복 + 문서 마무리 (CHANGELOG/세션/TODO) | P1 | ⬜ |
-| 103 | MenuBarManager: SSID 전환 시 cachedProfile 무효화 (W1) + autoActivate "초과" 알림 제거 (W2) | P0 | ⬜ |
-| 104 | NetworkMonitor: 실제 경과 시간 기반 속도 계산 (W3) | P1 | ⬜ |
-| 105 | TrafficMonitor: 종료용 동기 flush + handleAppTermination 호출 (W4) | P1 | ⬜ |
-| 106 | PingMonitor: 연결 토글 알림 쿨다운 (W5) | P1 | ⬜ |
-| 107 | MenuBarManager: connectionTypeString 스네이크 통일 + DataStore v9 정규화 마이그레이션 + 테스트 (X1) | P0 | ⬜ |
-| 108 | MenuBarManager: SSID 변경 시 캐시 무효화를 autoSwitchProfile과 무관하게 (X2) | P0 | ⬜ |
-| 109 | MenuBarManager: SSID 단절 시 마지막 구간 recordUsage (Y1) | P0 | ⬜ |
-| 110 | MenuBarManager: handleCurrentProfileDeleted에서 currentSession/lastTrackedSSID 리셋 (Y2) | P0 | ⬜ |
-| 111 | TrafficMonitor: nettop 샘플 윈도우 확장 + 타이머 self-rescheduling (Y3) | P1 | ⬜ |
+| 99 | ProfileManager: getIPForSession SQL 쿼리화 (V1) / PopoverView: 타이머 publisher static + 알림 클리어 값 비교 (V2, V3) | P2 | ✅ |
+| 100 | SettingsView: 폰트 슬라이더 onEditingChanged (V4) / AppBlockManager: ObservableObject + AppTrafficView 구독 (V5) | P2 | ✅ |
+| 101 | DebugPanelView: 선택 추적 UUID 기반 (V6) | P2 | ✅ |
+| 102 | 검증: 테스트 전체 + 재분석 반복 + 문서 마무리 (CHANGELOG/세션/TODO) | P1 | ✅ |
+| 103 | MenuBarManager: SSID 전환 시 cachedProfile 무효화 (W1) + autoActivate "초과" 알림 제거 (W2) | P0 | ✅ |
+| 104 | NetworkMonitor: 실제 경과 시간 기반 속도 계산 (W3) | P1 | ✅ |
+| 105 | TrafficMonitor: 종료용 동기 flush + handleAppTermination 호출 (W4) | P1 | ✅ |
+| 106 | PingMonitor: 연결 토글 알림 쿨다운 (W5) | P1 | ✅ |
+| 107 | MenuBarManager: connectionTypeString 스네이크 통일 + DataStore v9 정규화 마이그레이션 + 테스트 (X1) | P0 | ✅ |
+| 108 | MenuBarManager: SSID 변경 시 캐시 무효화를 autoSwitchProfile과 무관하게 (X2) | P0 | ✅ |
+| 109 | MenuBarManager: SSID 단절 시 마지막 구간 recordUsage (Y1) | P0 | ✅ |
+| 110 | MenuBarManager: handleCurrentProfileDeleted에서 currentSession/lastTrackedSSID 리셋 (Y2) | P0 | ✅ |
+| 111 | TrafficMonitor: nettop 샘플 윈도우 확장 + 타이머 self-rescheduling (Y3) | P1 | ✅ |
 
 > 커밋: [T-92~98 코드/테스트/문서 각각 분리], [T-99~101 코드], [T-102 문서]
-> 상태: 92~98 완료 (efedfd6), 99~101 완료 (2838361), 102 문서 완료 (4402758), 103~106 완료 (839ad14, 141cc4d), 107~108 완료 (a952f75, f2ce83d), 109~111 코드 진행 중
+> 상태: 전부 완료 — 92~98 (efedfd6), 99~101 (2838361), 102 문서 (4402758), 103~106 (839ad14, 141cc4d), 107~108 (a952f75, f2ce83d), 109~111 (66c012d, 7554f24), 마무리(CHANGELOG/세션/Info.plist 0.24.0) 미커밋
+> 회귀: v0.24.0 5차 재분석 완료 — 남은 High 급 없음 (Y3는 50% 커버리지 간단 개선, 100%는 v0.25 후보)
 
 
 > 참고: DebugPanelView는 개발자 전용 다크 패널이라 토큰 대상 제외, 히트맵 그라데이션/지도 핀 색은 시각화 고유 로직으로 유지
