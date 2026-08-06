@@ -113,6 +113,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         lastAutoRegisterSSID = nil
         cacheNeedsInvalidation = true
         refreshCache()
+        // 삭제된 프로필의 세션을 계속 참조하면 recordUsage가 FK 위반으로 크래시할 수 있다.
+        // lastTrackedSSID를 무효화해 다음 updateMenuBarText에서 새 프로필로 세션을 다시 열도록 한다.
+        currentSession = nil
+        lastTrackedSSID = nil
         if SettingsManager.shared.autoSwitchProfile {
             _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
         }
@@ -497,6 +501,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             }
         } else if lastTrackedSSID != nil {
             if let oldSession = currentSession {
+                if let oldProfile = lastTrackedSSID.flatMap({ ProfileManager.shared.getProfile(ssid: $0) }) {
+                    ProfileManager.shared.recordUsage(
+                        totalUpload: networkMonitor.totalUpload,
+                        totalDownload: networkMonitor.totalDownload,
+                        profileId: oldProfile.id,
+                        sessionId: oldSession.id
+                    )
+                }
                 ProfileManager.shared.endSession(oldSession)
             }
             currentSession = nil

@@ -32,16 +32,25 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             self?.lastSavedAccumulated = [:]
         }
         refresh()
-        let refreshTimer = Timer(timeInterval: SettingsManager.shared.trafficMonitorInterval, repeats: true) { [weak self] _ in
-            self?.refresh()
-        }
-        RunLoop.main.add(refreshTimer, forMode: .common)
-        timer = refreshTimer
+        scheduleNextRefresh()
         let saveTimer = Timer(timeInterval: 300, repeats: true) { [weak self] _ in
             self?.saveAccumulated()
         }
         RunLoop.main.add(saveTimer, forMode: .common)
         self.saveTimer = saveTimer
+    }
+
+    /// refresh 완료 후 interval 뒤 다시 예약해, nettop 실행 시간과 타이머가 겹치지 않게 한다.
+    /// (반복 타이머면 nettop 블로킹 동안 틱이 백로그되어 측정 간격이 어긋난다)
+    private func scheduleNextRefresh() {
+        timer?.invalidate()
+        let interval = max(SettingsManager.shared.trafficMonitorInterval, 1)
+        let refreshTimer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
+            self?.refresh()
+            self?.scheduleNextRefresh()
+        }
+        RunLoop.main.add(refreshTimer, forMode: .common)
+        timer = refreshTimer
     }
 
     func stop() {
@@ -163,9 +172,13 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     }
 
     private func runNettop() -> String {
+        let interval = max(SettingsManager.shared.trafficMonitorInterval, 1)
+        // 샘플 윈도우를 refresh 간격과 일치시켜 미측정 구간을 줄인다.
+        // 예: interval 5s → -l 6(기준 + 5개 1초 델타)로 5초간 델타 누적
+        let samples = interval + 1
         let task = Process()
         task.launchPath = "/usr/bin/nettop"
-        task.arguments = ["-P", "-J", "bytes_in,bytes_out", "-x", "-d", "-l", "2", "-n", "-s", "1"]
+        task.arguments = ["-P", "-J", "bytes_in,bytes_out", "-x", "-d", "-l", "\(samples)", "-n", "-s", "1"]
         let pipe = Pipe()
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice
@@ -177,7 +190,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             }
             return ""
         }
-        DispatchQueue.global().asyncAfter(deadline: .now() + 15) { [weak task] in
+        DispatchQueue.global().asyncAfter(deadline: .now() + Double(max(interval + 2, 16))) { [weak task] in
             if task?.isRunning == true {
                 task?.terminate()
             }
