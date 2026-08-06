@@ -343,6 +343,7 @@ struct UsageReportView: View {
     @ViewBuilder
     private var chartView: some View {
         let isDay = selectedPeriod.days == 1
+        let isWeekly = selectedPeriod.days == 7
         let isLong = selectedPeriod.isLongPeriod
         let source = chartDataSource
         if source.isEmpty {
@@ -351,8 +352,11 @@ struct UsageReportView: View {
                 .foregroundColor(TLPalette.textSecondary)
             Spacer()
         } else {
-            let maxBytes = (source.map { max($0.upload, $0.download) }.max() ?? 1) * 2
-            let yDomain: ClosedRange<Int64> = 0 ... maxBytes
+            let peakBar = source.map { max($0.upload, $0.download) }.max() ?? 1
+            let peakCumulative = source.enumerated().map { cumulativeTotal(source, upTo: $0.offset) }.max() ?? peakBar
+            let peakQuota = quotaRuleMarkBytes ?? 0
+            let yTop = max(peakBar * 2, peakCumulative, peakQuota) * 11 / 10
+            let yDomain: ClosedRange<Int64> = 0 ... max(yTop, 1)
             Chart {
                 ForEach(Array(source.enumerated()), id: \.element.id) { index, usage in
                     if isDay {
@@ -368,6 +372,22 @@ struct UsageReportView: View {
                         }
                         BarMark(
                             x: .value("Hour", usage.hour),
+                            y: .value("Download", usage.download)
+                        )
+                        .foregroundStyle(TLPalette.download)
+                    } else if isWeekly {
+                        BarMark(
+                            x: .value("Weekday", usage.hour),
+                            y: .value("Upload", usage.upload)
+                        )
+                        .foregroundStyle(TLPalette.upload)
+                        .annotation(position: .bottom, alignment: .center) {
+                            Text(usage.weekdayLabel)
+                                .font(TLFont.caption2)
+                                .foregroundColor(TLPalette.textSecondary)
+                        }
+                        BarMark(
+                            x: .value("Weekday", usage.hour),
                             y: .value("Download", usage.download)
                         )
                         .foregroundStyle(TLPalette.download)
@@ -391,6 +411,13 @@ struct UsageReportView: View {
                     if isDay {
                         LineMark(
                             x: .value("Hour", usage.hour),
+                            y: .value("Cumulative", cumulativeTotal(source, upTo: index))
+                        )
+                        .foregroundStyle(TLPalette.accent)
+                        .lineStyle(StrokeStyle(lineWidth: 1.5))
+                    } else if isWeekly {
+                        LineMark(
+                            x: .value("Weekday", usage.hour),
                             y: .value("Cumulative", cumulativeTotal(source, upTo: index))
                         )
                         .foregroundStyle(TLPalette.accent)
@@ -456,6 +483,12 @@ struct UsageReportView: View {
             String(format: "%02d", hour)
         }
 
+        var weekdayLabel: String {
+            let symbols = Calendar.current.shortStandaloneWeekdaySymbols
+            guard symbols.indices.contains(hour + 1) else { return "" }
+            return symbols[hour + 1]
+        }
+
         var dateLabel: String {
             guard let date else { return "" }
             if isLongPeriod {
@@ -509,13 +542,13 @@ struct UsageReportView: View {
         var weekdayTotals: [Int: (upload: Int64, download: Int64)] = [:]
         for u in dailyUsage {
             let wd = cal.component(.weekday, from: u.date) // 1=일...7=토
-            let idx = wd % 7 // 0=일...6=토
+            let idx = wd - 1 // 0=일...6=토
             let cur = weekdayTotals[idx] ?? (0, 0)
             weekdayTotals[idx] = (cur.upload + u.upload, cur.download + u.download)
         }
         let dayStride: [Int] = [0, 1, 2, 3, 4, 5, 6]
         return dayStride.compactMap { idx in
-            guard let t = weekdayTotals[idx] else { return nil }
+            let t = weekdayTotals[idx] ?? (0, 0)
             return ChartEntry(id: "\(idx)", date: nil, hour: idx, upload: t.upload, download: t.download, isLongPeriod: false)
         }
     }
