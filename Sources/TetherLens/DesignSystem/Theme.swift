@@ -66,6 +66,7 @@ enum TLSize {
     static let sheetSaving:    CGFloat = 300   // 절약 모드
     static let sheetStandard:  CGFloat = 320   // 설정/트래픽
     static let sheetWide:      CGFloat = 640   // 사용량 리포트
+    static let aboutSheet:     CGFloat = 240   // 정보 시트
 
     // 테이블 컬럼
     static let detailLabelWidth:  CGFloat = 96   // detailRow 라벨

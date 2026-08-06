@@ -9,7 +9,7 @@ struct SessionTimelineView: View {
       if sessions.isEmpty {
         Spacer()
         Text(Localized.noSessionData)
-          .foregroundColor(.secondary)
+          .foregroundColor(TLPalette.textSecondary)
         Spacer()
       } else {
         ScrollView {
@@ -19,7 +19,7 @@ struct SessionTimelineView: View {
               Divider()
             }
           }
-          .padding(.horizontal, 12)
+          .padding(.horizontal, TLSpace.xl)
         }
       }
     }
@@ -65,39 +65,39 @@ private struct SessionRow: View {
   }
 
   var body: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: TLSpace.md) {
       Circle()
-        .fill(session.endTime != nil ? Color.blue : Color.green)
+        .fill(session.endTime != nil ? TLPalette.download : TLPalette.success)
         .frame(width: 8, height: 8)
 
       VStack(alignment: .leading, spacing: 2) {
         Text(timeRangeString)
-          .font(.caption.monospacedDigit().bold())
-        HStack(spacing: 4) {
+          .font(TLFont.caption.monospacedDigit().bold())
+        HStack(spacing: TLSpace.xs) {
           if session.endTime != nil {
             Text(durationString)
-              .font(.caption2.monospacedDigit())
-              .foregroundColor(.secondary)
+              .font(TLFont.caption2.monospacedDigit())
+              .foregroundColor(TLPalette.textSecondary)
           }
           if let ip = ipAddress {
             Text("· \(ip)")
-              .font(.caption2.monospacedDigit())
-              .foregroundColor(.secondary)
+              .font(TLFont.caption2.monospacedDigit())
+              .foregroundColor(TLPalette.textSecondary)
           }
           if session.endTime != nil {
             Text(usageString)
-              .font(.caption2.monospacedDigit())
-              .foregroundColor(.orange)
+              .font(TLFont.caption2.monospacedDigit())
+              .foregroundColor(TLPalette.upload)
           } else {
             Text(Localized.inProgress)
-              .font(.caption2)
-              .foregroundColor(.green)
+              .font(TLFont.caption2)
+              .foregroundColor(TLPalette.success)
           }
         }
       }
 
       Spacer()
     }
-    .padding(.vertical, 6)
+    .padding(.vertical, TLSpace.sm)
   }
 }

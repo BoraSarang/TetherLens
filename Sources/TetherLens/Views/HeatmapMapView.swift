@@ -49,14 +49,14 @@ struct HeatmapMapView: View {
   var body: some View {
     Group {
       if markedSessions.isEmpty {
-        VStack(spacing: 8) {
+        VStack(spacing: TLSpace.md) {
           Spacer()
           Image(systemName: "map")
             .font(.largeTitle)
-            .foregroundColor(.secondary)
+            .foregroundColor(TLPalette.textSecondary)
           Text(Localized.string("위치 데이터가 없습니다", "No location data"))
-            .font(.caption)
-            .foregroundColor(.secondary)
+            .font(TLFont.caption)
+            .foregroundColor(TLPalette.textSecondary)
           Spacer()
         }
       } else {
@@ -81,7 +81,7 @@ struct HeatmapMapView: View {
             }
           }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, TLSpace.xl)
       }
     }
   }

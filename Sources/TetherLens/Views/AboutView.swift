@@ -12,7 +12,7 @@ struct AboutView: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: TLSpace.xxl) {
             Spacer()
 
             Image(nsImage: NSApp.applicationIconImage)
@@ -23,15 +23,15 @@ struct AboutView: View {
                 .font(.title2.bold())
 
             Text(Localized.version(version, build))
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(TLFont.caption)
+                .foregroundColor(TLPalette.textSecondary)
 
             Divider()
 
-            VStack(spacing: 6) {
+            VStack(spacing: TLSpace.sm) {
                 Text(Localized.appDescription)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
 
                 detailRow(label: Localized.createdBy, value: "BoRaSaRang")
 
@@ -39,8 +39,8 @@ struct AboutView: View {
                     NSWorkspace.shared.open(URL(string: "mailto:leeborasarang@gmail.com")!)
                 }
                 .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundColor(.blue)
+                .font(TLFont.caption)
+                .foregroundColor(TLPalette.accent)
                 .underline()
             }
 
@@ -51,18 +51,18 @@ struct AboutView: View {
                 .controlSize(.small)
         }
         .padding(24)
-        .padding(.bottom, 12)
-        .frame(width: 240, height: 340)
+        .padding(.bottom, TLSpace.xl)
+        .frame(width: TLSize.aboutSheet, height: 340)
     }
 
     private func detailRow(label: String, value: String) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: TLSpace.xs) {
             Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(TLFont.caption)
+                .foregroundColor(TLPalette.textSecondary)
             Text(value)
-                .font(.caption)
-                .foregroundColor(.primary)
+                .font(TLFont.caption)
+                .foregroundColor(TLPalette.textPrimary)
         }
     }
 }

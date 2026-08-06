@@ -4,7 +4,7 @@ struct OnboardingView: View {
   let onComplete: @MainActor () -> Void
 
   var body: some View {
-    VStack(spacing: 20) {
+    VStack(spacing: TLSpace.xxxl) {
       Spacer()
 
       Image(nsImage: NSApp.applicationIconImage)
@@ -15,14 +15,14 @@ struct OnboardingView: View {
         .font(.title2.bold())
 
       Text(Localized.welcomeDescription)
-        .font(.subheadline)
-        .foregroundColor(.secondary)
+        .font(TLFont.subheadline)
+        .foregroundColor(TLPalette.textSecondary)
         .multilineTextAlignment(.center)
         .padding(.horizontal, 32)
 
       Divider()
 
-      VStack(alignment: .leading, spacing: 12) {
+      VStack(alignment: .leading, spacing: TLSpace.xl) {
         OnboardingRow(
           icon: "location.fill",
           title: Localized.locationPermissionTitle,
@@ -56,17 +56,17 @@ private struct OnboardingRow: View {
   let description: String
 
   var body: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: TLSpace.xl) {
       Image(systemName: icon)
         .font(.title3)
-        .foregroundColor(.accentColor)
+        .foregroundColor(TLPalette.accent)
         .frame(width: 24)
-      VStack(alignment: .leading, spacing: 2) {
+      VStack(alignment: .leading, spacing: TLSpace.xs) {
         Text(title)
-          .font(.body.bold())
+          .font(TLFont.body.bold())
         Text(description)
-          .font(.caption)
-          .foregroundColor(.secondary)
+          .font(TLFont.caption)
+          .foregroundColor(TLPalette.textSecondary)
           .fixedSize(horizontal: false, vertical: true)
       }
     }

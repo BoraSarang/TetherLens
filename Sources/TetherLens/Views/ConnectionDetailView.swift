@@ -4,7 +4,7 @@ struct ConnectionDetailView: View {
     let detail: NetworkDetail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: TLSpace.sm) {
             Group {
                 detailRow(Localized.type, connectionTypeString)
                 detailRow("OS", osString)
@@ -22,16 +22,16 @@ struct ConnectionDetailView: View {
                 detailRow(Localized.dns, detail.dnsServers.first ?? "-")
             }
         }
-        .font(.caption)
+        .font(TLFont.caption)
     }
 
     private func detailRow(_ label: String, _ value: String) -> some View {
         HStack(alignment: .top) {
             Text(label)
-                .foregroundColor(.secondary)
+                .foregroundColor(TLPalette.textSecondary)
                 .frame(width: 64, alignment: .trailing)
             Text(value)
-                .foregroundColor(.primary)
+                .foregroundColor(TLPalette.textPrimary)
                 .textSelection(.enabled)
             Spacer()
         }

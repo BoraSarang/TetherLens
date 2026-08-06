@@ -47,27 +47,27 @@ struct HeatmapGridView: View {
       }
       legendView
     }
-    .padding(.horizontal, 12)
+    .padding(.horizontal, TLSpace.xl)
   }
 
   private var headerView: some View {
-    VStack(spacing: 4) {
+    VStack(spacing: TLSpace.xs) {
       Text(Localized.heatmapTitle)
-        .font(.caption.bold())
-        .foregroundColor(.secondary)
-        .padding(.top, 8)
+        .font(TLFont.caption.bold())
+        .foregroundColor(TLPalette.textSecondary)
+        .padding(.top, TLSpace.md)
 
       if let day = selectedDay, let hour = selectedHour {
         let data = gridData[day][hour]
         Text(Localized.string("\(data.totalMinutes)분 (\(data.count)회)", "\(data.totalMinutes)min (\(data.count) times)"))
-          .font(.caption2)
-          .foregroundColor(.primary)
-          .padding(.bottom, 4)
+          .font(TLFont.caption2)
+          .foregroundColor(TLPalette.textPrimary)
+          .padding(.bottom, TLSpace.xs)
       } else {
         Text(Localized.dailyHotspotTime)
-          .font(.caption2)
-          .foregroundColor(.secondary)
-          .padding(.bottom, 4)
+          .font(TLFont.caption2)
+          .foregroundColor(TLPalette.textSecondary)
+          .padding(.bottom, TLSpace.xs)
       }
     }
   }
@@ -79,16 +79,16 @@ struct HeatmapGridView: View {
           .frame(width: 28)
         ForEach(0..<24, id: \.self) { hour in
           Text("\(hour)")
-            .font(.system(size: 7))
-            .foregroundColor(.secondary)
+            .font(TLFont.badge)
+            .foregroundColor(TLPalette.textSecondary)
             .frame(width: 18)
         }
       }
       ForEach(0..<7, id: \.self) { day in
         HStack(spacing: 2) {
           Text(Localized.dayLabels[day])
-            .font(.system(size: 8))
-            .foregroundColor(.secondary)
+            .font(TLFont.badge)
+            .foregroundColor(TLPalette.textSecondary)
             .frame(width: 28, alignment: .leading)
           ForEach(0..<24, id: \.self) { hour in
             let data = gridData[day][hour]
@@ -114,7 +114,7 @@ struct HeatmapGridView: View {
         }
       }
     }
-    .padding(.horizontal, 8)
+    .padding(.horizontal, TLSpace.md)
   }
 
   private func select(day: Int, hour: Int) {
@@ -129,20 +129,20 @@ struct HeatmapGridView: View {
   }
 
   private var legendView: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: TLSpace.md) {
       Text(Localized.string("0분", "0min"))
-        .font(.system(size: 8))
-        .foregroundColor(.secondary)
+        .font(TLFont.badge)
+        .foregroundColor(TLPalette.textSecondary)
       legendSwatch(colorForMinutes(0))
       legendSwatch(colorForMinutes(7))
       legendSwatch(colorForMinutes(22))
       legendSwatch(colorForMinutes(37))
       legendSwatch(colorForMinutes(60))
       Text(Localized.string("60분", "60min"))
-        .font(.system(size: 8))
-        .foregroundColor(.secondary)
+        .font(TLFont.badge)
+        .foregroundColor(TLPalette.textSecondary)
     }
-    .padding(.vertical, 6)
+    .padding(.vertical, TLSpace.sm)
   }
 
   private func legendSwatch(_ color: Color) -> some View {

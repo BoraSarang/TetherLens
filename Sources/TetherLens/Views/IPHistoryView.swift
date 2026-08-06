@@ -6,38 +6,38 @@ struct IPHistoryView: View {
     @State private var logs: [IPLog] = []
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: TLSpace.xl) {
             Text(Localized.ipHistory)
-                .font(.headline)
-                .padding(.top, 16)
+                .font(TLFont.headline)
+                .padding(.top, TLSpace.xxl)
 
             if logs.isEmpty {
                 Spacer()
                 Text(Localized.noIPHistory)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
                 Spacer()
             } else {
                 List(logs) { log in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(log.ipAddress)
-                                .font(.body)
-                            HStack(spacing: 4) {
+                                .font(TLFont.body)
+                            HStack(spacing: TLSpace.xs) {
                                 if let country = log.country {
                                     Text(country)
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .font(TLFont.caption2)
+                                        .foregroundColor(TLPalette.textSecondary)
                                 }
                                 Text(Localized.firstSeen(dateString(log.firstSeenAt)))
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .font(TLFont.caption2)
+                                    .foregroundColor(TLPalette.textSecondary)
                             }
                         }
                         Spacer()
                         Text(Localized.lastSeen(relativeTimeString(log.lastSeenAt)))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(TLFont.caption2)
+                            .foregroundColor(TLPalette.textSecondary)
                     }
                 }
                 .listStyle(.plain)
@@ -46,9 +46,9 @@ struct IPHistoryView: View {
             Button(Localized.close) { onClose() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .padding(.bottom, 16)
+                .padding(.bottom, TLSpace.xxl)
         }
-        .frame(width: 280, height: 300)
+        .frame(width: TLSize.sheetCompact, height: 300)
         .onAppear {
             logs = ProfileManager.shared.getIPLogs(profileId: profileId)
         }

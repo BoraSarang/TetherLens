@@ -5,10 +5,10 @@ struct NotificationListView: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: TLSpace.xl) {
             HStack {
                 Text(Localized.notificationListTitle)
-                    .font(.headline)
+                    .font(TLFont.headline)
                 Spacer()
                 if !manager.notifications.isEmpty {
                     Button(Localized.clearAll) { manager.clearAll() }
@@ -16,33 +16,33 @@ struct NotificationListView: View {
                         .controlSize(.small)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
+            .padding(.horizontal, TLSpace.xxl)
+            .padding(.top, TLSpace.xxl)
 
             Divider()
 
             if manager.notifications.isEmpty {
                 Spacer()
                 Text(Localized.noNotifications)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
                 Spacer()
             } else {
                 List {
                     ForEach(manager.notifications) { note in
-                        HStack(spacing: 8) {
+                        HStack(spacing: TLSpace.md) {
                             Image(systemName: notificationIcon(for: note.type))
                                 .foregroundColor(notificationColor(for: note.type))
                                 .font(.title3)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(note.message)
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                 Text(note.timestamp, style: .time)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .font(TLFont.caption2)
+                                    .foregroundColor(TLPalette.textSecondary)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, TLSpace.xs)
                     }
                 }
                 .listStyle(.plain)
@@ -53,9 +53,9 @@ struct NotificationListView: View {
             Button(Localized.close) { onClose() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .padding(.bottom, 12)
+                .padding(.bottom, TLSpace.xl)
         }
-        .frame(width: 280, height: 320)
+        .frame(width: TLSize.sheetCompact, height: 320)
     }
 
     private func notificationIcon(for type: AppNotification.NotificationType) -> String {
@@ -68,12 +68,12 @@ struct NotificationListView: View {
 
     private func notificationColor(for type: AppNotification.NotificationType) -> Color {
         switch type {
-        case .quotaExceeded, .pingCritical: return .red
-        case .pingWarning: return .orange
-        case .pingRecovery: return .green
-        case .connectionLost: return .blue
-        case .connectionRestored: return .green
-        case .quotaWarning: return .orange
+        case .quotaExceeded, .pingCritical: return TLPalette.danger
+        case .pingWarning: return TLPalette.upload
+        case .pingRecovery: return TLPalette.success
+        case .connectionLost: return TLPalette.download
+        case .connectionRestored: return TLPalette.success
+        case .quotaWarning: return TLPalette.upload
         }
     }
 }
