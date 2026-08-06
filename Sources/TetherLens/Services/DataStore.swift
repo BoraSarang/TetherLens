@@ -11,11 +11,26 @@ final class DataStore: @unchecked Sendable {
         let dbPath = appSupport.appendingPathComponent("TetherLens/data.sqlite")
         let parent = dbPath.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-        dbQueue = try! DatabaseQueue(path: dbPath.path)
-        try! migrator.migrate(dbQueue)
+        let migrator = Self.makeMigrator()
+        if let queue = try? DatabaseQueue(path: dbPath.path),
+           (try? migrator.migrate(queue)) != nil {
+            dbQueue = queue
+        } else {
+            // 손상된 DB는 백업 후 재생성 (데이터 유실 최소화)
+            let backupPath = dbPath.appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970))")
+            try? FileManager.default.moveItem(at: dbPath, to: backupPath)
+            try? FileManager.default.removeItem(at: dbPath.appendingPathExtension("wal"))
+            try? FileManager.default.removeItem(at: dbPath.appendingPathExtension("shm"))
+            dbQueue = try! DatabaseQueue(path: dbPath.path)
+            try! migrator.migrate(dbQueue)
+        }
     }
 
-    private var migrator: DatabaseMigrator {
+    init(dbQueue: DatabaseQueue) {
+        self.dbQueue = dbQueue
+    }
+
+    static func makeMigrator() -> DatabaseMigrator {
         var m = DatabaseMigrator()
         m.registerMigration("v1_profile") { db in
             try db.create(table: "profile") { t in
@@ -75,7 +90,7 @@ final class DataStore: @unchecked Sendable {
             }
             let nullRows = try Row.fetchAll(db, sql: "SELECT id, ssid FROM profile WHERE connection_type IS NULL")
             for row in nullRows {
-                guard let idStr = row["id"] as? String, let id = UUID(uuidString: idStr),
+                guard let idStr = row["id"] as? String,
                       let ssid = row["ssid"] as? String else { continue }
                 let classified = Profile.classifiedConnectionType(ssid: ssid)
                 try db.execute(sql: "UPDATE profile SET connection_type = ? WHERE id = ?", arguments: [classified, idStr])
@@ -94,6 +109,30 @@ final class DataStore: @unchecked Sendable {
             }
             try db.create(index: "idx_ip_log_profile", on: "ip_log", columns: ["profile_id"])
             try db.create(index: "idx_ip_log_ip", on: "ip_log", columns: ["ip_address"])
+        }
+        m.registerMigration("v8_perf_indexes") { db in
+            try db.create(index: "idx_usage_log_profile_recorded", on: "usage_log", columns: ["profile_id", "recorded_at"])
+            try db.create(index: "idx_session_profile_start", on: "session", columns: ["profile_id", "start_time"])
+            try db.execute(sql: """
+                PRAGMA foreign_keys = OFF;
+                CREATE TABLE usage_log_new (
+                    id TEXT PRIMARY KEY,
+                    profile_id TEXT NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
+                    upload_delta INTEGER NOT NULL,
+                    download_delta INTEGER NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    session_id TEXT REFERENCES session(id) ON DELETE SET NULL
+                );
+                INSERT INTO usage_log_new (id, profile_id, upload_delta, download_delta, recorded_at, session_id)
+                    SELECT id, profile_id, upload_delta, download_delta, recorded_at, session_id FROM usage_log;
+                DROP TABLE usage_log;
+                ALTER TABLE usage_log_new RENAME TO usage_log;
+                CREATE INDEX idx_usage_log_profile ON usage_log(profile_id);
+                CREATE INDEX idx_usage_log_recorded ON usage_log(recorded_at);
+                CREATE INDEX idx_usage_log_session ON usage_log(session_id);
+                CREATE INDEX idx_usage_log_profile_recorded ON usage_log(profile_id, recorded_at);
+                PRAGMA foreign_keys = ON;
+            """)
         }
         return m
     }

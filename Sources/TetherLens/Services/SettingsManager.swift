@@ -3,7 +3,22 @@ import Foundation
 final class SettingsManager: @unchecked Sendable {
     static let shared = SettingsManager()
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        defaults.register(defaults: [
+            "showTotalColumn": true,
+            "menuBarMode": MenuBarMode.speedAndTotal.rawValue,
+            "showSSIDInMenuBar": false,
+            "menuBarRefreshInterval": Self.defaultMenuBarRefreshInterval,
+            "cacheRefreshInterval": Self.defaultCacheRefreshInterval,
+            "trafficMonitorInterval": Self.defaultTrafficMonitorInterval,
+            "pingInterval": Self.defaultPingInterval,
+            "pingLatencyNotificationEnabled": true,
+            "autoSwitchProfile": true
+        ])
+    }
 
     static let defaultMenuBarRefreshInterval: Double = 2.0
     static let defaultCacheRefreshInterval: Double = 5.0
@@ -89,19 +104,5 @@ final class SettingsManager: @unchecked Sendable {
         && cacheRefreshInterval == Self.defaultCacheRefreshInterval
         && trafficMonitorInterval == Self.defaultTrafficMonitorInterval
         && pingInterval == Self.defaultPingInterval
-    }
-
-    private init() {
-        defaults.register(defaults: [
-            "showTotalColumn": false,
-            "menuBarMode": MenuBarMode.speedAndTotal.rawValue,
-            "showSSIDInMenuBar": false,
-            "menuBarRefreshInterval": Self.defaultMenuBarRefreshInterval,
-            "cacheRefreshInterval": Self.defaultCacheRefreshInterval,
-            "trafficMonitorInterval": Self.defaultTrafficMonitorInterval,
-            "pingInterval": Self.defaultPingInterval,
-            "pingLatencyNotificationEnabled": true,
-            "autoSwitchProfile": true
-        ])
     }
 }

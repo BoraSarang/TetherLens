@@ -4,7 +4,11 @@ import GRDB
 final class ProfileManager: @unchecked Sendable {
     static let shared = ProfileManager()
 
-    private var db: DatabaseQueue { DataStore.shared.dbQueue }
+    private let db: DatabaseQueue
+
+    init(db: DatabaseQueue? = nil) {
+        self.db = db ?? DataStore.shared.dbQueue
+    }
 
     private var cachedSSID: String?
     private var cachedProfileResult: Profile?
@@ -49,14 +53,18 @@ final class ProfileManager: @unchecked Sendable {
         try! db.write { db in
             try profile.save(db)
         }
+        invalidateCache()
     }
 
     func deleteProfile(id: UUID) {
         try! db.write { db in
             try UsageLog.filter(Column("profile_id") == id).deleteAll(db)
             try IPLog.filter(Column("profile_id") == id).deleteAll(db)
+            try Session.filter(Column("profile_id") == id).deleteAll(db)
             try Profile.filter(Column("id") == id).deleteAll(db)
         }
+        invalidateCache()
+        cumulativeCounters[id] = nil
     }
 
     func deleteUsageData(profileId: UUID) {
@@ -98,45 +106,41 @@ final class ProfileManager: @unchecked Sendable {
 
     // MARK: - Usage Recording
 
-    private var lastCumulativeUpload: Int64?
-    private var lastCumulativeDownload: Int64?
-    private var lastRecordProfileId: UUID?
+    private var cumulativeCounters: [UUID: (upload: Int64, download: Int64)] = [:]
 
     func recordUsage(totalUpload: Int64, totalDownload: Int64, profileId: UUID, sessionId: UUID? = nil) {
-        guard let lastUp = lastCumulativeUpload,
-              let lastDn = lastCumulativeDownload,
-              lastRecordProfileId == profileId else {
-            lastCumulativeUpload = totalUpload
-            lastCumulativeDownload = totalDownload
-            lastRecordProfileId = profileId
-            return
-        }
+        if let last = cumulativeCounters[profileId] {
+            let upDelta = totalUpload - last.upload
+            let dnDelta = totalDownload - last.download
 
-        let upDelta = totalUpload - lastUp
-        let dnDelta = totalDownload - lastDn
-
-        if upDelta < 0 || dnDelta < 0 {
-            lastCumulativeUpload = totalUpload
-            lastCumulativeDownload = totalDownload
-            return
-        }
-
-        if upDelta > 0 || dnDelta > 0 {
-            let log = UsageLog(
-                id: UUID(),
-                profileId: profileId,
-                uploadDelta: upDelta,
-                downloadDelta: dnDelta,
-                recordedAt: Date(),
-                sessionId: sessionId
-            )
-            try! db.write { db in
-                try log.insert(db)
+            if upDelta < 0 || dnDelta < 0 {
+                cumulativeCounters[profileId] = (totalUpload, totalDownload)
+                return
             }
-        }
 
-        lastCumulativeUpload = totalUpload
-        lastCumulativeDownload = totalDownload
+            if upDelta > 0 || dnDelta > 0 {
+                let log = UsageLog(
+                    id: UUID(),
+                    profileId: profileId,
+                    uploadDelta: upDelta,
+                    downloadDelta: dnDelta,
+                    recordedAt: Date(),
+                    sessionId: sessionId
+                )
+                try! db.write { db in
+                    try log.insert(db)
+                }
+                invalidateUsageCache()
+            }
+
+            cumulativeCounters[profileId] = (totalUpload, totalDownload)
+        } else {
+            cumulativeCounters[profileId] = (totalUpload, totalDownload)
+        }
+    }
+
+    private func invalidateUsageCache() {
+        cachedUsageTime = Date.distantPast
     }
 
     func getUsageLogs(profileId: UUID, days: Int = 7) -> [UsageLog] {
@@ -154,6 +158,14 @@ final class ProfileManager: @unchecked Sendable {
         let cutoff = Calendar.current.date(byAdding: .day, value: -365, to: Date())!
         try! db.write { db in
             try UsageLog.filter(Column("recorded_at") < cutoff).deleteAll(db)
+            let oldSessions = try Session
+                .filter(Column("end_time") < cutoff)
+                .fetchAll(db)
+            for session in oldSessions {
+                try UsageLog.filter(Column("session_id") == session.id).deleteAll(db)
+                try Session.filter(Column("id") == session.id).deleteAll(db)
+            }
+            try IPLog.filter(Column("last_seen_at") < cutoff).deleteAll(db)
         }
     }
 
@@ -366,12 +378,13 @@ final class ProfileManager: @unchecked Sendable {
 
     func getIPForSession(_ session: Session) -> IPLog? {
         try! db.read { db in
+            let start = session.startTime
+            let end = session.endTime ?? Date()
             let logs = try IPLog
                 .filter(Column("profile_id") == session.profileId)
-                .order(Column("first_seen_at").asc)
+                .order(Column("first_seen_at").desc)
                 .fetchAll(db)
-            let end = session.endTime ?? Date()
-            return logs.last { $0.firstSeenAt <= end }
+            return logs.first { $0.firstSeenAt <= end && $0.lastSeenAt >= start }
         }
     }
 
@@ -379,6 +392,14 @@ final class ProfileManager: @unchecked Sendable {
         let profiles = profileId.map { [$0].compactMap { getProfile(id: $0) } } ?? getAllProfiles()
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd HH:mm"
+
+        func csvEscape(_ value: String) -> String {
+            var escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+            if escaped.contains(",") || escaped.contains("\n") || escaped.contains("\r") {
+                escaped = "\"\(escaped)\""
+            }
+            return escaped
+        }
 
         var csvHeader = "Profile,Type,Start,End,Value\n"
         var csvBody = ""
@@ -394,7 +415,7 @@ final class ProfileManager: @unchecked Sendable {
             for s in sessions {
                 let usage = getSessionUsage(session: s)
                 let end = s.endTime.map { df.string(from: $0) } ?? ""
-                csvBody += "\"\(p.name)\",Session,\(df.string(from: s.startTime)),\(end),\(usage.download + usage.upload)\n"
+                csvBody += "\(csvEscape(p.name)),Session,\(df.string(from: s.startTime)),\(end),\(usage.download + usage.upload)\n"
                 jsonObject.append([
                     "profile": p.name, "type": "session",
                     "start": df.string(from: s.startTime), "end": end,
@@ -403,7 +424,7 @@ final class ProfileManager: @unchecked Sendable {
             }
             let logs = getIPLogs(profileId: p.id)
             for l in logs {
-                csvBody += "\"\(p.name)\",IP,\(df.string(from: l.firstSeenAt)),\(df.string(from: l.lastSeenAt)),\"\(l.ipAddress)\"\n"
+                csvBody += "\(csvEscape(p.name)),IP,\(df.string(from: l.firstSeenAt)),\(df.string(from: l.lastSeenAt)),\(csvEscape(l.ipAddress))\n"
                 jsonObject.append([
                     "profile": p.name, "type": "ip",
                     "first_seen": df.string(from: l.firstSeenAt),
@@ -419,24 +440,39 @@ final class ProfileManager: @unchecked Sendable {
 
     func mergeStaleIPLogs() {
         try! db.write { db in
-            let rows = try Row.fetchAll(db, sql: "SELECT DISTINCT profile_id, ip_address FROM ip_log ORDER BY last_seen_at DESC")
-            var toDelete: [UUID] = []
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT profile_id, ip_address,
+                       MIN(first_seen_at) AS min_first,
+                       MAX(last_seen_at) AS max_last
+                FROM ip_log
+                GROUP BY profile_id, ip_address
+                HAVING COUNT(*) > 1
+            """)
             for row in rows {
-                let profileId: UUID = row["profile_id"]
-                let ipAddress: String = row["ip_address"]
+                guard let profileId: UUID = row["profile_id"],
+                      let ipAddress: String = row["ip_address"],
+                      let minFirst: Date = row["min_first"],
+                      let maxLast: Date = row["max_last"] else { continue }
                 let all = try IPLog
                     .filter(Column("profile_id") == profileId)
                     .filter(Column("ip_address") == ipAddress)
-                    .order(Column("first_seen_at").asc)
                     .fetchAll(db)
-                if all.count > 1, let latest = all.last {
-                    for log in all where log.id != latest.id {
-                        toDelete.append(log.id)
-                    }
+                guard let oldest = all.min(by: { $0.firstSeenAt < $1.firstSeenAt }),
+                      let newest = all.max(by: { $0.lastSeenAt < $1.lastSeenAt }) else { continue }
+                let merged = IPLog(
+                    id: oldest.id,
+                    profileId: profileId,
+                    ipAddress: ipAddress,
+                    country: newest.country ?? oldest.country,
+                    latitude: newest.latitude ?? oldest.latitude,
+                    longitude: newest.longitude ?? oldest.longitude,
+                    firstSeenAt: minFirst,
+                    lastSeenAt: maxLast
+                )
+                try merged.save(db)
+                for log in all where log.id != merged.id {
+                    try IPLog.filter(Column("id") == log.id).deleteAll(db)
                 }
-            }
-            for id in toDelete {
-                try IPLog.filter(Column("id") == id).deleteAll(db)
             }
         }
     }
