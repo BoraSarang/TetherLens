@@ -389,6 +389,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 block()
             }
         }
+        // 타이머 병합으로 전력 절감 — 반복 주기의 10% 허용 오차
+        timer.tolerance = max(interval * 0.1, 0.05)
         RunLoop.main.add(timer, forMode: .common)
         return timer
     }

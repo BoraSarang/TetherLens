@@ -36,6 +36,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         let saveTimer = Timer(timeInterval: 300, repeats: true) { [weak self] _ in
             self?.saveAccumulated()
         }
+        saveTimer.tolerance = 30 // 300초 주기의 10%
         RunLoop.main.add(saveTimer, forMode: .common)
         self.saveTimer = saveTimer
     }
@@ -49,6 +50,8 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             self?.refresh()
             self?.scheduleNextRefresh()
         }
+        // 단발 그러나 반복 재예약 — 재예약 주기의 10% 허용 오차로 타이머 병합
+        refreshTimer.tolerance = max(interval * 0.1, 0.05)
         RunLoop.main.add(refreshTimer, forMode: .common)
         timer = refreshTimer
     }

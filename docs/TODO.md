@@ -223,7 +223,7 @@
 |---|------|----------|--------|
 | 119 | 슬립/깨움 이벤트 구독 + 모니터 일시중지/재개 (MenuBarManager) | P1 | ✅ |
 | 120 | 팝오버 닫힘 시 1초 tick 중지 (PopoverView) | P2 | ✅ |
-| 121 | Timer tolerance 부여 (MenuBarManager/TrafficMonitor) | P2 | ⬜ |
+| 121 | Timer tolerance 부여 (MenuBarManager/TrafficMonitor) | P2 | ✅ |
 
 ## 🔬 관찰 기록 — 에너지 사용 (2026-08-06)
 
