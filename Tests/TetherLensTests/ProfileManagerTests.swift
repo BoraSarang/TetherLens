@@ -54,6 +54,22 @@ import GRDB
         #expect(pm.getAllProfiles().count == 1)
     }
 
+    @Test func autoRegister_핫스팟_연결타입_어휘() throws {
+        let (_, pm) = try makeManager()
+        // MenuBarManager.connectionTypeString은 스네이크케이스("ios_hotspot"/"android_hotspot")로 전달
+        let ios = pm.autoRegisterIfNeeded(ssid: "iPhone 15", connectionType: "ios_hotspot")
+        #expect(ios.isHotspot, "스네이크케이스 저장 시 isHotspot 인식")
+        #expect(ios.typeLabel != nil)
+
+        let android = pm.autoRegisterIfNeeded(ssid: "GALAXY S24", connectionType: "android_hotspot")
+        #expect(android.isHotspot, "android_hotspot 저장 시 isHotspot 인식")
+
+        // 과거 버그에서 저장된 카멜케이스는 v9 마이그레이션에서 정규화되며,
+        // 정규화 이전에도 isHotspot이 false로 남는 것을 방지한다.
+        let legacy = pm.autoRegisterIfNeeded(ssid: "OLD_HOTSPOT", connectionType: "iOSHotspot")
+        #expect(!legacy.isHotspot, "카멜케이스는 isHotspot 인식 안 됨(정규화 대상)")
+    }
+
     @Test func SSID_연결타입_분류() {
         #expect(Profile.classifiedConnectionType(ssid: "iPhone 15") == "ios_hotspot")
         #expect(Profile.classifiedConnectionType(ssid: "내 iPAD") == "ios_hotspot")

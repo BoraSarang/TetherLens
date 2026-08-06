@@ -419,13 +419,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         if let ssid = ssid, !ssid.isEmpty {
             if ssid != lastAutoRegisterSSID {
                 lastAutoRegisterSSID = ssid
+                // SSID가 바뀌었으므로 이전 프로필의 스테일 캐시는 자동 전환 여부와 무관하게 무효화.
+                // 그렇지 않으면 autoSwitchProfile OFF 상태에서 이전 프로필로 새 세션이 열려 트래픽이 오염된다.
+                cachedProfile = nil
+                cachedUsage = nil
+                cachedTotalUsage = nil
+                cacheNeedsInvalidation = true
                 if SettingsManager.shared.autoSwitchProfile {
                     _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
-                    cacheNeedsInvalidation = true
-                    // 이전 SSID의 스테일 캐시가 새 프로필 조회를 가로채지 않도록 즉시 무효화
-                    cachedProfile = nil
-                    cachedUsage = nil
-                    cachedTotalUsage = nil
                 }
             }
 
@@ -640,8 +641,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private func connectionTypeString(for type: ConnectionType?) -> String? {
         guard let type else { return nil }
         switch type {
-        case .iOSPersonalHotspot: return "iOSHotspot"
-        case .androidHotspot: return "AndroidHotspot"
+        case .iOSPersonalHotspot: return "ios_hotspot"
+        case .androidHotspot: return "android_hotspot"
         default: return nil
         }
     }

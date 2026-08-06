@@ -137,6 +137,12 @@ final class DataStore: @unchecked Sendable {
                 PRAGMA foreign_keys = ON;
             """)
         }
+        m.registerMigration("v9_connection_type_normalize") { db in
+            // 이전 버그(v6~v0.24.0): autoRegisterIfNeeded가 카멜케이스("iOSHotspot")로 덮어써
+            // Profile.isHotspot(스네이크케이스 인식)이 false가 되는 어휘 혼재를 정규화한다.
+            try db.execute(sql: "UPDATE profile SET connection_type = 'ios_hotspot' WHERE connection_type = 'iOSHotspot'")
+            try db.execute(sql: "UPDATE profile SET connection_type = 'android_hotspot' WHERE connection_type = 'AndroidHotspot'")
+        }
         return m
     }
 }
