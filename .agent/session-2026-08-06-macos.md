@@ -64,7 +64,7 @@
    - **Info.plist 단일 원본**: 루트 `Resources/Info.plist`만 수정. `Sources/TetherLens/Info.plist`는 삭제(죽은 파일 — 빌드 스크립트가 루트만 번들에 복사, Package.swift exclude 제거). 이후 버전 갱신은 반드시 `Resources/Info.plist` (AGENTS.macos.md 3장 명시).
    - **문서 정리**: AGENTS.macos.md(플랫폼 규칙), docs/DESIGN.md(기술 설계) 신설, AGENTS.local.md 2건 정정(CLAUDE.md ❌, 테스트 32개), docs/PLAN.md symlink→로드맵 문서 전환, icon.png→images/ 이동.
    - **잔재**: tetherlens.db(0B, git 추적 중) → .gitignore + rm --cached + 로컬 삭제 (실제 DB는 App Support), 빈 Sources/TetherLens/Resources/ 삭제.
-   - **커밋**: 2c07318(T-88), 53673ed(T-89), d7a039f(T-90), 70844c5(T-91), [문서 마무리 커밋].
+   - **커밋**: 2c07318(T-88), 53673ed(T-89), d7a039f(T-90), 70844c5(T-91), 189b59b(문서 마무리).
    - **검증**: 테스트 32/32, 빌드 완료, 번들 버전 0.23.1/24 확인. AboutView 버전 표시(0.23.1) 수동 확인 권장.
 6. 문서: TODO T-88~91 ✅, CHANGELOG v0.23.1 Chore 섹션.
 7. 오프라인 큐: N/A.
