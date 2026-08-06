@@ -83,6 +83,18 @@
 - **T-107** MenuBarManager: `connectionTypeString(for:)` 스네이크케이스 통일 (X1) / DataStore: v9 마이그레이션으로 카멜→스네이크 정규화 (X1) / 테스트 추가
 - **T-108** MenuBarManager: SSID 변경 시 cachedProfile·cachedUsage·cachedTotalUsage를 autoSwitchProfile과 무관하게 즉시 무효화 (X2)
 
+### 5차 발견 (5차 재분석 — 서브에이전트 + 직접 검증 확정)
+
+| # | 위치 | 문제 |
+|---|------|------|
+| Y1 | MenuBarManager.swift:498-502 | SSID 단절 시 endSession만 하고 마지막 구간 recordUsage 미기록 → 트래픽 유실 (High) |
+| Y2 | MenuBarManager.swift:111-121 + ProfileManager.swift:128 | 연결 중 프로필 삭제 시 currentSession이 삭제 세션 유지 → recordUsage insert가 FK 위반으로 `try!` 크래시 (High) |
+| Y3 | TrafficMonitor.swift:165-188 | nettop `-l 2 -s 1`(1초 델타 1개)만 캡처 → refresh 간격 사이 트래픽 유실, 앱 리포트 과소 집계 (High) |
+
+- **T-109** MenuBarManager: 단절 분기에 recordUsage 추가(스위치 분기와 동일 패턴) (Y1)
+- **T-110** MenuBarManager: handleCurrentProfileDeleted에서 currentSession/lastTrackedSSID 리셋 (Y2)
+- **T-111** TrafficMonitor: nettop 샘플 윈도우를 refresh 간격으로 확장 + 타이머 self-rescheduling(커버리지 20%→약 50%) (Y3)
+
 ## 4. 테스트 계획 (TC)
 
 - 기존 테스트 수정: `recordUsage_누적_델타_계산` (H2 동작 변경 반영 — 음수 방향만 재시드)

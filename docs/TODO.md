@@ -190,9 +190,12 @@
 | 106 | PingMonitor: 연결 토글 알림 쿨다운 (W5) | P1 | ⬜ |
 | 107 | MenuBarManager: connectionTypeString 스네이크 통일 + DataStore v9 정규화 마이그레이션 + 테스트 (X1) | P0 | ⬜ |
 | 108 | MenuBarManager: SSID 변경 시 캐시 무효화를 autoSwitchProfile과 무관하게 (X2) | P0 | ⬜ |
+| 109 | MenuBarManager: SSID 단절 시 마지막 구간 recordUsage (Y1) | P0 | ⬜ |
+| 110 | MenuBarManager: handleCurrentProfileDeleted에서 currentSession/lastTrackedSSID 리셋 (Y2) | P0 | ⬜ |
+| 111 | TrafficMonitor: nettop 샘플 윈도우 확장 + 타이머 self-rescheduling (Y3) | P1 | ⬜ |
 
 > 커밋: [T-92~98 코드/테스트/문서 각각 분리], [T-99~101 코드], [T-102 문서]
-> 상태: 92~98 완료 (efedfd6), 99~101 완료 (2838361), 102 문서 완료 (4402758), 103~106 완료 (839ad14, 141cc4d), 107~108 코드/테스트 완료 (미커밋, 테스트 38개 통과)
+> 상태: 92~98 완료 (efedfd6), 99~101 완료 (2838361), 102 문서 완료 (4402758), 103~106 완료 (839ad14, 141cc4d), 107~108 완료 (a952f75, f2ce83d), 109~111 코드 진행 중
 
 
 > 참고: DebugPanelView는 개발자 전용 다크 패널이라 토큰 대상 제외, 히트맵 그라데이션/지도 핀 색은 시각화 고유 로직으로 유지
