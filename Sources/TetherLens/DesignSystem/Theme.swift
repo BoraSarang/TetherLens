@@ -49,6 +49,7 @@ enum TLSpace {
     static let lg:  CGFloat = 10
     static let xl:  CGFloat = 12
     static let xxl: CGFloat = 16
+    static let xxxl: CGFloat = 20
     static let inset: CGFloat = 16    // 팝오버 인셋
 }
 

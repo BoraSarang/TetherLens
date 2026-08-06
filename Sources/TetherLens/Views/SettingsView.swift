@@ -47,15 +47,15 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(Localized.settings)
-                .font(.headline)
-                .padding(.top, 20)
-                .padding(.bottom, 12)
+                .font(TLFont.headline)
+                .padding(.top, TLSpace.xxxl)
+                .padding(.bottom, TLSpace.xl)
                 .frame(maxWidth: .infinity)
 
             Divider()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: TLSpace.xl) {
                     Group {
                         Toggle(Localized.showTotalInMenuBar, isOn: $showTotalColumn)
                             .onChange(of: showTotalColumn) { _, newValue in
@@ -101,20 +101,20 @@ struct SettingsView: View {
                                 NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                             }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, TLSpace.xxxl)
 
-                    Divider().padding(.horizontal, 12)
+                    Divider().padding(.horizontal, TLSpace.xl)
 
                     Group {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(Localized.menuBar)
-                                .font(.subheadline).bold()
+                                .font(TLFont.subheadline).bold()
                             HStack {
                                 Text(Localized.fontSize)
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                 Text(Localized.defaultParen(Int(SettingsManager.defaultMenuBarFontSize)))
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .font(TLFont.caption2)
+                                    .foregroundColor(TLPalette.textSecondary)
                                 Spacer()
                                 Slider(value: $fontSize, in: 7...14, step: 1)
                                     .frame(width: 80)
@@ -123,13 +123,13 @@ struct SettingsView: View {
                                         NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                                     }
                                 Text("\(Int(fontSize))pt")
-                                    .font(.caption).monospacedDigit()
+                                    .font(TLFont.caption).monospacedDigit()
                                     .frame(width: 28, alignment: .trailing)
                             }
-                            .padding(.leading, 12)
+                            .padding(.leading, TLSpace.xl)
                             HStack {
                                 Text(Localized.showAppTrafficLabel)
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                 Spacer()
                                 Picker("", selection: $showAppTraffic) {
                                     Text(Localized.show).tag(true)
@@ -141,29 +141,29 @@ struct SettingsView: View {
                             .onChange(of: showAppTraffic) { _, newValue in
                                 UserDefaults.standard.set(newValue, forKey: "popover_show_app_traffic")
                             }
-                            .padding(.leading, 12)
+                            .padding(.leading, TLSpace.xl)
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, TLSpace.xxxl)
 
-                    Divider().padding(.horizontal, 12)
+                    Divider().padding(.horizontal, TLSpace.xl)
 
                     Group {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(Localized.permissions)
-                                .font(.subheadline).bold()
+                                .font(TLFont.subheadline).bold()
                             HStack {
                                 Text(Localized.locationPermission)
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                 Spacer()
                                 if locationStatus == .authorized || locationStatus == .authorizedAlways {
                                     Text(Localized.notificationAuthorized)
-                                        .font(.caption)
-                                        .foregroundColor(.green)
+                                        .font(TLFont.caption)
+                                        .foregroundColor(TLPalette.success)
                                 } else {
                                     Text(locationStatus == .denied ? Localized.denied : Localized.notDetermined)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .font(TLFont.caption)
+                                        .foregroundColor(TLPalette.textSecondary)
                                     Button(Localized.requestPermission) {
                                         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") {
                                             NSWorkspace.shared.open(url)
@@ -173,30 +173,30 @@ struct SettingsView: View {
                                     .controlSize(.small)
                                 }
                             }
-                            .padding(.leading, 12)
+                            .padding(.leading, TLSpace.xl)
                             if locationStatus == .authorized || locationStatus == .authorizedAlways {
                                 VStack(alignment: .leading, spacing: 1) {
                                     ForEach(locationDiagnostics, id: \.self) { line in
                                         Text(line)
-                                            .font(.system(size: 8))
-                                            .foregroundColor(.secondary)
+                                            .font(TLFont.badge)
+                                            .foregroundColor(TLPalette.textSecondary)
                                     }
                                 }
-                                .padding(.leading, 12)
-                                .padding(.bottom, 4)
+                                .padding(.leading, TLSpace.xl)
+                                .padding(.bottom, TLSpace.xs)
                             }
                             HStack {
                                 Text(Localized.notifications)
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                 Spacer()
                                 if notiAuthorized {
                                     Text(Localized.notificationAuthorized)
-                                        .font(.caption)
-                                        .foregroundColor(.green)
+                                        .font(TLFont.caption)
+                                        .foregroundColor(TLPalette.success)
                                 } else {
                                     Text(Localized.denied)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .font(TLFont.caption)
+                                        .foregroundColor(TLPalette.textSecondary)
                                     Button(Localized.requestPermission) {
                                         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
                                             DispatchQueue.main.async { notiAuthorized = granted }
@@ -209,33 +209,33 @@ struct SettingsView: View {
                                     .controlSize(.small)
                                 }
                             }
-                            .padding(.leading, 12)
+                            .padding(.leading, TLSpace.xl)
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, TLSpace.xxxl)
 
-                    Divider().padding(.horizontal, 12)
+                    Divider().padding(.horizontal, TLSpace.xl)
 
                     Group {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(Localized.notifications)
-                                .font(.subheadline).bold()
+                                .font(TLFont.subheadline).bold()
                             HStack {
                                 Text(Localized.quotaAlert)
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                 Spacer()
                                 Text(Localized.string("50%, 80%, 95%, 100% 자동 알림", "50%, 80%, 95%, 100% auto"))
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .font(TLFont.caption2)
+                                    .foregroundColor(TLPalette.textSecondary)
                             }
-                            .padding(.leading, 12)
+                            .padding(.leading, TLSpace.xl)
                             Divider()
                             HStack {
                                 Text(Localized.latencyAlert)
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                 Text(Localized.defaultShown)
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .font(TLFont.caption2)
+                                    .foregroundColor(TLPalette.textSecondary)
                                 Spacer()
                                 Picker("", selection: Binding(
                                     get: { SettingsManager.shared.pingLatencyNotificationEnabled },
@@ -247,16 +247,16 @@ struct SettingsView: View {
                                 .pickerStyle(.menu)
                                 .fixedSize()
                             }
-                            .padding(.leading, 12)
+                            .padding(.leading, TLSpace.xl)
                         }
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, TLSpace.xxxl)
 
-                    Divider().padding(.horizontal, 12)
+                    Divider().padding(.horizontal, TLSpace.xl)
 
                     HStack {
                         Text(Localized.performance)
-                            .font(.subheadline).bold()
+                            .font(TLFont.subheadline).bold()
                         Spacer()
                         Button(Localized.resetDefaults) {
                             SettingsManager.shared.resetPollingIntervals()
@@ -267,11 +267,11 @@ struct SettingsView: View {
                             NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                         }
                         .buttonStyle(.plain)
-                        .font(.caption)
-                        .foregroundColor(.blue)
+                        .font(TLFont.caption)
+                        .foregroundColor(TLPalette.download)
                         .disabled(SettingsManager.shared.isUsingDefaultPollingIntervals)
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, TLSpace.xxxl)
 
                     Group {
                         pollingRow(label: Localized.menuBarRefresh, defaultValue: SettingsManager.defaultMenuBarRefreshInterval, selection: $menuBarInterval, options: menuBarOptions)
@@ -280,9 +280,9 @@ struct SettingsView: View {
                         pollingRow(label: Localized.pingIntervalLabel, defaultValue: SettingsManager.defaultPingInterval, selection: $pingInterval, options: pingOptions)
                     }
                     .padding(.leading, 32)
-                    .padding(.trailing, 20)
+                    .padding(.trailing, TLSpace.xxxl)
                 }
-                .padding(.vertical, 12)
+                .padding(.vertical, TLSpace.xl)
             }
 
             Divider()
@@ -293,10 +293,10 @@ struct SettingsView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(.horizontal, TLSpace.xxxl)
+            .padding(.vertical, TLSpace.xl)
         }
-        .frame(width: 320, height: 480)
+        .frame(width: TLSize.sheetStandard, height: 480)
         .onAppear {
             refreshPermissions()
         }
@@ -311,10 +311,10 @@ struct SettingsView: View {
     private func pollingRow(label: String, defaultValue: Double, selection: Binding<Double>, options: [(String, Double)]) -> some View {
         HStack {
             Text(label)
-                .font(.caption)
+                .font(TLFont.caption)
             Text(String(format: Localized.string("(기본: %@)", "(Default: %@)"), formatInterval(defaultValue)))
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                .font(TLFont.caption2)
+                .foregroundColor(TLPalette.textSecondary)
             Spacer()
             Picker("", selection: selection) {
                 ForEach(options, id: \.1) { opt in
