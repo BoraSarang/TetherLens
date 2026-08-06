@@ -228,6 +228,15 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var sessionCount: String { value(kr: "세션", en: "Sessions") }
   static var uploadShort: String { value(kr: "▲ 업로드", en: "▲ Up") }
   static var downloadShort: String { value(kr: "▼ 다운로드", en: "▼ Dn") }
+  static var vsPreviousPeriod: String { value(kr: "전기간 대비", en: "vs Prev") }
+  static var prevPeriod: String { value(kr: "이전 기간", en: "Prev") }
+  static var topUsageDay: String { value(kr: "최다 사용일", en: "Top Day") }
+  static var topHotspot: String { value(kr: "최다 핫스팟", en: "Top Hotspot") }
+  static var topApps: String { value(kr: "상위 앱", en: "Top Apps") }
+  static var quotaUsage: String { value(kr: "할당량", en: "Quota") }
+  static var expectedExhaustion: String { value(kr: "예상 소진", en: "Estimated") }
+  static var increased: String { value(kr: "증가", en: "up") }
+  static var decreased: String { value(kr: "감소", en: "down") }
 
   // MARK: - Onboarding
   static var welcomeTitle: String { value(kr: "TetherLens에 오신 것을 환영합니다", en: "Welcome to TetherLens") }

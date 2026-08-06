@@ -349,6 +349,22 @@ final class ProfileManager: @unchecked Sendable {
         }
     }
 
+    /// 특정 [from, to) 시간 구간의 총 사용량. profileId가 nil이면 전체 프로필 합계.
+    func getUsageTotal(profileId: UUID?, from: Date, to: Date) -> Int64 {
+        var sql = """
+            SELECT COALESCE(SUM(upload_delta + download_delta), 0) AS total
+            FROM usage_log WHERE recorded_at >= ? AND recorded_at < ?
+        """
+        var args: [DatabaseValueConvertible] = [from, to]
+        if let pid = profileId {
+            sql += " AND profile_id = ?"
+            args.append(pid)
+        }
+        return try! db.read { db in
+            (try Row.fetchOne(db, sql: sql, arguments: StatementArguments(args)))?["total"] as? Int64 ?? 0
+        }
+    }
+
     // MARK: - IP Change Tracking
 
     func addIPLog(profileId: UUID, ipAddress: String, country: String?, latitude: Double?, longitude: Double?) {

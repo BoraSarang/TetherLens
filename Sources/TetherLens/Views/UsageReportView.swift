@@ -15,6 +15,9 @@ struct UsageReportView: View {
     @State private var appTrafficData: [(processName: String, uploadBytes: Int64, downloadBytes: Int64)] = []
     @State private var expandedSection: AppTrafficSection = .user
     @State private var sortOrder: TrafficSortOrder = .total
+    @State private var previousPeriodTotal: Int64 = 0
+    @State private var topHotspot: (name: String, total: Int64)?
+    @State private var topApps: [(name: String, total: Int64)] = []
 
     enum TrafficSortOrder: CaseIterable {
         case total, upload, download
@@ -188,32 +191,7 @@ struct UsageReportView: View {
             .padding(.top, TLSpace.md)
 
             if !dailyUsage.isEmpty {
-                let totalUp = dailyUsage.reduce(0) { $0 + $1.upload }
-                let totalDn = dailyUsage.reduce(0) { $0 + $1.download }
-                let totalBytes = totalUp + totalDn
-                let avgBytes = totalBytes / max(Int64(dailyUsage.count), 1)
-
-                HStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(Localized.totalUsage)
-                            .font(TLFont.caption2)
-                            .foregroundColor(TLPalette.textSecondary)
-                        Text(totalBytes.formattedBytes)
-                            .font(TLFont.callout.monospacedDigit().bold())
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(Localized.dailyAverage)
-                            .font(TLFont.caption2)
-                            .foregroundColor(TLPalette.textSecondary)
-                        Text(avgBytes.formattedBytes)
-                            .font(TLFont.callout.monospacedDigit().bold())
-                    }
-                }
-                .padding(.vertical, TLSpace.sm)
-                .background(TLPalette.textBackground.opacity(0.5))
-                .cornerRadius(TLRound.small)
-                .padding(.horizontal, TLSpace.xl)
+                insightCards
             }
 
             Divider()
@@ -238,6 +216,98 @@ struct UsageReportView: View {
             .padding(.horizontal, TLSpace.xl)
             .padding(.bottom, TLSpace.xl)
         }
+    }
+
+    // MARK: - Insight Cards
+
+    private var insightCards: some View {
+        VStack(spacing: TLSpace.sm) {
+            HStack(spacing: TLSpace.md) {
+                insightCard(
+                    title: Localized.totalUsage,
+                    value: totalBytes.formattedBytes,
+                    subtitle: "\(Localized.dailyAverage) \(Int64(totalBytes / max(Int64(dailyUsage.count), 1)).formattedBytes)",
+                    color: TLPalette.textPrimary
+                )
+                insightCard(
+                    title: Localized.vsPreviousPeriod,
+                    value: previousPeriodText,
+                    subtitle: "\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)",
+                    color: previousPeriodColor
+                )
+                insightCard(
+                    title: Localized.topUsageDay,
+                    value: topUsageDayText,
+                    subtitle: topUsageDay?.total.formattedBytes ?? Localized.noUsageData,
+                    color: TLPalette.accent
+                )
+            }
+            HStack(spacing: TLSpace.md) {
+                insightCard(
+                    title: Localized.topHotspot,
+                    value: topHotspot?.name ?? Localized.noConnection,
+                    subtitle: topHotspot.map { $0.total.formattedBytes } ?? "",
+                    color: TLPalette.upload
+                )
+                if let q = quotaUsagePct {
+                    insightCard(
+                        title: Localized.quotaUsage,
+                        value: String(format: "%.1f%%", q),
+                        subtitle: expectedExhaustionDays.map { Localized.expectedExhaustion + " \($0)일" } ?? "",
+                        color: q >= 90 ? TLPalette.danger : (q >= 60 ? TLPalette.upload : TLPalette.success)
+                    )
+                } else {
+                    insightCard(
+                        title: Localized.topApps,
+                        value: topApps.isEmpty ? Localized.noUsageData : topApps.map { $0.name }.joined(separator: " · "),
+                        subtitle: topApps.map { $0.total.formattedBytes }.joined(separator: " · "),
+                        color: TLPalette.download
+                    )
+                }
+            }
+        }
+        .padding(.horizontal, TLSpace.xl)
+    }
+
+    private func insightCard(title: String, value: String, subtitle: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(TLFont.caption2)
+                .foregroundColor(TLPalette.textSecondary)
+                .lineLimit(1)
+            Text(value)
+                .font(TLFont.callout.monospacedDigit().bold())
+                .foregroundColor(color)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Text(subtitle)
+                .font(TLFont.caption2)
+                .foregroundColor(TLPalette.textSecondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, TLSpace.sm)
+        .padding(.horizontal, TLSpace.md)
+        .background(TLPalette.textBackground.opacity(0.5))
+        .cornerRadius(TLRound.small)
+    }
+
+    private var previousPeriodText: String {
+        guard let pct = previousPeriodPct else { return "—" }
+        return "\(pct >= 0 ? "▲" : "▼") \(String(format: "%.1f%%", abs(pct)))"
+    }
+
+    private var previousPeriodColor: Color {
+        guard let pct = previousPeriodPct else { return TLPalette.textSecondary }
+        return pct > 0 ? TLPalette.upload : TLPalette.success
+    }
+
+    private var topUsageDayText: String {
+        guard let day = topUsageDay else { return "—" }
+        let f = DateFormatter()
+        f.setLocalizedDateFormatFromTemplate("M/d")
+        return f.string(from: day.date)
     }
 
     // MARK: - Content Body
@@ -697,6 +767,9 @@ struct UsageReportView: View {
             sessions = []
             dailySessionSummary = []
             monthlySessionSummary = []
+            previousPeriodTotal = 0
+            topHotspot = nil
+            topApps = []
             return
         }
         let loadAllSessions = viewMode == .heatmap || (viewMode == .session && selectedPeriod.days == 1)
@@ -742,6 +815,7 @@ struct UsageReportView: View {
             dailySessionSummary = allDailySess.values.sorted { $0.date < $1.date }
             monthlySessionSummary = allMonthlySess.values.sorted { $0.date < $1.date }
             appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
+            loadInsights()
             return
         }
         dailyUsage = ProfileManager.shared.getDailyUsage(profileId: pid, days: selectedPeriod.days)
@@ -760,6 +834,70 @@ struct UsageReportView: View {
             monthlySessionSummary = []
         }
         appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
+        loadInsights()
+    }
+
+    // MARK: - Insights
+
+    private func loadInsights() {
+        let pid = selectedProfileId
+        let days = selectedPeriod.days
+        let cal = Calendar.current
+        let now = Date()
+        let prevTo = cal.date(byAdding: .day, value: -days, to: now)!
+        let prevFrom = cal.date(byAdding: .day, value: -days * 2, to: now)!
+        let effectivePid = pid == allProfilesId ? nil : pid
+        previousPeriodTotal = ProfileManager.shared.getUsageTotal(profileId: effectivePid, from: prevFrom, to: prevTo)
+        topApps = Array(ProfileManager.shared.getAppTrafficLogs(days: days)
+            .filter { !SystemProcesses.set.contains($0.processName) }
+            .sorted { $0.uploadBytes + $0.downloadBytes > $1.uploadBytes + $1.downloadBytes }
+            .prefix(3)
+            .map { ($0.processName, $0.uploadBytes + $0.downloadBytes) })
+        if pid == allProfilesId {
+            var best: (name: String, total: Int64)?
+            for profile in profiles {
+                let total = ProfileManager.shared.getDailyUsage(profileId: profile.id, days: days)
+                    .reduce(0) { $0 + $1.total }
+                if total > (best?.total ?? 0) {
+                    best = (profile.name, total)
+                }
+            }
+            topHotspot = best
+        } else if let p = profiles.first(where: { $0.id == pid }) {
+            topHotspot = (p.name, dailyUsage.reduce(0) { $0 + $1.total })
+        } else {
+            topHotspot = nil
+        }
+    }
+
+    private var totalBytes: Int64 {
+        dailyUsage.reduce(0) { $0 + $1.total }
+    }
+
+    private var topUsageDay: ProfileManager.DailyUsage? {
+        dailyUsage.max { $0.total < $1.total }
+    }
+
+    private var previousPeriodPct: Double? {
+        guard previousPeriodTotal > 0 else { return nil }
+        return (Double(totalBytes) - Double(previousPeriodTotal)) / Double(previousPeriodTotal) * 100
+    }
+
+    private var quotaUsagePct: Double? {
+        guard let pid = selectedProfileId, pid != allProfilesId,
+              let profile = ProfileManager.shared.getProfile(id: pid),
+              let quota = profile.quotaGB, quota > 0 else { return nil }
+        return Double(totalBytes) / (quota * 1_000_000_000) * 100
+    }
+
+    private var expectedExhaustionDays: Int? {
+        guard let q = quotaUsagePct, q > 0, q < 100 else { return nil }
+        let days = selectedPeriod.days
+        let daily = Double(totalBytes) / Double(max(days, 1))
+        guard daily > 0, let profile = selectedProfileId.flatMap({ ProfileManager.shared.getProfile(id: $0) }),
+              let quota = profile.quotaGB, quota > 0 else { return nil }
+        let remaining = quota * 1_000_000_000 - Double(totalBytes)
+        return Int(remaining / daily)
     }
 
     private func sessionStartTimeFormatted(_ date: Date) -> String {

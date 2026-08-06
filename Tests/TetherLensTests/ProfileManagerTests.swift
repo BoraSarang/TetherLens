@@ -165,6 +165,59 @@ import GRDB
         #expect(monthly[0].total == 1000)
     }
 
+    @Test func getUsageTotal_기간_합계와_전체() throws {
+        let (q, pm) = try makeManager()
+        let p = makeProfile()
+        pm.saveProfile(p)
+        let now = Date()
+        let cal = Calendar.current
+        // 현재 기간: 1000 (업 400 + 다운 600) — 경계 이전 1분
+        try q.write { db in
+            try UsageLog(id: UUID(), profileId: p.id, uploadDelta: 400, downloadDelta: 600, recordedAt: now.addingTimeInterval(-60), sessionId: nil).insert(db)
+        }
+        // 이전 2일: 500
+        let prevMid = cal.date(byAdding: .day, value: -2, to: now)!
+        try q.write { db in
+            try UsageLog(id: UUID(), profileId: p.id, uploadDelta: 200, downloadDelta: 300, recordedAt: prevMid.addingTimeInterval(-60), sessionId: nil).insert(db)
+        }
+        // 이전 5일: 1998 — [from5, from3) 구간에만 포함
+        let old = cal.date(byAdding: .day, value: -5, to: now)!
+        try q.write { db in
+            try UsageLog(id: UUID(), profileId: p.id, uploadDelta: 999, downloadDelta: 999, recordedAt: old.addingTimeInterval(60), sessionId: nil).insert(db)
+        }
+
+        // [3일 전, now) 구간 = 현재(1000) + 이전중간(500)
+        let from3 = cal.date(byAdding: .day, value: -3, to: now)!
+        #expect(pm.getUsageTotal(profileId: p.id, from: from3, to: now) == 1500)
+
+        // [5일 전, 3일 전) = 1998 (5일 전 로그만 포함, 2일 전 로그는 미포함)
+        #expect(pm.getUsageTotal(profileId: p.id, from: old, to: from3) == 1998)
+
+        // [6일 전, 5일 전) = 0 (5일 전 로그는 하한 경계와 같아 미포함)
+        #expect(pm.getUsageTotal(profileId: p.id, from: cal.date(byAdding: .day, value: -6, to: now)!, to: old) == 0)
+    }
+
+    @Test func getUsageTotal_프로필_필터_전체() throws {
+        let (q, pm) = try makeManager()
+        let a = makeProfile(ssid: "A")
+        let b = makeProfile(ssid: "B")
+        pm.saveProfile(a)
+        pm.saveProfile(b)
+        let now = Date()
+        let from = calDays(now, -7)
+        try q.write { db in
+            try UsageLog(id: UUID(), profileId: a.id, uploadDelta: 100, downloadDelta: 200, recordedAt: now.addingTimeInterval(-60), sessionId: nil).insert(db)
+            try UsageLog(id: UUID(), profileId: b.id, uploadDelta: 400, downloadDelta: 600, recordedAt: now.addingTimeInterval(-60), sessionId: nil).insert(db)
+        }
+        #expect(pm.getUsageTotal(profileId: a.id, from: from, to: now) == 300)
+        #expect(pm.getUsageTotal(profileId: b.id, from: from, to: now) == 1000)
+        #expect(pm.getUsageTotal(profileId: nil, from: from, to: now) == 1300)
+    }
+
+    private func calDays(_ date: Date, _ days: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: days, to: date)!
+    }
+
     // MARK: - 세션
 
     @Test func 세션_시작_종료_활성() throws {
