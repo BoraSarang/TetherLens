@@ -110,3 +110,23 @@
 6. 문서: PLAN_v0.25.0_macos.md (T-112~118), TODO T-112 ✅, CHANGELOG v0.25.0 (Added/Changed).
 7. 오프라인 큐: N/A.
 8. E2E/k6: N/A — 자동화 단위 테스트(39개) + 수동 확인.
+
+---
+
+# Session — 2026-08-06 (macOS) — v0.25.0 (T-113~T-118)
+
+1. 무엇을: **v0.25.0 통계 전면 개편 T-113~T-118 완료** — 그래프 고도화 → 지도 클러스터 → 이동 이력 → 기간 리포트 → 프로필 미니 통계 → 검증 마무리.
+2. 플랫폼: [macOS]
+3. 빌드: swift build 성공, **swift test 43개/7스위트 전부 통과**. `./scripts/build-macos.sh debug` 번들 생성 + 앱 실행 성공 (DebugPanel ON). [PERF] 이슈 없음.
+4. 남은 TODO: v0.25.0 완료. 다음 후보(미착수): 성능 후보(슬립 폴링 중지 등 P1), Sparkle/공증/Launch Agent.
+5. 전달 로그:
+   - **T-113 (8d2217f)**: 그래프 기간 단위 세분화(1일=시간대 0~23시, 7일=요일, 30일=일, 6개월/1년=월) + 할당량 임계선 RuleMark + 누적 LineMark. `getHourlyUsage`/`HourlyUsage` 신설, 테스트 40개.
+   - **T-114 (17a7408)**: 지도 핀 클러스터(좌표 소수점 3자리 그룹핑, >1이면 숫자 배지) + GPS(검정/파랑)/IP(주황) 마커·라벨, 최근 위치 적색 링. `Session.locationSource` + **v10_session_location_source 마이그레이션** 추가. `MenuBarManager.bestLocation`이 source(gps/ip) 반환, startSession 2곳 전달. HeatmapMapView의 미사용 region/timeLabel 제거. 테스트 41개.
+   - **T-115 (2100173)**: `ProfileManager.getMovementTimeline` — 위치 세션 + IPLog를 시간순 병합(MovementEvent), HeatmapView에 이동 이력 탭 추가, 행 클릭 시 지도 탭 전환 + 해당 좌표 포커스(HeatmapMapView focusCoordinate + cameraPosition onChange). `Views/MovementTimelineView.swift` 신규. 테스트 42개.
+   - **T-116 (50ca928)**: 리포트 탭(ViewMode.report) + `ProfileManager.reportSummary`(총 업/다운·세션·이동 이력·Top앱·할당량 달성률) + `Views/ReportView.swift` 마크다운 미리보기·복사. Localized reportTab/copy 추가. 테스트 43개.
+   - **T-117 (784c162)**: 프로필 미니 통계 — 현재 프로필 행·프로필 관리 목록에 오늘 사용량 + 할당량 % 게이지(90% 이상 danger). Localized today 추가.
+   - **T-118**: 최종 빌드·테스트 43개 통과 + 앱 실행 검증 + TODO/CHANGELOG/세션 로그 갱신. 커밋 전체: 3ab7c0c/8d2217f/17a7408/2100173/50ca928/784c162.
+   - **검증**: GUI 수동 확인 필요 — 이동 이력 탭의 지도 포커스, 리포트 탭 마크다운 복사, 프로필 미니 통계 게이지.
+6. 문서: PLAN_v0.25.0_macos.md (T-112~118), TODO T-112~118 ✅, CHANGELOG v0.25.0 (T-112~117).
+7. 오프라인 큐: N/A.
+8. E2E/k6: N/A — 자동화 단위 테스트(43개) + 수동 확인.
