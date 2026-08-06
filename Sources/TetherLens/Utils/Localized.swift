@@ -19,6 +19,10 @@ enum Localized {
   static var quit: String { value(kr: "종료", en: "Quit") }
   static var copied: String { value(kr: "복사되었습니다.", en: "Copied.") }
 
+  // MARK: - Popover Summary/Detail
+  static var summaryView: String { value(kr: "요약 보기", en: "Summary") }
+  static var detailView: String { value(kr: "상세 보기", en: "Detail") }
+
   // MARK: - Connection
   static var noConnection: String { value(kr: "연결 없음", en: "No Connection") }
   static var iOSHotspot: String { value(kr: "iOS 핫스팟", en: "iOS Hotspot") }
@@ -70,6 +74,7 @@ enum Localized {
   static var lastConnected: String { value(kr: "마지막 접속:", en: "Last connected:") }
   static var manageProfiles: String { value(kr: "프로필 관리...", en: "Manage Profiles...") }
   static var noQuota: String { value(kr: "할당량 없음 — 프로필 편집에서 설정하세요", en: "No quota — set in profile editor") }
+  static var setQuota: String { value(kr: "할당량 설정", en: "Set Quota") }
   static var resetData: String { value(kr: "데이터 초기화", en: "Reset Data") }
   static var profileDeleteConfirm: String { value(kr: "통계 정보 등 모든 데이터가 삭제됩니다.", en: "All data including statistics will be deleted.") }
   static var profileResetConfirm: String { value(kr: "이 프로필의 모든 사용량 데이터가 삭제됩니다.\n프로필 자체는 유지됩니다.", en: "All usage data for this profile will be deleted.\nThe profile itself will be kept.") }

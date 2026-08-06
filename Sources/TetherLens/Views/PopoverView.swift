@@ -44,6 +44,7 @@ struct PopoverView: View {
     @AppStorage("popover_expanded_connection_info") private var expandedConnectionInfo = false
     @AppStorage("popover_expanded_address_info") private var expandedAddressInfo = false
     @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
+    @AppStorage("popover_summary_mode") private var summaryMode = true
 
     var body: some View {
         mainContent
@@ -131,89 +132,19 @@ struct PopoverView: View {
     }
 
     private var mainContent: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: TLSpace.xl) {
             headerView
-            collapsibleSectionDivider(Localized.connectionInfo, isExpanded: $expandedConnectionInfo)
-            connectionInfoView
-            collapsibleSectionDivider(Localized.addressInfo, isExpanded: $expandedAddressInfo)
-            connectionAddressView
-            sectionDivider(Localized.qosGauge)
-            qosGaugeBody
-            if let msg = quotaAlertMessage {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                    Text(msg)
-                        .font(.caption)
-                        .foregroundColor(.white)
-                    Spacer()
-                    Button {
-                        quotaAlertMessage = nil
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.orange)
-                .cornerRadius(6)
-            }
-            if let alert = pingAlert {
-                HStack(spacing: 6) {
-                    Image(systemName: pingAlertIcon(for: alert.type))
-                        .font(.caption)
-                        .foregroundColor(.white)
-                    Text(alert.message)
-                        .font(.caption)
-                        .foregroundColor(.white)
-                    Spacer()
-                    Button {
-                        pingAlert = nil
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption2)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(pingAlertColor(for: alert.type))
-                .cornerRadius(6)
-            }
-            if let msg = copiedIPMessage {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                    Text(msg)
-                        .font(.caption)
-                        .foregroundColor(.white)
-                    Spacer()
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.green)
-                .cornerRadius(6)
-                .transition(.opacity)
-            }
-            if showAppTraffic, !trafficMonitor.apps.isEmpty {
-                trafficSectionDivider
-                appTrafficPreview
-            }
-            sectionDivider(Localized.profile)
-            profileSection
-            Divider()
+            bannerStack
             speedView
+            qosGaugeBody
+            if !summaryMode {
+                detailSections
+            }
             Divider()
             bottomButtons
         }
-        .padding(16)
-        .frame(width: 280)
+        .padding(TLSpace.inset)
+        .frame(width: TLSize.popoverWidth)
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             tick = Date()
         }
@@ -226,6 +157,98 @@ struct PopoverView: View {
         .onAppear {
             updateSessionStartTime()
         }
+    }
+
+    @ViewBuilder
+    private var bannerStack: some View {
+        if let msg = quotaAlertMessage {
+            quotaBanner(msg)
+        }
+        if let alert = pingAlert {
+            pingBanner(alert)
+        }
+        if let msg = copiedIPMessage {
+            copiedBanner(msg)
+        }
+    }
+
+    private func quotaBanner(_ msg: String) -> some View {
+        HStack(spacing: TLSpace.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(TLFont.caption)
+                .foregroundColor(.white)
+            Text(msg)
+                .font(TLFont.caption)
+                .foregroundColor(.white)
+            Spacer()
+            Button {
+                quotaAlertMessage = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(TLFont.caption2)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, TLSpace.lg)
+        .padding(.vertical, TLSpace.sm)
+        .background(TLPalette.upload)
+        .cornerRadius(TLRound.small)
+    }
+
+    private func pingBanner(_ alert: PingAlert) -> some View {
+        HStack(spacing: TLSpace.sm) {
+            Image(systemName: pingAlertIcon(for: alert.type))
+                .font(TLFont.caption)
+                .foregroundColor(.white)
+            Text(alert.message)
+                .font(TLFont.caption)
+                .foregroundColor(.white)
+            Spacer()
+            Button {
+                pingAlert = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(TLFont.caption2)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, TLSpace.lg)
+        .padding(.vertical, TLSpace.sm)
+        .background(pingAlertColor(for: alert.type))
+        .cornerRadius(TLRound.small)
+    }
+
+    private func copiedBanner(_ msg: String) -> some View {
+        HStack(spacing: TLSpace.sm) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(TLFont.caption)
+                .foregroundColor(.white)
+            Text(msg)
+                .font(TLFont.caption)
+                .foregroundColor(.white)
+            Spacer()
+        }
+        .padding(.horizontal, TLSpace.lg)
+        .padding(.vertical, TLSpace.sm)
+        .background(TLPalette.success)
+        .cornerRadius(TLRound.small)
+        .transition(.opacity)
+    }
+
+    @ViewBuilder
+    private var detailSections: some View {
+        collapsibleSectionDivider(Localized.connectionInfo, isExpanded: $expandedConnectionInfo)
+        connectionInfoView
+        collapsibleSectionDivider(Localized.addressInfo, isExpanded: $expandedAddressInfo)
+        connectionAddressView
+        if showAppTraffic, !trafficMonitor.apps.isEmpty {
+            trafficSectionDivider
+            appTrafficPreview
+        }
+        sectionDivider(Localized.profile)
+        profileSection
     }
 
     private var headerView: some View {
@@ -406,8 +429,18 @@ struct PopoverView: View {
             }
             if expandedAddressInfo {
                 if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {
-                    detailRow(label: Localized.dns, value: dns.joined(separator: ", "))
-                        .onTapGesture { showDNSPicker = true }
+                    HStack(spacing: TLSpace.xs) {
+                        detailRow(label: Localized.dns, value: dns.joined(separator: ", "))
+                        Image(systemName: "chevron.right")
+                            .font(TLFont.badge)
+                            .foregroundColor(TLPalette.textSecondary.opacity(0.5))
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { showDNSPicker = true }
+                    .onHover { inside in
+                        if inside { NSCursor.pointingHand.push() }
+                        else { NSCursor.pop() }
+                    }
                 }
             }
             detailRow(label: Localized.ping, value: pingString)
@@ -522,13 +555,25 @@ struct PopoverView: View {
         if let quotaGB = quotaGB {
             QoSGauge(used: totalUsedGB, total: quotaGB)
         } else {
-            HStack {
+            HStack(spacing: TLSpace.sm) {
                 Spacer()
                 Text(Localized.noQuota)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
+                Button(Localized.setQuota) { openQuotaSetup() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 Spacer()
             }
+        }
+    }
+
+    private func openQuotaSetup() {
+        let ssid = hotspotDetector.currentConnection?.ssid
+        if let profile = ssid.flatMap({ ProfileManager.shared.getProfile(ssid: $0) }) {
+            editingProfile = profile
+        } else {
+            showProfileManager = true
         }
     }
 
@@ -727,7 +772,21 @@ struct PopoverView: View {
     }
 
     private var bottomButtons: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: TLSpace.xl) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) { summaryMode.toggle() }
+            } label: {
+                HStack(spacing: TLSpace.xs) {
+                    Image(systemName: summaryMode ? "chevron.down" : "chevron.up")
+                        .font(TLFont.caption)
+                    Text(summaryMode ? Localized.detailView : Localized.summaryView)
+                        .font(TLFont.caption)
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help(summaryMode ? Localized.detailView : Localized.summaryView)
+
             Menu {
                 Button(Localized.usageReport) { openStatistics() }
                 Button(Localized.appTrafficButton) { showTraffic = true }
@@ -749,7 +808,7 @@ struct PopoverView: View {
                 #endif
             } label: {
                 Text(Localized.more)
-                    .font(.caption)
+                    .font(TLFont.caption)
             }
             .menuIndicator(.hidden)
             .buttonStyle(.borderedProminent)
@@ -758,7 +817,7 @@ struct PopoverView: View {
             Button(Localized.quit) { NSApplication.shared.terminate(nil) }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .tint(.red)
+                .tint(TLPalette.danger)
         }
     }
 
