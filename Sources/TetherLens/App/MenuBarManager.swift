@@ -81,6 +81,57 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             self, selector: #selector(handleResignActive),
             name: NSApplication.didResignActiveNotification, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleSystemSleep),
+            name: NSWorkspace.willSleepNotification, object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleSystemWake),
+            name: NSWorkspace.didWakeNotification, object: nil
+        )
+    }
+
+    /// 시스템 슬립 진입 — 모든 폴링을 일시중지한다 (배터리/CPU 절감).
+    @objc private func handleSystemSleep() {
+        guard isMonitoring else { return }
+        DebugLogger.shared.system("Power", "시스템 슬립 - 모니터링 일시중지")
+        // 슬립 직전 마지막 사용량을 기록해 슬립 구간 유실을 방지
+        recordCurrentUsage()
+        suspendTimers()
+        networkMonitor.stop()
+        hotspotDetector.stop()
+        pingMonitor.stop()
+        TrafficMonitor.shared.stop()
+        locationManager.stopUpdating()
+    }
+
+    /// 시스템 깨어남 — 폴링을 재개한다.
+    @objc private func handleSystemWake() {
+        guard isMonitoring else { return }
+        DebugLogger.shared.system("Power", "시스템 깨어남 - 모니터링 재개")
+        cacheNeedsInvalidation = true
+        networkMonitor.start()
+        hotspotDetector.start()
+        pingMonitor.start()
+        TrafficMonitor.shared.start()
+        locationManager.startUpdating()
+        setupTimers()
+        refreshCache()
+        updateMenuBarText()
+        NotificationCenter.default.post(name: connectionChanged, object: nil)
+    }
+
+    private func suspendTimers() {
+        timer?.invalidate()
+        timer = nil
+        cacheTimer?.invalidate()
+        cacheTimer = nil
+        recordTimer?.invalidate()
+        recordTimer = nil
+        ipRefreshTimer?.invalidate()
+        ipRefreshTimer = nil
+        locationTimer?.invalidate()
+        locationTimer = nil
     }
 
     @objc private func handleSettingsChanged() {

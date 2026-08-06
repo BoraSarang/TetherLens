@@ -214,3 +214,22 @@
 
 
 > 참고: DebugPanelView는 개발자 전용 다크 패널이라 토큰 대상 제외, 히트맵 그라데이션/지도 핀 색은 시각화 고유 로직으로 유지
+
+## 🔄 v0.25.1 — 슬립 시 폴링 중지 + tick 최적화 (2026-08-06)
+
+> 시스템 슬립 시 네트워크/핑/트래픽 폴링 일시중지 → 깨어나면 자동 재개. 성능 후보 P1 중 이득 최대.
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 119 | 슬립/깨움 이벤트 구독 + 모니터 일시중지/재개 (MenuBarManager) | P1 | ✅ |
+| 120 | 팝오버 닫힘 시 1초 tick 중지 (PopoverView) | P2 | ⬜ |
+| 121 | Timer tolerance 부여 (MenuBarManager/TrafficMonitor) | P2 | ⬜ |
+
+## 🔬 관찰 기록 — 에너지 사용 (2026-08-06)
+
+> 사용자: 배터리 '많은 에너지 사용' 1위가 TetherLens. 나중에 `bd`/에너지 프로파일로 원인 확인 필요.
+
+| 관찰 | 조치 |
+|------|------|
+| macOS 배터리 메뉴에서 TetherLens가 에너지 사용 1위 | v0.25.1(슬립 폴링 중지 + tick 중지 + tolerance)이 어느 정도 완화하는지 먼저 확인 → 이후에도 1위면 `Instruments Energy Log`/`sample`로 핫스팟 분석 |
+| 의심 지점 | NetworkMonitor 1초 폴링(getifaddrs), MenuBarManager 메뉴바 갱신 타이머, TrafficMonitor nettop 주기 실행, PingMonitor 지속 ping, PopoverView 1초 tick, LocationManager 주기 위치 갱신 |
