@@ -214,6 +214,29 @@ import GRDB
         #expect(pm.getUsageTotal(profileId: nil, from: from, to: now) == 1300)
     }
 
+    @Test func getHourlyUsage_시간대_집계() throws {
+        let (q, pm) = try makeManager()
+        let p = makeProfile()
+        pm.saveProfile(p)
+        let now = Date()
+        let cal = Calendar.current
+        // 오늘 09시대: (업100+다운200) 2건, 오늘 14시대: (업300+다운400)
+        let hour9 = cal.date(bySettingHour: 9, minute: 30, second: 0, of: now)!
+        let hour14 = cal.date(bySettingHour: 14, minute: 15, second: 0, of: now)!
+        try q.write { db in
+            try UsageLog(id: UUID(), profileId: p.id, uploadDelta: 100, downloadDelta: 200, recordedAt: hour9, sessionId: nil).insert(db)
+            try UsageLog(id: UUID(), profileId: p.id, uploadDelta: 50, downloadDelta: 100, recordedAt: hour9.addingTimeInterval(600), sessionId: nil).insert(db)
+            try UsageLog(id: UUID(), profileId: p.id, uploadDelta: 300, downloadDelta: 400, recordedAt: hour14, sessionId: nil).insert(db)
+        }
+        let hourly = pm.getHourlyUsage(profileId: p.id, days: 1)
+        let byHour = Dictionary(uniqueKeysWithValues: hourly.map { ($0.hour, $0) })
+        #expect(byHour[9]?.upload == 150)
+        #expect(byHour[9]?.download == 300)
+        #expect(byHour[14]?.upload == 300)
+        #expect(byHour[14]?.download == 400)
+        #expect(hourly.allSatisfy { $0.hour >= 0 && $0.hour <= 23 })
+    }
+
     private func calDays(_ date: Date, _ days: Int) -> Date {
         Calendar.current.date(byAdding: .day, value: days, to: date)!
     }

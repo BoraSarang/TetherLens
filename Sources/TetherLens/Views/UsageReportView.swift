@@ -8,6 +8,7 @@ struct UsageReportView: View {
     @State private var selectedPeriod: Period = .week
     @State private var dailyUsage: [ProfileManager.DailyUsage] = []
     @State private var monthlyUsage: [ProfileManager.MonthlyUsage] = []
+    @State private var hourlyUsage: [ProfileManager.HourlyUsage] = []
     @State private var sessions: [Session] = []
     @State private var dailySessionSummary: [ProfileManager.DailySessionSummary] = []
     @State private var monthlySessionSummary: [ProfileManager.MonthlySessionSummary] = []
@@ -124,7 +125,7 @@ struct UsageReportView: View {
                 rightPanel
             }
         }
-        .frame(width: TLSize.sheetWide, height: 520)
+        .frame(width: TLSize.sheetWide, height: 600)
         .onAppear {
             profiles = ProfileManager.shared.getAllProfiles()
             selectedProfileId = preselectedProfileId ?? allProfilesId
@@ -221,50 +222,50 @@ struct UsageReportView: View {
     // MARK: - Insight Cards
 
     private var insightCards: some View {
-        VStack(spacing: TLSpace.sm) {
-            HStack(spacing: TLSpace.md) {
+        let columns = [
+            GridItem(.flexible(), spacing: TLSpace.md),
+            GridItem(.flexible(), spacing: TLSpace.md),
+            GridItem(.flexible(), spacing: TLSpace.md)
+        ]
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: TLSpace.md) {
+            insightCard(
+                title: Localized.totalUsage,
+                value: totalBytes.formattedBytes,
+                subtitle: "\(Localized.dailyAverage) \(Int64(totalBytes / max(Int64(dailyUsage.count), 1)).formattedBytes)",
+                color: TLPalette.textPrimary
+            )
+            insightCard(
+                title: Localized.vsPreviousPeriod,
+                value: previousPeriodText,
+                subtitle: "\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)",
+                color: previousPeriodColor
+            )
+            insightCard(
+                title: Localized.topUsageDay,
+                value: topUsageDayText,
+                subtitle: topUsageDay?.total.formattedBytes ?? Localized.noUsageData,
+                color: TLPalette.accent
+            )
+            insightCard(
+                title: Localized.topHotspot,
+                value: topHotspot?.name ?? Localized.noConnection,
+                subtitle: topHotspot.map { $0.total.formattedBytes } ?? "",
+                color: TLPalette.upload
+            )
+            if let q = quotaUsagePct {
                 insightCard(
-                    title: Localized.totalUsage,
-                    value: totalBytes.formattedBytes,
-                    subtitle: "\(Localized.dailyAverage) \(Int64(totalBytes / max(Int64(dailyUsage.count), 1)).formattedBytes)",
-                    color: TLPalette.textPrimary
-                )
-                insightCard(
-                    title: Localized.vsPreviousPeriod,
-                    value: previousPeriodText,
-                    subtitle: "\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)",
-                    color: previousPeriodColor
-                )
-                insightCard(
-                    title: Localized.topUsageDay,
-                    value: topUsageDayText,
-                    subtitle: topUsageDay?.total.formattedBytes ?? Localized.noUsageData,
-                    color: TLPalette.accent
+                    title: Localized.quotaUsage,
+                    value: String(format: "%.1f%%", q),
+                    subtitle: expectedExhaustionDays.map { Localized.expectedExhaustion + " \($0)일" } ?? "",
+                    color: q >= 90 ? TLPalette.danger : (q >= 60 ? TLPalette.upload : TLPalette.success)
                 )
             }
-            HStack(spacing: TLSpace.md) {
-                insightCard(
-                    title: Localized.topHotspot,
-                    value: topHotspot?.name ?? Localized.noConnection,
-                    subtitle: topHotspot.map { $0.total.formattedBytes } ?? "",
-                    color: TLPalette.upload
-                )
-                if let q = quotaUsagePct {
-                    insightCard(
-                        title: Localized.quotaUsage,
-                        value: String(format: "%.1f%%", q),
-                        subtitle: expectedExhaustionDays.map { Localized.expectedExhaustion + " \($0)일" } ?? "",
-                        color: q >= 90 ? TLPalette.danger : (q >= 60 ? TLPalette.upload : TLPalette.success)
-                    )
-                } else {
-                    insightCard(
-                        title: Localized.topApps,
-                        value: topApps.isEmpty ? Localized.noUsageData : topApps.map { $0.name }.joined(separator: " · "),
-                        subtitle: topApps.map { $0.total.formattedBytes }.joined(separator: " · "),
-                        color: TLPalette.download
-                    )
-                }
-            }
+            insightCard(
+                title: Localized.topApps,
+                value: topApps.isEmpty ? Localized.noUsageData : topApps.map { $0.name }.joined(separator: " · "),
+                subtitle: topApps.isEmpty ? "" : topApps.map { $0.total.formattedBytes }.joined(separator: " · "),
+                color: TLPalette.download
+            )
         }
         .padding(.horizontal, TLSpace.xl)
     }
@@ -332,30 +333,80 @@ struct UsageReportView: View {
 
     @ViewBuilder
     private var chartView: some View {
-        if dailyUsage.isEmpty {
+        let isDay = selectedPeriod.days == 1
+        let isLong = selectedPeriod.isLongPeriod
+        let source = chartDataSource
+        if source.isEmpty {
             Spacer()
             Text(Localized.noUsageData)
                 .foregroundColor(TLPalette.textSecondary)
             Spacer()
         } else {
-            let maxBytes = (dailyUsage.map { max($0.upload, $0.download) }.max() ?? 1) * 2
+            let maxBytes = (source.map { max($0.upload, $0.download) }.max() ?? 1) * 2
             let yDomain: ClosedRange<Int64> = 0 ... maxBytes
-            Chart(dailyUsage) { usage in
-                BarMark(
-                    x: .value("Date", usage.date, unit: .day),
-                    y: .value("Upload", usage.upload)
-                )
-                .foregroundStyle(TLPalette.upload)
-                .annotation(position: .bottom, alignment: .center) {
-                    Text(usage.date, format: .dateTime.day().month())
-                        .font(TLFont.caption2)
-                        .foregroundColor(TLPalette.textSecondary)
+            Chart {
+                ForEach(Array(source.enumerated()), id: \.element.id) { index, usage in
+                    if isDay {
+                        BarMark(
+                            x: .value("Hour", usage.hour),
+                            y: .value("Upload", usage.upload)
+                        )
+                        .foregroundStyle(TLPalette.upload)
+                        .annotation(position: .bottom, alignment: .center) {
+                            Text(usage.hourLabel)
+                                .font(TLFont.caption2)
+                                .foregroundColor(TLPalette.textSecondary)
+                        }
+                        BarMark(
+                            x: .value("Hour", usage.hour),
+                            y: .value("Download", usage.download)
+                        )
+                        .foregroundStyle(TLPalette.download)
+                    } else {
+                        BarMark(
+                            x: .value("Date", usage.date ?? Date.distantPast, unit: isLong ? .month : .day),
+                            y: .value("Upload", usage.upload)
+                        )
+                        .foregroundStyle(TLPalette.upload)
+                        .annotation(position: .bottom, alignment: .center) {
+                            Text(usage.dateLabel)
+                                .font(TLFont.caption2)
+                                .foregroundColor(TLPalette.textSecondary)
+                        }
+                        BarMark(
+                            x: .value("Date", usage.date ?? Date.distantPast, unit: isLong ? .month : .day),
+                            y: .value("Download", usage.download)
+                        )
+                        .foregroundStyle(TLPalette.download)
+                    }
+                    if isDay {
+                        LineMark(
+                            x: .value("Hour", usage.hour),
+                            y: .value("Cumulative", cumulativeTotal(source, upTo: index))
+                        )
+                        .foregroundStyle(TLPalette.accent)
+                        .lineStyle(StrokeStyle(lineWidth: 1.5))
+                    } else {
+                        LineMark(
+                            x: .value("Date", usage.date ?? Date.distantPast, unit: isLong ? .month : .day),
+                            y: .value("Cumulative", cumulativeTotal(source, upTo: index))
+                        )
+                        .foregroundStyle(TLPalette.accent)
+                        .lineStyle(StrokeStyle(lineWidth: 1.5))
+                    }
                 }
-                BarMark(
-                    x: .value("Date", usage.date, unit: .day),
-                    y: .value("Download", usage.download)
-                )
-                .foregroundStyle(TLPalette.download)
+                if let quotaLine = quotaRuleMarkBytes {
+                    RuleMark(
+                        y: .value("Quota", quotaLine)
+                    )
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .foregroundStyle(TLPalette.danger.opacity(0.6))
+                    .annotation(position: .top, alignment: .trailing) {
+                        Text(Localized.quotaRuleLabel)
+                            .font(TLFont.small)
+                            .foregroundColor(TLPalette.danger)
+                    }
+                }
             }
             .chartForegroundStyleScale([
                 Localized.uploadShort: TLPalette.upload,
@@ -379,6 +430,97 @@ struct UsageReportView: View {
             .frame(height: 280)
             Spacer()
         }
+    }
+
+    /// 기간별 세분화 데이터 소스.
+    private struct ChartEntry: Identifiable {
+        let id: String
+        let date: Date?
+        let hour: Int
+        let upload: Int64
+        let download: Int64
+        let isLongPeriod: Bool
+
+        var total: Int64 { upload + download }
+
+        var hourLabel: String {
+            String(format: "%02d", hour)
+        }
+
+        var dateLabel: String {
+            guard let date else { return "" }
+            if isLongPeriod {
+                let f = DateFormatter()
+                f.dateFormat = "M'월'"
+                return f.string(from: date)
+            }
+            let f = DateFormatter()
+            f.dateFormat = "M/d"
+            return f.string(from: date)
+        }
+    }
+
+    private var chartDataSource: [ChartEntry] {
+        if selectedPeriod.days == 1 {
+            return hourlyChartData
+        } else if selectedPeriod.days == 7 {
+            return weeklyChartData
+        } else if selectedPeriod.isLongPeriod {
+            return longChartData
+        } else {
+            return monthlyChartData
+        }
+    }
+
+    /// day(1일) — 시간대(0~23)별, 0인 시간은 빈 값으로 채움
+    private var hourlyChartData: [ChartEntry] {
+        var byHour = Dictionary(uniqueKeysWithValues: hourlyUsage.map { ($0.hour, $0) })
+        return (0..<24).map { hour in
+            if let u = byHour[hour] {
+                return ChartEntry(id: "\(hour)", date: nil, hour: hour, upload: u.upload, download: u.download, isLongPeriod: false)
+            } else {
+                return ChartEntry(id: "\(hour)", date: nil, hour: hour, upload: 0, download: 0, isLongPeriod: false)
+            }
+        }
+    }
+
+    /// month(30일) — 일별
+    private var monthlyChartData: [ChartEntry] {
+        dailyUsage.map { ChartEntry(id: $0.id, date: $0.date, hour: 0, upload: $0.upload, download: $0.download, isLongPeriod: false) }
+    }
+
+    /// halfYear(180일)/year(365일) — 월별
+    private var longChartData: [ChartEntry] {
+        monthlyUsage.map { ChartEntry(id: $0.id, date: $0.date, hour: 0, upload: $0.upload, download: $0.download, isLongPeriod: true) }
+    }
+
+    /// week(7일) — 요일별 합산 (0=일~6=토)
+    private var weeklyChartData: [ChartEntry] {
+        let cal = Calendar.current
+        var weekdayTotals: [Int: (upload: Int64, download: Int64)] = [:]
+        for u in dailyUsage {
+            let wd = cal.component(.weekday, from: u.date) // 1=일...7=토
+            let idx = wd % 7 // 0=일...6=토
+            let cur = weekdayTotals[idx] ?? (0, 0)
+            weekdayTotals[idx] = (cur.upload + u.upload, cur.download + u.download)
+        }
+        let dayStride: [Int] = [0, 1, 2, 3, 4, 5, 6]
+        return dayStride.compactMap { idx in
+            guard let t = weekdayTotals[idx] else { return nil }
+            return ChartEntry(id: "\(idx)", date: nil, hour: idx, upload: t.upload, download: t.download, isLongPeriod: false)
+        }
+    }
+
+    /// 할당량 임계선 값(바이트). 전체 프로필 또는 할당량 미설정이면 nil.
+    private var quotaRuleMarkBytes: Int64? {
+        guard let pid = selectedProfileId, pid != allProfilesId,
+              let profile = ProfileManager.shared.getProfile(id: pid),
+              let quota = profile.quotaGB, quota > 0 else { return nil }
+        return Int64(quota * 1_000_000_000)
+    }
+
+    private func cumulativeTotal(_ source: [ChartEntry], upTo index: Int) -> Int64 {
+        source[0...index].reduce(0) { $0 + $1.total }
     }
 
     // MARK: - Detail
@@ -811,6 +953,18 @@ struct UsageReportView: View {
             }
             dailyUsage = allUsage.values.sorted { $0.date < $1.date }
             monthlyUsage = allMonthly.values.sorted { $0.date < $1.date }
+            if selectedPeriod.days == 1 {
+                var allHourly: [Int: ProfileManager.HourlyUsage] = [:]
+                for profile in profiles {
+                    for h in ProfileManager.shared.getHourlyUsage(profileId: profile.id, days: 1) {
+                        let existing = allHourly[h.hour, default: ProfileManager.HourlyUsage(id: h.hour, hour: h.hour, upload: 0, download: 0)]
+                        allHourly[h.hour] = ProfileManager.HourlyUsage(id: h.hour, hour: h.hour, upload: existing.upload + h.upload, download: existing.download + h.download)
+                    }
+                }
+                hourlyUsage = allHourly.values.sorted { $0.hour < $1.hour }
+            } else {
+                hourlyUsage = []
+            }
             sessions = allSessions.sorted { $0.startTime > $1.startTime }
             dailySessionSummary = allDailySess.values.sorted { $0.date < $1.date }
             monthlySessionSummary = allMonthlySess.values.sorted { $0.date < $1.date }
@@ -833,6 +987,7 @@ struct UsageReportView: View {
             dailySessionSummary = []
             monthlySessionSummary = []
         }
+        hourlyUsage = selectedPeriod.days == 1 ? ProfileManager.shared.getHourlyUsage(profileId: pid, days: 1) : []
         appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
         loadInsights()
     }

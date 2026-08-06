@@ -224,6 +224,14 @@ final class ProfileManager: @unchecked Sendable {
         var total: Int64 { upload + download }
     }
 
+    struct HourlyUsage: Identifiable {
+        let id: Int
+        let hour: Int
+        let upload: Int64
+        let download: Int64
+        var total: Int64 { upload + download }
+    }
+
     struct DailySessionSummary: Identifiable {
         let id: String
         let date: Date
@@ -284,6 +292,29 @@ final class ProfileManager: @unchecked Sendable {
                       let date = dateFormatter.date(from: monthStr)
                 else { return nil }
                 return MonthlyUsage(id: monthStr, date: date, upload: up, download: dn)
+            }
+        }
+    }
+
+    /// 시간대(0~23시)별 사용량 집계. 하루(1일) 그래프용.
+    func getHourlyUsage(profileId: UUID, days: Int) -> [HourlyUsage] {
+        let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
+        return try! db.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT CAST(strftime('%H', recorded_at, 'localtime') AS INTEGER) AS hour,
+                       COALESCE(SUM(upload_delta), 0) AS up,
+                       COALESCE(SUM(download_delta), 0) AS dn
+                FROM usage_log
+                WHERE profile_id = ? AND recorded_at >= ?
+                GROUP BY hour
+                ORDER BY hour ASC
+            """, arguments: [profileId, cutoff])
+            .compactMap { (row) -> HourlyUsage? in
+                guard let hour = row["hour"] as? Int64,
+                      let up = row["up"] as? Int64,
+                      let dn = row["dn"] as? Int64
+                else { return nil }
+                return HourlyUsage(id: Int(hour), hour: Int(hour), upload: up, download: dn)
             }
         }
     }
