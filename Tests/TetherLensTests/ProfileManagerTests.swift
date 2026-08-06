@@ -455,4 +455,23 @@ import GRDB
         #expect(events[2].locationSource == "ip")
         _ = q
     }
+
+    @Test func reportSummary_집계() throws {
+        let (_, pm) = try makeManager()
+        let p = makeProfile(ssid: "Report-1", name: "리포트 프로필")
+        pm.saveProfile(p)
+
+        pm.recordUsage(totalUpload: 0, totalDownload: 0, profileId: p.id)
+        pm.recordUsage(totalUpload: 1000, totalDownload: 2000, profileId: p.id)
+        pm.startSession(profileId: p.id, latitude: 37.5, longitude: 127.0, locationSource: "gps")
+        let s = pm.reportSummary(profileIds: [p.id], days: 30)
+
+        #expect(s.totalUpload == 1000)
+        #expect(s.totalDownload == 2000)
+        #expect(s.totalSessions == 1)
+        #expect(s.movementCount >= 1, "위치 세션이 이동 이력에 포함")
+        #expect(s.quotaEntries.count == 1)
+        #expect(s.quotaEntries.first?.profileName == "리포트 프로필")
+        #expect(s.quotaEntries.first?.quotaBytes == 10_000_000_000, "quotaGB 10 → 10GB")
+    }
 }

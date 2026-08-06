@@ -50,6 +50,8 @@ struct UsageReportView: View {
 
     private let allProfilesId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
 
+    static let ReportAllProfilesId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
     enum Period: CaseIterable {
         case day, week, month, halfYear, year
         var localized: String {
@@ -84,7 +86,7 @@ struct UsageReportView: View {
     }
 
     enum ViewMode: CaseIterable {
-        case chart, detail, session, heatmap, appTraffic
+        case chart, detail, session, heatmap, appTraffic, report
         var localized: String {
             switch self {
             case .chart: return Localized.chart
@@ -92,6 +94,7 @@ struct UsageReportView: View {
             case .session: return Localized.sessionTab
             case .heatmap: return Localized.heatmapTitle
             case .appTraffic: return Localized.appTrafficTab
+            case .report: return Localized.reportTab
             }
         }
     }
@@ -326,6 +329,12 @@ struct UsageReportView: View {
             appTrafficView
         case .heatmap:
             HeatmapView(sessions: sessions)
+        case .report:
+            ReportView(
+                profiles: profiles,
+                selectedProfileId: selectedProfileId,
+                selectedPeriod: selectedPeriod
+            )
         }
     }
 

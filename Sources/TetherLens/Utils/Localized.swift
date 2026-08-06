@@ -18,6 +18,7 @@ enum Localized {
   static var more: String { value(kr: "더보기", en: "More") }
   static var quit: String { value(kr: "종료", en: "Quit") }
   static var copied: String { value(kr: "복사되었습니다.", en: "Copied.") }
+  static var copy: String { value(kr: "복사", en: "Copy") }
 
   // MARK: - Popover Summary/Detail
   static var summaryView: String { value(kr: "요약 보기", en: "Summary") }
@@ -202,6 +203,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
 
   // MARK: - Usage Report
   static var usageReportTitle: String { value(kr: "사용량 리포트", en: "Usage Report") }
+  static var reportTab: String { value(kr: "리포트", en: "Report") }
   static var export: String { value(kr: "내보내기", en: "Export") }
   static var exportCSV: String { value(kr: "CSV 내보내기", en: "Export CSV") }
   static var exportJSON: String { value(kr: "JSON 내보내기", en: "Export JSON") }

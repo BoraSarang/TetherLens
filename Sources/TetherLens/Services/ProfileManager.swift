@@ -246,6 +246,49 @@ final class ProfileManager: @unchecked Sendable {
         let totalDuration: TimeInterval
     }
 
+    /// 기간 리포트 요약 — T-116
+    struct ReportSummary {
+        let totalUpload: Int64
+        let totalDownload: Int64
+        let totalSessions: Int
+        let movementCount: Int
+        let topApps: [(name: String, total: Int64)]
+        let quotaEntries: [(profileName: String, used: Int64, quotaBytes: Int64?)]
+    }
+
+    func reportSummary(profileIds: [UUID], days: Int) -> ReportSummary {
+        var up: Int64 = 0, dn: Int64 = 0
+        var sessions = 0
+        var movement = 0
+        for pid in profileIds {
+            for u in getDailyUsage(profileId: pid, days: days) {
+                up += u.upload
+                dn += u.download
+            }
+            sessions += getSessions(profileId: pid, days: days).count
+            movement += getMovementTimeline(profileId: pid, days: days).count
+        }
+        let topApps = Array(getAppTrafficLogs(days: days)
+            .filter { !SystemProcesses.set.contains($0.processName) }
+            .sorted { $0.uploadBytes + $0.downloadBytes > $1.uploadBytes + $1.downloadBytes }
+            .prefix(5)
+            .map { ($0.processName, $0.uploadBytes + $0.downloadBytes) })
+        let quotas: [(profileName: String, used: Int64, quotaBytes: Int64?)] = profileIds.compactMap { pid in
+            guard let p = getProfile(id: pid) else { return nil }
+            let used = getUsageTotal(profileId: pid, from: Calendar.current.date(byAdding: .day, value: -(days - 1), to: Date()) ?? Date(), to: Date())
+            guard let quota = p.quotaGB else { return (p.name, used, nil) }
+            return (p.name, used, Int64(quota * 1_000_000_000))
+        }
+        return ReportSummary(
+            totalUpload: up,
+            totalDownload: dn,
+            totalSessions: sessions,
+            movementCount: movement,
+            topApps: topApps,
+            quotaEntries: quotas
+        )
+    }
+
     func getDailyUsage(profileId: UUID, days: Int) -> [DailyUsage] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
         let dateFormatter = DateFormatter()
