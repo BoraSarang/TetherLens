@@ -35,7 +35,11 @@ class HotspotDetector: @unchecked Sendable {
     private(set) var currentConnection: ConnectionInfo?
     var isNetworkAvailable: Bool { monitor.currentPath.status == .satisfied }
 
+    private var hasStarted = false
+
     func start() {
+        guard !hasStarted else { return }
+        hasStarted = true
         monitor.pathUpdateHandler = { [weak self] path in
             DispatchQueue.main.async {
                 self?.updateConnection(path: path)
@@ -45,6 +49,7 @@ class HotspotDetector: @unchecked Sendable {
     }
 
     func stop() {
+        hasStarted = false
         monitor.cancel()
     }
 

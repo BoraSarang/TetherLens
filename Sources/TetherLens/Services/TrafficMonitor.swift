@@ -19,13 +19,18 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     private var saveTimer: Timer?
     private var accumulated: [String: (in: Int64, out: Int64)] = [:]
     private var lastSavedAccumulated: [String: (in: Int64, out: Int64)] = [:]
+    private var isRefreshing = false
     private let queue = DispatchQueue(label: "com.tetherlens.traffic", qos: .utility)
 
     private init() {}
 
     func start() {
-        accumulated = [:]
-        lastSavedAccumulated = [:]
+        // accumulated은 반드시 queue 안에서만 접근 (refresh와의 data race 방지).
+        // serial queue FIFO로 리셋 → 이후 refresh 순서가 보장된다.
+        queue.async { [weak self] in
+            self?.accumulated = [:]
+            self?.lastSavedAccumulated = [:]
+        }
         refresh()
         let refreshTimer = Timer(timeInterval: SettingsManager.shared.trafficMonitorInterval, repeats: true) { [weak self] _ in
             self?.refresh()
@@ -97,6 +102,11 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     private func refresh() {
         queue.async { [weak self] in
             guard let self else { return }
+            // nettop(~2초) 블로킹 동안 쌓인 중복 refresh는 skip해 백로그 방지
+            guard !self.isRefreshing else { return }
+            self.isRefreshing = true
+            defer { self.isRefreshing = false }
+
             let output = self.runNettop()
             let result = self.parse(output)
 

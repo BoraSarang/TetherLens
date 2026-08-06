@@ -79,17 +79,44 @@ import GRDB
         #expect(total.upload == 2000)
         #expect(total.download == 500)
 
-        // 업로드가 음수로 감소 → 카운터 리셋만 하고 델타는 기록하지 않음
+        // 업로드가 음수로 감소 → 업로드 축만 리셋, 다운로드 양수 델타는 정상 기록
         pm.recordUsage(totalUpload: 2500, totalDownload: 2600, profileId: p.id)
         let afterReset = pm.getTotalUsage(profileId: p.id)
         #expect(afterReset.upload == 2000)
-        #expect(afterReset.download == 500)
+        #expect(afterReset.download == 600)
 
         // 리셋된 카운터 기준 새 델타가 정상 반영
         pm.recordUsage(totalUpload: 3500, totalDownload: 3000, profileId: p.id)
         let afterNext = pm.getTotalUsage(profileId: p.id)
         #expect(afterNext.upload == 3000)
-        #expect(afterNext.download == 900)
+        #expect(afterNext.download == 1000)
+    }
+
+    @Test func 프로필_전환_시_타프로필_이중계상_방지() throws {
+        let (_, pm) = try makeManager()
+        let a = makeProfile(ssid: "WiFi-A")
+        let b = makeProfile(ssid: "WiFi-B")
+        pm.saveProfile(a)
+        pm.saveProfile(b)
+
+        // A 접속: 시드 → 델타 (A: 200/200)
+        pm.recordUsage(totalUpload: 100, totalDownload: 200, profileId: a.id)
+        pm.recordUsage(totalUpload: 300, totalDownload: 400, profileId: a.id)
+
+        // B로 전환: B 카운터 재시드 후 기록 (B: 200/200)
+        pm.resetCounter(profileId: b.id, totalUpload: 300, totalDownload: 400)
+        pm.recordUsage(totalUpload: 500, totalDownload: 600, profileId: b.id)
+
+        // 다시 A로 전환: A 카운터 재시드 → B 기간 트래픽(200/200)이 A에 이중 계상되지 않음
+        pm.resetCounter(profileId: a.id, totalUpload: 500, totalDownload: 600)
+        pm.recordUsage(totalUpload: 700, totalDownload: 800, profileId: a.id)
+
+        // A: 첫 기록(200/200) + 전환 후 새 델타(200/200) = 400/400
+        // (재시드 없이 B 기간 트래픽까지 합산되면 600/600이 됨)
+        #expect(pm.getTotalUsage(profileId: a.id).upload == 400)
+        #expect(pm.getTotalUsage(profileId: a.id).download == 400)
+        #expect(pm.getTotalUsage(profileId: b.id).upload == 200)
+        #expect(pm.getTotalUsage(profileId: b.id).download == 200)
     }
 
     @Test func getTodayUsage_합계() throws {
@@ -243,6 +270,54 @@ import GRDB
         let data = pm.exportData(profileId: p.id)
         #expect(data.csv.contains("\"핫,스팟 \"\"A\"\"\""))
         #expect(data.csv.hasPrefix("Profile,Type,Start,End,Value\n"))
+    }
+
+    @Test func exportData_CSV_따옴표_쿼팅() throws {
+        let (_, pm) = try makeManager()
+        let p = makeProfile(name: "따옴표\"만")
+        pm.saveProfile(p)
+        let s = pm.startSession(profileId: p.id)
+        pm.endSession(s)
+        let data = pm.exportData(profileId: p.id)
+        #expect(data.csv.contains("\"따옴표\"\"만\""), "따옴표만 있는 값도 전체 쿼팅되어야 함")
+    }
+
+    @Test func cleanupOldLogs_활성세션_정리() throws {
+        let (q, pm) = try makeManager()
+        let p = makeProfile()
+        pm.saveProfile(p)
+        let stale = Session(id: UUID(), profileId: p.id,
+                            startTime: Date().addingTimeInterval(-367 * 86_400),
+                            endTime: nil, latitude: nil, longitude: nil)
+        try q.write { db in
+            try stale.insert(db)
+        }
+        pm.cleanupOldLogs()
+        #expect(pm.getSessions(profileId: p.id, days: 3650).isEmpty, "1년 넘게 end_time이 없는 활성 세션도 정리")
+    }
+
+    @Test func getTodayUsage_프로필별_캐시_격리() throws {
+        let (_, pm) = try makeManager()
+        let a = makeProfile(ssid: "Cache-A")
+        let b = makeProfile(ssid: "Cache-B")
+        pm.saveProfile(a)
+        pm.saveProfile(b)
+
+        pm.recordUsage(totalUpload: 0, totalDownload: 0, profileId: a.id)
+        pm.recordUsage(totalUpload: 1000, totalDownload: 2000, profileId: a.id)
+        pm.recordUsage(totalUpload: 0, totalDownload: 0, profileId: b.id)
+        pm.recordUsage(totalUpload: 500, totalDownload: 700, profileId: b.id)
+
+        let aToday = pm.getTodayUsage(profileId: a.id)
+        let bToday = pm.getTodayUsage(profileId: b.id)
+        #expect(aToday.upload == 1000)
+        #expect(aToday.download == 2000)
+        #expect(bToday.upload == 500)
+        #expect(bToday.download == 700)
+
+        // 프로필 전환 후 재조회 시 다른 프로필 값이 섞이지 않음
+        let aAgain = pm.getTodayUsage(profileId: a.id)
+        #expect(aAgain.upload == 1000)
     }
 
     @Test func getAppTrafficLogs_집계() throws {

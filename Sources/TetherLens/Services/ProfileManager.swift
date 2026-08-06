@@ -16,6 +16,7 @@ final class ProfileManager: @unchecked Sendable {
     private var cachedUsageResult: (upload: Int64, download: Int64)?
     private var cachedUsageProfileId: UUID?
     private var cachedUsageTime: Date?
+    private var cachedUsageStartOfDay: Date?
 
     private func isCacheValid(_ time: Date?) -> Bool {
         guard let t = time else { return false }
@@ -110,13 +111,10 @@ final class ProfileManager: @unchecked Sendable {
 
     func recordUsage(totalUpload: Int64, totalDownload: Int64, profileId: UUID, sessionId: UUID? = nil) {
         if let last = cumulativeCounters[profileId] {
-            let upDelta = totalUpload - last.upload
-            let dnDelta = totalDownload - last.download
-
-            if upDelta < 0 || dnDelta < 0 {
-                cumulativeCounters[profileId] = (totalUpload, totalDownload)
-                return
-            }
+            // 음수 델타는 해당 축만 0으로 클램프 (인터페이스 재연결/리셋 대응).
+            // 반대 방향의 양수 델타는 폐기하지 않고 정상 기록한다.
+            let upDelta = max(totalUpload - last.upload, 0)
+            let dnDelta = max(totalDownload - last.download, 0)
 
             if upDelta > 0 || dnDelta > 0 {
                 let log = UsageLog(
@@ -137,6 +135,12 @@ final class ProfileManager: @unchecked Sendable {
         } else {
             cumulativeCounters[profileId] = (totalUpload, totalDownload)
         }
+    }
+
+    /// 카운터 베이스라인을 현재 값으로 강제 재시드한다.
+    /// 프로필(SSID) 전환 시 호출해, 이전 프로필 기간 트래픽이 새 프로필에 이중 계상되는 것을 방지한다.
+    func resetCounter(profileId: UUID, totalUpload: Int64, totalDownload: Int64) {
+        cumulativeCounters[profileId] = (totalUpload, totalDownload)
     }
 
     private func invalidateUsageCache() {
@@ -165,30 +169,39 @@ final class ProfileManager: @unchecked Sendable {
                 try UsageLog.filter(Column("session_id") == session.id).deleteAll(db)
                 try Session.filter(Column("id") == session.id).deleteAll(db)
             }
+            // 강제 종료 등으로 1년 넘게 end_time이 비어있는 활성 세션도 정리 (영구 잔존 방지)
+            let orphanActive = try Session
+                .filter(Column("end_time") == nil)
+                .filter(Column("start_time") < cutoff)
+                .fetchAll(db)
+            for session in orphanActive {
+                try UsageLog.filter(Column("session_id") == session.id).deleteAll(db)
+                try Session.filter(Column("id") == session.id).deleteAll(db)
+            }
             try IPLog.filter(Column("last_seen_at") < cutoff).deleteAll(db)
         }
     }
 
     func getTodayUsage(profileId: UUID) -> (upload: Int64, download: Int64) {
-        if isCacheValid(cachedUsageTime), cachedUsageProfileId == profileId, let result = cachedUsageResult {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        if isCacheValid(cachedUsageTime),
+           cachedUsageProfileId == profileId,
+           cachedUsageStartOfDay == startOfToday,
+           let result = cachedUsageResult {
             return result
         }
-        let startOfToday = Calendar.current.startOfDay(for: Date())
-        let up = try! db.read { db in
-            try Int64.fetchOne(db, sql: """
-                SELECT COALESCE(SUM(upload_delta), 0) FROM usage_log
+        let row = try! db.read { db in
+            try Row.fetchOne(db, sql: """
+                SELECT COALESCE(SUM(upload_delta), 0) AS up,
+                       COALESCE(SUM(download_delta), 0) AS dn
+                FROM usage_log
                 WHERE profile_id = ? AND recorded_at >= ?
-            """, arguments: [profileId, startOfToday]) ?? 0
+            """, arguments: [profileId, startOfToday])
         }
-        let dn = try! db.read { db in
-            try Int64.fetchOne(db, sql: """
-                SELECT COALESCE(SUM(download_delta), 0) FROM usage_log
-                WHERE profile_id = ? AND recorded_at >= ?
-            """, arguments: [profileId, startOfToday]) ?? 0
-        }
-        let result: (upload: Int64, download: Int64) = (up, dn)
+        let result: (upload: Int64, download: Int64) = (row?["up"] as? Int64 ?? 0, row?["dn"] as? Int64 ?? 0)
         cachedUsageProfileId = profileId
         cachedUsageResult = result
+        cachedUsageStartOfDay = startOfToday
         cachedUsageTime = Date()
         return result
     }
@@ -327,13 +340,12 @@ final class ProfileManager: @unchecked Sendable {
 
     func getTotalUsage(profileId: UUID) -> (upload: Int64, download: Int64) {
         try! db.read { db in
-            let up = try Int64.fetchOne(db, sql: """
-                SELECT COALESCE(SUM(upload_delta), 0) FROM usage_log WHERE profile_id = ?
-            """, arguments: [profileId]) ?? 0
-            let dn = try Int64.fetchOne(db, sql: """
-                SELECT COALESCE(SUM(download_delta), 0) FROM usage_log WHERE profile_id = ?
-            """, arguments: [profileId]) ?? 0
-            return (up, dn)
+            let row = try Row.fetchOne(db, sql: """
+                SELECT COALESCE(SUM(upload_delta), 0) AS up,
+                       COALESCE(SUM(download_delta), 0) AS dn
+                FROM usage_log WHERE profile_id = ?
+            """, arguments: [profileId])
+            return (row?["up"] as? Int64 ?? 0, row?["dn"] as? Int64 ?? 0)
         }
     }
 
@@ -394,9 +406,10 @@ final class ProfileManager: @unchecked Sendable {
         df.dateFormat = "yyyy-MM-dd HH:mm"
 
         func csvEscape(_ value: String) -> String {
-            var escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
-            if escaped.contains(",") || escaped.contains("\n") || escaped.contains("\r") {
-                escaped = "\"\(escaped)\""
+            let escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
+            // RFC 4180: `"`가 포함된 값은 반드시 전체를 쌍따옴표로 감싸야 한다.
+            if escaped.contains(",") || escaped.contains("\n") || escaped.contains("\r") || escaped.contains("\"") {
+                return "\"\(escaped)\""
             }
             return escaped
         }

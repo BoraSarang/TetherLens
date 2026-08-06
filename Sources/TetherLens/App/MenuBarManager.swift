@@ -98,6 +98,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         TrafficMonitor.shared.stop()
         TrafficMonitor.shared.start()
         setupTimers()
+        cacheNeedsInvalidation = true
+        refreshCache()
         updateMenuBarText()
     }
 
@@ -119,6 +121,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     }
 
     @objc private func handleAppTermination() {
+        recordCurrentUsage()
         ProfileManager.shared.endAllActiveSessions()
         stopMonitoring()
     }
@@ -219,6 +222,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     }
 
     func startMonitoring() {
+        guard !isMonitoring else { return }
         authorizeNotifications()
 
         setupDebugPanelShortcut()
@@ -258,6 +262,11 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                     longitude: bestLocation.longitude
                 )
             }
+            ProfileManager.shared.resetCounter(
+                profileId: profile.id,
+                totalUpload: networkMonitor.totalUpload,
+                totalDownload: networkMonitor.totalDownload
+            )
             lastTrackedSSID = ssid
             // IP가 이미 조회된 경우 (이전 실행에서 캐시) 첫 로그 기록
             if let ip = ipResolver.externalIP {
@@ -348,6 +357,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         hotspotDetector.stop()
         pingMonitor.stop()
         TrafficMonitor.shared.stop()
+        locationManager.stopUpdating()
     }
 
     private func recordCurrentUsage() {
@@ -430,11 +440,17 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                     ProfileManager.shared.endSession(oldSession)
                 }
                 if let pid = profile?.id {
-                    currentSession = ProfileManager.shared.startSession(
+                    ProfileManager.shared.resetCounter(
                         profileId: pid,
-                        latitude: bestLocation.latitude,
-                        longitude: bestLocation.longitude
+                        totalUpload: networkMonitor.totalUpload,
+                        totalDownload: networkMonitor.totalDownload
                     )
+                    currentSession = ProfileManager.shared.getActiveSession(profileId: pid)
+                        ?? ProfileManager.shared.startSession(
+                            profileId: pid,
+                            latitude: bestLocation.latitude,
+                            longitude: bestLocation.longitude
+                        )
                 } else {
                     currentSession = nil
                 }

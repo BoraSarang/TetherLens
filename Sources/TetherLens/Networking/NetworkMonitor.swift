@@ -9,7 +9,6 @@ class NetworkMonitor: @unchecked Sendable {
     private(set) var currentDownloadSpeed: Double = 0
     private(set) var totalUpload: Int64 = 0
     private(set) var totalDownload: Int64 = 0
-    private(set) var todayUsage: Int64 = 0
     private(set) var activeInterfaceName: String?
 
     func start() {
@@ -50,7 +49,6 @@ class NetworkMonitor: @unchecked Sendable {
             totalDownload = current.rx
             totalUpload = current.tx
             activeInterfaceName = interface
-            updateTodayUsage()
         }
     }
 
@@ -99,21 +97,5 @@ class NetworkMonitor: @unchecked Sendable {
         }
 
         return ((totalRX, totalTX), interfaceName)
-    }
-
-    private func updateTodayUsage() {
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: Date())
-        let timeSinceMidnight = Date().timeIntervalSince(todayStart)
-        let secondsSinceMidnight = Int(timeSinceMidnight)
-
-        if secondsSinceMidnight >= 0 && secondsSinceMidnight < 86400 {
-            let totalBytes = totalDownload + totalUpload
-            if totalBytes > 0 {
-                todayUsage = totalBytes
-            }
-        } else {
-            todayUsage = 0
-        }
     }
 }

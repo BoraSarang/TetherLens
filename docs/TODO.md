@@ -167,5 +167,22 @@
 > 결정: 메뉴바 사용량/잔여/절약모드/임계값 알림/게이지 색 전부 오늘 기준 (팝오버 게이지와 통일). 할당량 미설정 시 총 사용량 유지. v0.21에서 totalGB로 변경된 것을 복원.
 > 정리: Info.plist는 루트 Resources/ 단일 원본 (배포 버전 0.13.0→0.23.1 정상화). AGENTS.macos.md/DESIGN.md 신설.
 
+## 🔄 v0.24.0 — 정밀 분석 기반 버그 수정 + 리팩토링 (2026-08-06)
+
+> 소스 전면 분석(2 에이전트 + 직접 검증)으로 예상 버그 확정. 자동 테스트 반복 실행으로 회귀 확인.
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 92 | ProfileManager: 음수 델타 시 양수 방향만 기록 (H2) + `resetCounter` 추가 (H1) | P0 | ⬜ |
+| 93 | MenuBarManager: SSID 전환 시 이전 기록 + 새 프로필 카운터 시드 + getActiveSession 재사용 (H1, M5) | P0 | ⬜ |
+| 94 | ProfileManager: getTodayUsage 자정 경계 캐시 + up/dn 단일 read (M2, M3) | P1 | ⬜ |
+| 95 | ProfileManager: cleanupOldLogs 활성 세션 정리 (M9) + csvEscape 쿼팅 보강 (M11) | P1 | ⬜ |
+| 96 | TrafficMonitor: start 리셋 queue 직렬화 (H3) + refresh 백로그 skip (M10) / NetworkMonitor todayUsage 제거 (M1) | P0 | ⬜ |
+| 97 | PingMonitor: watchdog 취소 (M6) + cooldown 레벨 상승 허용 (M7) / HotspotDetector start 가드 / MenuBarManager 가드·시드·종료 기록 (M8) | P1 | ⬜ |
+| 98 | DataStore v8 orphan 정리 (M4) + 테스트 수정/추가 (H2 기존 테스트 고정 해제) | P1 | ⬜ |
+| 99 | 검증: 테스트 전체 + 재분석 반복 + 문서 마무리 (CHANGELOG/세션/TODO) | P1 | ⬜ |
+
+> 커밋: [T-92~98 코드/테스트/문서 각각 분리], [T-99 문서]
+
 
 > 참고: DebugPanelView는 개발자 전용 다크 패널이라 토큰 대상 제외, 히트맵 그라데이션/지도 핀 색은 시각화 고유 로직으로 유지

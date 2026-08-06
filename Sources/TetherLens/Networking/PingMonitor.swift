@@ -206,6 +206,8 @@ class PingMonitor {
 
     private func checkCooldown(level: Int) -> Bool {
         guard let lastTime = lastAlertTime else { return false }
+        // 레벨 상승(경고→심각)은 cooldown과 무관하게 즉시 알림
+        if level > lastNotifiedLevel { return false }
         return Date().timeIntervalSince(lastTime) < cooldownDuration
     }
 
@@ -234,8 +236,11 @@ class PingMonitor {
             task.standardError = pipe
 
             let gate = ResumeGate()
-            let watchdog = DispatchWorkItem {
-                task.terminate()
+            let watchdog = DispatchWorkItem { [weak task] in
+                // 정상 종료 후 실행되면 isRunning이 false → terminate 생략
+                if task?.isRunning == true {
+                    task?.terminate()
+                }
                 gate.resume {
                     continuation.resume(returning: nil)
                 }
@@ -295,8 +300,10 @@ class PingMonitor {
             task.standardError = FileHandle.nullDevice
 
             let gate = ResumeGate()
-            let watchdog = DispatchWorkItem {
-                task.terminate()
+            let watchdog = DispatchWorkItem { [weak task] in
+                if task?.isRunning == true {
+                    task?.terminate()
+                }
                 gate.resume { continuation.resume(returning: nil) }
             }
 

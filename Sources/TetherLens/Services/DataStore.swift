@@ -123,6 +123,9 @@ final class DataStore: @unchecked Sendable {
                     recorded_at TEXT NOT NULL,
                     session_id TEXT REFERENCES session(id) ON DELETE SET NULL
                 );
+                DELETE FROM usage_log
+                WHERE session_id IS NOT NULL
+                  AND session_id NOT IN (SELECT id FROM session);
                 INSERT INTO usage_log_new (id, profile_id, upload_delta, download_delta, recorded_at, session_id)
                     SELECT id, profile_id, upload_delta, download_delta, recorded_at, session_id FROM usage_log;
                 DROP TABLE usage_log;
