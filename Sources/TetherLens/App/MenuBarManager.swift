@@ -123,6 +123,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     @objc private func handleAppTermination() {
         recordCurrentUsage()
         ProfileManager.shared.endAllActiveSessions()
+        TrafficMonitor.shared.flushBeforeTermination()
         stopMonitoring()
     }
 
@@ -421,6 +422,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 if SettingsManager.shared.autoSwitchProfile {
                     _ = ProfileManager.shared.autoRegisterIfNeeded(ssid: ssid, connectionType: connectionTypeString(for: hotspotDetector.currentConnection?.type))
                     cacheNeedsInvalidation = true
+                    // 이전 SSID의 스테일 캐시가 새 프로필 조회를 가로채지 않도록 즉시 무효화
+                    cachedProfile = nil
+                    cachedUsage = nil
+                    cachedTotalUsage = nil
                 }
             }
 
@@ -481,7 +486,6 @@ class MenuBarManager: NSObject, @unchecked Sendable {
                 if SavingModeManager.shared.shouldAutoActivate(used: todayGB, quota: quota) {
                     if !SavingModeManager.shared.isEnabled {
                         SavingModeManager.shared.isEnabled = true
-                        sendQuotaNotification(used: todayGB, quota: quota)
                     }
                 }
 

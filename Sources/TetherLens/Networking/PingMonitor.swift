@@ -18,6 +18,7 @@ class PingMonitor {
     private var lastAlertTime: Date?
     private var lastAlertLevel: Int = 0
     private var lastNotifiedLevel: Int = 0
+    private var lastConnectionAlertDate: Date = .distantPast
 
     private var dnsHistory: [TimeInterval?] = []
     private var gatewayHistory: [TimeInterval?] = []
@@ -101,10 +102,15 @@ class PingMonitor {
             consecutiveViolations = 0
             sustainedStart = nil
             recoveryStart = nil
-            if isReachable {
-                await postPingAlert(type: .connectionRestored, level: 0, message: Localized.connectionRestored)
-            } else {
-                await postPingAlert(type: .connectionLost, level: 0, message: Localized.connectionLost)
+            let now = Date()
+            // 신호 불안정 플래핑 시 알림 폭주를 막기 위한 최소 간격 (30초)
+            if now.timeIntervalSince(lastConnectionAlertDate) >= 30 {
+                lastConnectionAlertDate = now
+                if isReachable {
+                    await postPingAlert(type: .connectionRestored, level: 0, message: Localized.connectionRestored)
+                } else {
+                    await postPingAlert(type: .connectionLost, level: 0, message: Localized.connectionLost)
+                }
             }
             return
         }

@@ -4,6 +4,7 @@ import SystemConfiguration
 class NetworkMonitor: @unchecked Sendable {
     private var timer: DispatchSourceTimer?
     private var previousBytes: (rx: Int64, tx: Int64) = (0, 0)
+    private var lastPollDate = Date.distantPast
 
     private(set) var currentUploadSpeed: Double = 0
     private(set) var currentDownloadSpeed: Double = 0
@@ -12,6 +13,8 @@ class NetworkMonitor: @unchecked Sendable {
     private(set) var activeInterfaceName: String?
 
     func start() {
+        previousBytes = (0, 0)
+        lastPollDate = Date.distantPast
         let queue = DispatchQueue(label: "com.tetherlens.network-monitor", qos: .utility)
         timer = DispatchSource.makeTimerSource(queue: queue)
         timer?.schedule(deadline: .now(), repeating: 1.0)
@@ -31,12 +34,12 @@ class NetworkMonitor: @unchecked Sendable {
         guard let current else { return }
 
         let prev = previousBytes
-        let elapsed: Double = 1.0
-        let rxDiff = current.rx - prev.rx
-        let txDiff = current.tx - prev.tx
-
-        let rxSpeed = max(Double(rxDiff) * 8 / elapsed, 0)
-        let txSpeed = max(Double(txDiff) * 8 / elapsed, 0)
+        let now = Date()
+        let elapsed = now.timeIntervalSince(lastPollDate)
+        lastPollDate = now
+        // 지연(타이머 밀림)을 반영한 실제 경과 시간으로 속도 계산
+        let rxSpeed = elapsed > 0 ? max(Double(current.rx - prev.rx) * 8 / elapsed, 0) : 0
+        let txSpeed = elapsed > 0 ? max(Double(current.tx - prev.tx) * 8 / elapsed, 0) : 0
 
         previousBytes = current
 

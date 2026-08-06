@@ -59,6 +59,14 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         }
     }
 
+    /// 앱 종료 시 마지막 구간 로그 유실을 막기 위한 동기 flush.
+    /// queue.sync로 nettop 점유 작업이 끝날 때까지 대기하므로 종료 시점에만 호출해야 한다.
+    func flushBeforeTermination() {
+        queue.sync { [weak self] in
+            self?.persistAccumulated()
+        }
+    }
+
     func resetAccumulated() {
         queue.async { [weak self] in
             self?.accumulated = [:]
@@ -68,34 +76,38 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
 
     private func saveAccumulated() {
         queue.async { [weak self] in
-            guard let self else { return }
-            let now = Date()
-            var logs: [AppTrafficLog] = []
-            for (name, current) in self.accumulated {
-                let last = self.lastSavedAccumulated[name, default: (0, 0)]
-                let uploadDelta = current.in - last.in
-                let downloadDelta = current.out - last.out
-                if uploadDelta > 0 || downloadDelta > 0 {
-                    logs.append(AppTrafficLog(
-                        id: UUID(),
-                        processName: name,
-                        uploadBytes: uploadDelta,
-                        downloadBytes: downloadDelta,
-                        recordedAt: now
-                    ))
+            self?.persistAccumulated()
+        }
+    }
+
+    private func persistAccumulated() {
+        let now = Date()
+        var logs: [AppTrafficLog] = []
+        for (name, current) in accumulated {
+            let last = lastSavedAccumulated[name, default: (0, 0)]
+            let uploadDelta = current.in - last.in
+            let downloadDelta = current.out - last.out
+            if uploadDelta > 0 || downloadDelta > 0 {
+                logs.append(AppTrafficLog(
+                    id: UUID(),
+                    processName: name,
+                    uploadBytes: uploadDelta,
+                    downloadBytes: downloadDelta,
+                    recordedAt: now
+                ))
+            }
+        }
+        lastSavedAccumulated = accumulated
+        guard !logs.isEmpty else { return }
+        do {
+            try DataStore.shared.dbQueue.write { db in
+                for log in logs {
+                    try log.insert(db)
                 }
             }
-            self.lastSavedAccumulated = self.accumulated
-            guard !logs.isEmpty else { return }
-            do {
-                try DataStore.shared.dbQueue.write { db in
-                    for log in logs {
-                        try log.insert(db)
-                    }
-                }
-            } catch {
-                DebugLogger.shared.error("Traffic", "트래픽 로그 저장 실패: \(error.localizedDescription)")
-            }
+        } catch {
+            let msg = "트래픽 로그 저장 실패: \(error.localizedDescription)"
+            DispatchQueue.main.async { DebugLogger.shared.error("Traffic", msg) }
         }
     }
 
