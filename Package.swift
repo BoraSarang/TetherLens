@@ -19,7 +19,6 @@ let package = Package(
             dependencies: [
                 .product(name: "GRDB", package: "GRDB.swift")
             ],
-            exclude: ["Info.plist"],
             swiftSettings: [
                 .define("DEBUG", .when(configuration: .debug))
             ],
