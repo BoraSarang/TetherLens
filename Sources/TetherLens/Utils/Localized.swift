@@ -19,6 +19,7 @@ enum Localized {
   static var quit: String { value(kr: "종료", en: "Quit") }
   static var copied: String { value(kr: "복사되었습니다.", en: "Copied.") }
   static var copy: String { value(kr: "복사", en: "Copy") }
+  static var today: String { value(kr: "오늘", en: "Today") }
 
   // MARK: - Popover Summary/Detail
   static var summaryView: String { value(kr: "요약 보기", en: "Summary") }

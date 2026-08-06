@@ -564,6 +564,12 @@ struct PopoverView: View {
         let quotaGB = profile?.quotaGB
         if let quotaGB = quotaGB {
             QoSGauge(used: totalUsedGB, total: quotaGB)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if let profile = profile {
+                        usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
+                    }
+                }
         } else {
             HStack(spacing: TLSpace.sm) {
                 Spacer()
@@ -665,9 +671,7 @@ struct PopoverView: View {
                             }
                         }
                         Text(profile.ssid).font(TLFont.caption).foregroundColor(TLPalette.textSecondary)
-                        if let q = profile.quotaGB {
-                            Text("\(Localized.quota) \(String(format: "%.1f", q))GB").font(TLFont.caption2).foregroundColor(TLPalette.textSecondary)
-                        }
+                        miniUsageStats(profile: profile)
                     }
                     Spacer()
                     Button(Localized.statistics) {
@@ -686,6 +690,29 @@ struct PopoverView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// 프로필 미니 통계 — 오늘 사용량 + 할당량 % (T-117)
+    @ViewBuilder
+    private func miniUsageStats(profile: Profile) -> some View {
+        let today = ProfileManager.shared.getTodayUsage(profileId: profile.id)
+        let usedGB = Double(today.upload + today.download) / 1_000_000_000
+        let quotaGB = profile.quotaGB
+        if let quotaGB = quotaGB, quotaGB > 0 {
+            let pct = min(Int(usedGB * 100 / quotaGB), 999)
+            HStack(spacing: TLSpace.xs) {
+                ProgressView(value: min(usedGB / quotaGB, 1.0))
+                    .frame(width: 70)
+                    .scaleEffect(x: 1, y: 0.5, anchor: .center)
+                Text("\(String(format: "%.2f", usedGB))GB / \(String(format: "%.1f", quotaGB))GB (\(pct)%)")
+                    .font(TLFont.caption2)
+                    .foregroundColor(pct >= 90 ? TLPalette.danger : TLPalette.textSecondary)
+            }
+        } else {
+            Text("\(Localized.today) \(Int64(today.upload + today.download).formattedBytes)")
+                .font(TLFont.caption2)
+                .foregroundColor(TLPalette.textSecondary)
         }
     }
 
@@ -717,8 +744,17 @@ struct PopoverView: View {
                                     }
                                 }
                                 Text(profile.ssid).font(TLFont.caption).foregroundColor(TLPalette.textSecondary)
-                                if let q = profile.quotaGB {
-                                    Text("\(Localized.quota) \(String(format: "%.1f", q))GB").font(TLFont.caption2)
+                                let today = ProfileManager.shared.getTodayUsage(profileId: profile.id)
+                                if let q = profile.quotaGB, q > 0 {
+                                    let usedGB = Double(today.upload + today.download) / 1_000_000_000
+                                    let pct = min(Int(usedGB * 100 / q), 999)
+                                    Text("\(Localized.quota) \(String(format: "%.1f", q))GB · \(String(format: "%.2f", usedGB))GB (\(pct)%)")
+                                        .font(TLFont.caption2)
+                                        .foregroundColor(pct >= 90 ? TLPalette.danger : TLPalette.textSecondary)
+                                } else {
+                                    Text("\(Localized.today) \(Int64(today.upload + today.download).formattedBytes)")
+                                        .font(TLFont.caption2)
+                                        .foregroundColor(TLPalette.textSecondary)
                                 }
                                 if profile.ssid != ssidString {
                                     Text("\(Localized.lastConnected) \(relativeTimeString(profile.lastConnected))")
