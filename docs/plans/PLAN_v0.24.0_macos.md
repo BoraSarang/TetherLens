@@ -33,6 +33,17 @@
 | M10 | TrafficMonitor.swift:97 | nettop(~2초) 동안 queue 점유 → refresh 백로그 (중복 실행 skip 필요) |
 | M11 | ProfileManager.swift:396-402 | CSV에서 `"`만 포함된 값 미쿼팅 → 파싱 오류 |
 
+### 2차 발견 (뷰 계층 — 에이전트 보고 + 직접 검증 확정)
+
+| # | 위치 | 문제 |
+|---|------|------|
+| V1 | ProfileManager.swift getIPForSession | 세션별 IP 조회 시 프로필 전체 IPLog `fetchAll` → 세션 N개면 O(N×M) |
+| V2 | PopoverView.swift:148-150 | 1초 타이머 publisher를 body 내부에서 생성 → body 재평가마다 Timer 재생성 |
+| V3 | PopoverView.swift:97-114 | 5초 알림 클리어가 비동기 무조건 nil → 5초 내 새 알림이 있어도 지워짐 (race) |
+| V4 | SettingsView.swift:119-124 | 폰트 슬라이더 onChange마다 settingsChanged → TrafficMonitor stop/start 폭주 |
+| V5 | AppTrafficView.swift:8,131 | 블록 토글 시 TrafficMonitor.apps 갱신까지 body 미재평가 → 즉시 반영 안 됨 |
+| V6 | DebugPanelView.swift:5-6,65 | 선택 추적을 배열 인덱스로 → 로그 삭제/clear 시 밀려 잘못된 줄 선택 |
+
 ## 3. 수정 계획 (T-번호)
 
 - **T-92** ProfileManager: 음수 델타 시 양수 방향만 기록 (H2) + 카운터 재시드 메서드 `resetCounter` 추가 (H1 용)
@@ -42,13 +53,17 @@
 - **T-96** TrafficMonitor: start() 리셋 queue 직렬화 (H3) + refresh 백로그 skip (M10) / NetworkMonitor: todayUsage 죽은 코드 제거 (M1)
 - **T-97** PingMonitor: watchdog 취소 (M6) + cooldown 레벨 상승 허용 (M7) / HotspotDetector: start 중복 가드 / MenuBarManager: startMonitoring 가드·시드·종료 기록 (M8)
 - **T-98** DataStore: v8 rebuild orphan 정리 (M4) + 테스트 수정/추가
-- **T-99** 검증: 테스트 전체 실행 + 재분석 반복 + 문서 마무리
+- **T-99** ProfileManager: getIPForSession을 SQL 쿼리화 (V1) / PopoverView: 타이머 publisher static + 알림 클리어 값 비교 (V2, V3)
+- **T-100** SettingsView: 폰트 슬라이더 onEditingChanged(드래그 종료 시 1회) (V4) / AppBlockManager: ObservableObject + AppTrafficView 구독 (V5)
+- **T-101** DebugPanelView: 선택 추적을 UUID 기반으로 (V6)
+- **T-102** 검증: 테스트 전체 실행 + 재분석 반복 + 문서 마무리
 
 ## 4. 테스트 계획 (TC)
 
 - 기존 테스트 수정: `recordUsage_누적_델타_계산` (H2 동작 변경 반영 — 음수 방향만 재시드)
 - 신규 테스트: resetCounter 후 이중 계상 방지, 자정 경계 캐시(날짜 변경), CSV 따옴표 쿼팅, cleanup 활성 세션
-- TC-099: `swift test` 전체 통과, `build-macos.sh debug` 성공, 테스트 반복 실행으로 회귀 0
+- 2차 수정(V1~V6)은 뷰/비동기 계층이라 자동 테스트 대상 아님 — 빌드 + 수동 확인
+- TC-102: `swift test` 전체 통과, `build-macos.sh debug` 성공, 테스트 반복 실행으로 회귀 0
 
 ## 5. 롤백 계획
 
