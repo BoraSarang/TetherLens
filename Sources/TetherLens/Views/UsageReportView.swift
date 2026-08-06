@@ -96,22 +96,22 @@ struct UsageReportView: View {
         VStack(spacing: 0) {
             HStack {
                 Text(Localized.usageReportTitle)
-                    .font(.headline)
-                    .padding(.leading, 16)
+                    .font(TLFont.headline)
+                    .padding(.leading, TLSpace.xxl)
                 Spacer()
                 Menu {
                     Button(Localized.exportCSV) { exportData(format: .csv) }
                     Button(Localized.exportJSON) { exportData(format: .json) }
                 } label: {
                     Label(Localized.export, systemImage: "square.and.arrow.up")
-                        .font(.caption)
+                        .font(TLFont.caption)
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .padding(.trailing, 16)
+                .padding(.trailing, TLSpace.xxl)
             }
-            .padding(.top, 16)
-            .padding(.bottom, 8)
+            .padding(.top, TLSpace.xxl)
+            .padding(.bottom, TLSpace.md)
 
             Divider()
 
@@ -121,7 +121,7 @@ struct UsageReportView: View {
                 rightPanel
             }
         }
-        .frame(width: 640, height: 520)
+        .frame(width: TLSize.sheetWide, height: 520)
         .onAppear {
             profiles = ProfileManager.shared.getAllProfiles()
             selectedProfileId = preselectedProfileId ?? allProfilesId
@@ -141,27 +141,27 @@ struct UsageReportView: View {
                     viewMode = mode
                 } label: {
                     Text(mode.localized)
-                        .font(.subheadline)
-                        .foregroundColor(viewMode == mode ? .accentColor : .secondary)
+                        .font(TLFont.subheadline)
+                        .foregroundColor(viewMode == mode ? TLPalette.accent : TLPalette.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
-                        .background(viewMode == mode ? Color.accentColor.opacity(0.1) : Color.clear)
+                        .padding(.horizontal, TLSpace.xl)
+                        .padding(.vertical, TLSpace.lg)
+                        .background(viewMode == mode ? TLPalette.accent.opacity(0.1) : Color.clear)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
             Spacer()
         }
-        .frame(width: 88)
-        .padding(.vertical, 8)
+        .frame(width: TLSize.sidebarWidth)
+        .padding(.vertical, TLSpace.md)
     }
 
     // MARK: - Right Panel
 
     private var rightPanel: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(spacing: TLSpace.md) {
+            HStack(spacing: TLSpace.md) {
                 Picker("", selection: $selectedProfileId) {
                     Text(Localized.allProfiles).tag(allProfilesId as UUID?)
                     ForEach(profiles) { profile in
@@ -173,7 +173,7 @@ struct UsageReportView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .frame(width: 200)
+                .frame(width: TLSize.pickerWidth)
 
                 Picker("", selection: $selectedPeriod) {
                     ForEach(Period.allCases, id: \.self) { period in
@@ -184,8 +184,8 @@ struct UsageReportView: View {
 
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
+            .padding(.horizontal, TLSpace.xl)
+            .padding(.top, TLSpace.md)
 
             if !dailyUsage.isEmpty {
                 let totalUp = dailyUsage.reduce(0) { $0 + $1.upload }
@@ -196,47 +196,47 @@ struct UsageReportView: View {
                 HStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(Localized.totalUsage)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(TLFont.caption2)
+                            .foregroundColor(TLPalette.textSecondary)
                         Text(totalBytes.formattedBytes)
-                            .font(.callout.monospacedDigit().bold())
+                            .font(TLFont.callout.monospacedDigit().bold())
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(Localized.dailyAverage)
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .font(TLFont.caption2)
+                            .foregroundColor(TLPalette.textSecondary)
                         Text(avgBytes.formattedBytes)
-                            .font(.callout.monospacedDigit().bold())
+                            .font(TLFont.callout.monospacedDigit().bold())
                     }
                 }
-                .padding(.vertical, 6)
-                .background(Color(.textBackgroundColor).opacity(0.5))
-                .cornerRadius(6)
-                .padding(.horizontal, 12)
+                .padding(.vertical, TLSpace.sm)
+                .background(TLPalette.textBackground.opacity(0.5))
+                .cornerRadius(TLRound.small)
+                .padding(.horizontal, TLSpace.xl)
             }
 
             Divider()
-                .padding(.horizontal, 12)
+                .padding(.horizontal, TLSpace.xl)
 
             contentBody
 
             HStack {
-                HStack(spacing: 8) {
+                HStack(spacing: TLSpace.md) {
                     Text(Localized.upload)
-                        .font(.caption.bold())
-                        .foregroundColor(.orange)
+                        .font(TLFont.caption.bold())
+                        .foregroundColor(TLPalette.upload)
                     Text(Localized.download)
-                        .font(.caption.bold())
-                        .foregroundColor(.blue)
+                        .font(TLFont.caption.bold())
+                        .foregroundColor(TLPalette.download)
                 }
                 Spacer()
                 Button(Localized.close, action: onClose)
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
+            .padding(.horizontal, TLSpace.xl)
+            .padding(.bottom, TLSpace.xl)
         }
     }
 
@@ -265,7 +265,7 @@ struct UsageReportView: View {
         if dailyUsage.isEmpty {
             Spacer()
             Text(Localized.noUsageData)
-                .foregroundColor(.secondary)
+                .foregroundColor(TLPalette.textSecondary)
             Spacer()
         } else {
             let maxBytes = (dailyUsage.map { max($0.upload, $0.download) }.max() ?? 1) * 2
@@ -275,21 +275,21 @@ struct UsageReportView: View {
                     x: .value("Date", usage.date, unit: .day),
                     y: .value("Upload", usage.upload)
                 )
-                .foregroundStyle(.orange)
+                .foregroundStyle(TLPalette.upload)
                 .annotation(position: .bottom, alignment: .center) {
                     Text(usage.date, format: .dateTime.day().month())
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .font(TLFont.caption2)
+                        .foregroundColor(TLPalette.textSecondary)
                 }
                 BarMark(
                     x: .value("Date", usage.date, unit: .day),
                     y: .value("Download", usage.download)
                 )
-                .foregroundStyle(.blue)
+                .foregroundStyle(TLPalette.download)
             }
             .chartForegroundStyleScale([
-                Localized.uploadShort: Color.orange,
-                Localized.downloadShort: Color.blue
+                Localized.uploadShort: TLPalette.upload,
+                Localized.downloadShort: TLPalette.download
             ])
             .chartLegend(.hidden)
             .chartXAxis(.hidden)
@@ -299,13 +299,13 @@ struct UsageReportView: View {
                     AxisValueLabel {
                         if let bytes = value.as(Double.self) {
                             Text(formatTotalBytes(Int64(bytes)))
-                                .font(.system(size: 9))
+                                .font(TLFont.small)
                                 .monospacedDigit()
                         }
                     }
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, TLSpace.xl)
             .frame(height: 280)
             Spacer()
         }
@@ -320,58 +320,58 @@ struct UsageReportView: View {
             if items.isEmpty {
             Spacer()
             Text(Localized.noUsageData)
-                .foregroundColor(.secondary)
+                .foregroundColor(TLPalette.textSecondary)
             Spacer()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         HStack(spacing: 0) {
                             Text(isLong ? Localized.monthLabel : Localized.date)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 72, alignment: .leading)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
+                                .frame(width: TLSize.rowColWide, alignment: .leading)
                             Text(Localized.uploadShort)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.orange)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.upload)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                             Text(Localized.downloadShort)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.blue)
-                                .frame(width: 72, alignment: .trailing)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.download)
+                                .frame(width: TLSize.rowColWide, alignment: .trailing)
                             Text(Localized.total)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 72, alignment: .trailing)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
+                                .frame(width: TLSize.rowColWide, alignment: .trailing)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, TLSpace.xs)
                         ForEach(items) { item in
                             Divider()
                             HStack(spacing: 0) {
                                 if item.isMonthly {
                                     Text(item.date, format: .dateTime.month().year())
-                                        .font(.caption)
-                                        .frame(width: 72, alignment: .leading)
+                                        .font(TLFont.caption)
+                                        .frame(width: TLSize.rowColWide, alignment: .leading)
                                 } else {
                                     Text(item.date, format: .dateTime.day().month())
-                                        .font(.caption)
-                                        .frame(width: 72, alignment: .leading)
+                                        .font(TLFont.caption)
+                                        .frame(width: TLSize.rowColWide, alignment: .leading)
                                 }
                                 Text(item.upload.formattedBytes)
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundColor(.orange)
+                                    .font(TLFont.caption.monospacedDigit())
+                                    .foregroundColor(TLPalette.upload)
                                     .frame(maxWidth: .infinity, alignment: .trailing)
                                 Text(item.download.formattedBytes)
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundColor(.blue)
-                                    .frame(width: 72, alignment: .trailing)
+                                    .font(TLFont.caption.monospacedDigit())
+                                    .foregroundColor(TLPalette.download)
+                                    .frame(width: TLSize.rowColWide, alignment: .trailing)
                                 Text(item.total.formattedBytes)
-                                    .font(.caption.monospacedDigit().bold())
-                                    .frame(width: 72, alignment: .trailing)
+                                    .font(TLFont.caption.monospacedDigit().bold())
+                                    .frame(width: TLSize.rowColWide, alignment: .trailing)
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, TLSpace.xs)
                         }
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, TLSpace.xl)
                 }
             }
         }
@@ -416,43 +416,43 @@ struct UsageReportView: View {
             if dailySessionSummary.isEmpty {
                 Spacer()
                 Text(Localized.noSessionData)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TLPalette.textSecondary)
                 Spacer()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         HStack(spacing: 0) {
                             Text(Localized.date)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             Text(Localized.sessionCount)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 44, alignment: .trailing)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
+                                .frame(width: TLSize.rowColNarrow, alignment: .trailing)
                             Text(Localized.time)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 64, alignment: .trailing)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
+                                .frame(width: TLSize.rowColTime, alignment: .trailing)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, TLSpace.xs)
                         ForEach(dailySessionSummary) { item in
                             Divider()
                             HStack(spacing: 0) {
                                 Text(item.date, format: .dateTime.day().month())
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 Text("\(item.sessionCount)")
-                                    .font(.caption.monospacedDigit())
-                                    .frame(width: 44, alignment: .trailing)
+                                    .font(TLFont.caption.monospacedDigit())
+                                    .frame(width: TLSize.rowColNarrow, alignment: .trailing)
                                 Text(formatDuration(item.totalDuration))
-                                    .font(.caption.monospacedDigit())
-                                    .frame(width: 64, alignment: .trailing)
+                                    .font(TLFont.caption.monospacedDigit())
+                                    .frame(width: TLSize.rowColTime, alignment: .trailing)
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, TLSpace.xs)
                         }
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, TLSpace.xl)
                 }
             }
         }
@@ -463,43 +463,43 @@ struct UsageReportView: View {
             if monthlySessionSummary.isEmpty {
                 Spacer()
                 Text(Localized.noSessionData)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TLPalette.textSecondary)
                 Spacer()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         HStack(spacing: 0) {
                             Text(Localized.monthLabel)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             Text(Localized.sessionCount)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 44, alignment: .trailing)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
+                                .frame(width: TLSize.rowColNarrow, alignment: .trailing)
                             Text(Localized.time)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 64, alignment: .trailing)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
+                                .frame(width: TLSize.rowColTime, alignment: .trailing)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, TLSpace.xs)
                         ForEach(monthlySessionSummary) { item in
                             Divider()
                             HStack(spacing: 0) {
                                 Text(item.date, format: .dateTime.month().year())
-                                    .font(.caption)
+                                    .font(TLFont.caption)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 Text("\(item.sessionCount)")
-                                    .font(.caption.monospacedDigit())
-                                    .frame(width: 44, alignment: .trailing)
+                                    .font(TLFont.caption.monospacedDigit())
+                                    .frame(width: TLSize.rowColNarrow, alignment: .trailing)
                                 Text(formatDuration(item.totalDuration))
-                                    .font(.caption.monospacedDigit())
-                                    .frame(width: 64, alignment: .trailing)
+                                    .font(TLFont.caption.monospacedDigit())
+                                    .frame(width: TLSize.rowColTime, alignment: .trailing)
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, TLSpace.xs)
                         }
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, TLSpace.xl)
                 }
             }
         }
@@ -523,7 +523,7 @@ struct UsageReportView: View {
             if appTrafficData.isEmpty {
                 Spacer()
                 Text(Localized.noTrafficData)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TLPalette.textSecondary)
                 Spacer()
             } else {
                 let systemSet = SystemProcesses.set
@@ -547,17 +547,17 @@ struct UsageReportView: View {
                     VStack(spacing: 0) {
                         HStack(spacing: 0) {
                             Text(Localized.process)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.secondary)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             Text(Localized.upload)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.orange)
-                                .frame(width: 68, alignment: .trailing)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.upload)
+                                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
                             Text(Localized.download)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(.blue)
-                                .frame(width: 68, alignment: .trailing)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.download)
+                                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
                         }
                         .frame(height: 20)
 
@@ -568,7 +568,7 @@ struct UsageReportView: View {
                         summaryRow(label: Localized.systemSum, upload: sysUp, download: sysDn, isBold: true)
 
                         Divider()
-                            .padding(.vertical, 4)
+                            .padding(.vertical, TLSpace.xs)
 
                         HStack(spacing: 0) {
                             Spacer()
@@ -579,12 +579,12 @@ struct UsageReportView: View {
                             }
                             .pickerStyle(.menu)
                         }
-                        .padding(.bottom, 4)
+                        .padding(.bottom, TLSpace.xs)
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, TLSpace.xl)
 
                     Divider()
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, TLSpace.xl)
 
                     ScrollViewReader { proxy in
                         ScrollView {
@@ -595,17 +595,17 @@ struct UsageReportView: View {
                                         proxy.scrollTo("top", anchor: .top)
                                     }
                                 } label: {
-                                    HStack(spacing: 4) {
+                                    HStack(spacing: TLSpace.xs) {
                                         Image(systemName: expandedSection == .user ? "chevron.down" : "chevron.right")
-                                            .font(.system(size: 8))
-                                            .foregroundColor(.secondary)
+                                            .font(TLFont.badge)
+                                            .foregroundColor(TLPalette.textSecondary)
                                         Text(Localized.userProcesses)
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundColor(.secondary)
+                                            .font(TLFont.smallBold)
+                                            .foregroundColor(TLPalette.textSecondary)
                                         Spacer()
                                     }
                                     .contentShape(Rectangle())
-                                    .padding(.vertical, 6)
+                                    .padding(.vertical, TLSpace.sm)
                                 }
                                 .buttonStyle(.plain)
                                 .id("top")
@@ -623,17 +623,17 @@ struct UsageReportView: View {
                                         proxy.scrollTo("top", anchor: .top)
                                     }
                                 } label: {
-                                    HStack(spacing: 4) {
+                                    HStack(spacing: TLSpace.xs) {
                                         Image(systemName: expandedSection == .system ? "chevron.down" : "chevron.right")
-                                            .font(.system(size: 8))
-                                            .foregroundColor(.secondary)
+                                            .font(TLFont.badge)
+                                            .foregroundColor(TLPalette.textSecondary)
                                     Text(Localized.systemProcesses)
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundColor(.secondary)
+                                        .font(TLFont.smallBold)
+                                        .foregroundColor(TLPalette.textSecondary)
                                     Spacer()
                                 }
                                 .contentShape(Rectangle())
-                                .padding(.vertical, 6)
+                                .padding(.vertical, TLSpace.sm)
                             }
                             .buttonStyle(.plain)
 
@@ -644,7 +644,7 @@ struct UsageReportView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, TLSpace.xl)
                         }
                     }
                 }
@@ -655,16 +655,16 @@ struct UsageReportView: View {
     private func summaryRow(label: String, upload: Int64, download: Int64, isBold: Bool) -> some View {
         HStack(spacing: 0) {
             Text(label)
-                .font(.system(size: 10, weight: isBold ? .bold : .regular))
+                .font(TLFont.medium.weight(isBold ? .bold : .regular))
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(formatTotalBytes(upload))
-                .font(.system(size: 10, weight: isBold ? .bold : .regular, design: .monospaced))
-                .foregroundColor(.orange)
-                .frame(width: 68, alignment: .trailing)
+                .font(TLFont.mediumMono.weight(isBold ? .bold : .regular))
+                .foregroundColor(TLPalette.upload)
+                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
             Text(formatTotalBytes(download))
-                .font(.system(size: 10, weight: isBold ? .bold : .regular, design: .monospaced))
-                .foregroundColor(.blue)
-                .frame(width: 68, alignment: .trailing)
+                .font(TLFont.mediumMono.weight(isBold ? .bold : .regular))
+                .foregroundColor(TLPalette.download)
+                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
         }
         .frame(height: 20)
     }
@@ -672,18 +672,18 @@ struct UsageReportView: View {
     private func appTrafficRow(_ item: (processName: String, uploadBytes: Int64, downloadBytes: Int64)) -> some View {
         HStack(spacing: 0) {
             Text(item.processName)
-                .font(.system(size: 10))
+                .font(TLFont.medium)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(formatTotalBytes(item.uploadBytes))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.orange)
-                .frame(width: 68, alignment: .trailing)
+                .font(TLFont.mediumMono)
+                .foregroundColor(TLPalette.upload)
+                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
             Text(formatTotalBytes(item.downloadBytes))
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundColor(.blue)
-                .frame(width: 68, alignment: .trailing)
+                .font(TLFont.mediumMono)
+                .foregroundColor(TLPalette.download)
+                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
         }
         .frame(height: 20)
     }

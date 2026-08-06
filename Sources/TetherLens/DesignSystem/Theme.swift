@@ -19,6 +19,7 @@ enum TLPalette {
     static let textSecondary = Color.secondary
     static let copyHint      = Color.secondary.opacity(0.4) // 복사 아이콘 단서
     static let separator     = Color(nsColor: .separatorColor)
+    static let textBackground = Color(nsColor: .textBackgroundColor) // 요약 행 배경
 }
 
 enum TLFont {
@@ -34,6 +35,8 @@ enum TLFont {
     // semantic 스케일
     static let caption     = Font.caption
     static let caption2    = Font.caption2
+    static let callout     = Font.callout
+    static let subheadline = Font.subheadline
     static let body        = Font.body
     static let headline    = Font.headline                             // 시트 제목
     static let speed       = Font.system(.title3, design: .monospaced) // 속도 값
@@ -65,4 +68,9 @@ enum TLSize {
     static let detailLabelWidth:  CGFloat = 96   // detailRow 라벨
     static let trafficUploadCol:  CGFloat = 62
     static let trafficDownloadCol: CGFloat = 68
+    static let sidebarWidth:      CGFloat = 88   // UsageReport 사이드바
+    static let rowColNarrow:      CGFloat = 44   // 세션 수/짧은 값
+    static let rowColTime:        CGFloat = 64   // 시간/기간 컬럼
+    static let rowColWide:        CGFloat = 72   // 날짜/라벨 컬럼
+    static let pickerWidth:       CGFloat = 200  // 프로필 피커
 }
