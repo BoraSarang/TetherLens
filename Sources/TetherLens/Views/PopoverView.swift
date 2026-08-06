@@ -257,7 +257,7 @@ struct PopoverView: View {
                 .resizable()
                 .frame(width: 20, height: 20)
             Text(displayName)
-                .font(.headline)
+                .font(TLFont.headline)
                 .lineLimit(1)
             Spacer()
             if let onTogglePin {
@@ -266,10 +266,10 @@ struct PopoverView: View {
                     onTogglePin()
                 } label: {
                     Image(systemName: pinned ? "pin.fill" : "pin")
-                        .font(.caption)
+                        .font(TLFont.caption)
                 }
                 .buttonStyle(.plain)
-                .foregroundColor(pinned ? .accentColor : .secondary)
+                .foregroundColor(pinned ? TLPalette.accent : TLPalette.textSecondary)
                 .help(pinned ? Localized.unpin : Localized.pinPopover)
             }
             Button {
@@ -277,15 +277,15 @@ struct PopoverView: View {
             } label: {
                 HStack(spacing: 2) {
                     Image(systemName: "bell")
-                        .font(.caption)
+                        .font(TLFont.caption)
                     if !NotificationManager.shared.notifications.isEmpty {
                         Text("\(NotificationManager.shared.notifications.count)")
-                            .font(.system(size: 8, design: .monospaced))
+                            .font(TLFont.badgeMono)
                     }
                 }
             }
             .buttonStyle(.plain)
-            .foregroundColor(NotificationManager.shared.notifications.isEmpty ? .secondary : .accentColor)
+            .foregroundColor(NotificationManager.shared.notifications.isEmpty ? TLPalette.textSecondary : TLPalette.accent)
             .help(Localized.notificationHistory)
             statusDot
         }
@@ -331,7 +331,7 @@ struct PopoverView: View {
 
     private var statusDot: some View {
         Circle()
-            .fill(pingMonitor.isReachable ? Color.green : Color.red)
+            .fill(pingMonitor.isReachable ? TLPalette.success : TLPalette.danger)
             .frame(width: 10, height: 10)
     }
 
@@ -367,7 +367,7 @@ struct PopoverView: View {
     }
 
     private var connectionInfoView: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: TLSpace.sm) {
             detailRow(label: Localized.type, value: connectionTypeString)
             if let dur = sessionDurationString {
                 detailRow(label: Localized.session, value: dur)
@@ -405,7 +405,7 @@ struct PopoverView: View {
     }
 
     private var connectionAddressView: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: TLSpace.sm) {
             if expandedAddressInfo {
                 if let gw = hotspotDetector.currentConnection?.gatewayIP {
                     detailRow(label: Localized.gateway, value: gw, copyValue: gw)
@@ -423,8 +423,8 @@ struct PopoverView: View {
                     Spacer()
                     Button(Localized.ipHistory) { showIPHistory = true }
                         .buttonStyle(.plain)
-                        .font(.system(size: 9))
-                        .foregroundColor(.accentColor)
+                        .font(TLFont.small)
+                        .foregroundColor(TLPalette.accent)
                 }
             }
             if expandedAddressInfo {
@@ -488,59 +488,59 @@ struct PopoverView: View {
     }
 
     private var locationWarningView: some View {
-        HStack(alignment: .top, spacing: 4) {
+        HStack(alignment: .top, spacing: TLSpace.xs) {
             Image(systemName: "location.slash")
-                .font(.caption2)
-                .foregroundColor(.orange)
+                .font(TLFont.caption2)
+                .foregroundColor(TLPalette.upload)
                 .padding(.top, 2)
             if !LocationManager.systemLocationServicesEnabled {
                 Text(Localized.locationServiceOff)
-                    .font(.system(size: 9))
-                    .foregroundColor(.orange)
+                    .font(TLFont.small)
+                    .foregroundColor(TLPalette.upload)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
+                Spacer(minLength: TLSpace.xs)
                 Button(Localized.openSettings) {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .tint(.orange)
+                .tint(TLPalette.upload)
             } else if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
                 Text(Localized.locationAppDenied)
-                    .font(.system(size: 9))
-                    .foregroundColor(.orange)
+                    .font(TLFont.small)
+                    .foregroundColor(TLPalette.upload)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
+                Spacer(minLength: TLSpace.xs)
                 Button(Localized.openSettings) {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .tint(.orange)
+                .tint(TLPalette.upload)
             } else if !locationManager.isAuthorized {
                 Text(Localized.locationNeeded)
-                    .font(.system(size: 9))
-                    .foregroundColor(.orange)
+                    .font(TLFont.small)
+                    .foregroundColor(TLPalette.upload)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
+                Spacer(minLength: TLSpace.xs)
                 Button(Localized.requestPermission) {
                     locationManager.requestAuthorization()
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .tint(.orange)
+                .tint(TLPalette.upload)
             } else {
                 Text(Localized.locationProvisioning)
-                    .font(.system(size: 9))
-                    .foregroundColor(.orange)
+                    .font(TLFont.small)
+                    .foregroundColor(TLPalette.upload)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
+                Spacer(minLength: TLSpace.xs)
                 Button(Localized.openSettings) {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .tint(.orange)
+                .tint(TLPalette.upload)
             }
         }
     }
@@ -578,16 +578,16 @@ struct PopoverView: View {
     }
 
     private var trafficSectionDivider: some View {
-        HStack(spacing: 6) {
-            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+        HStack(spacing: TLSpace.sm) {
+            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
             Text(Localized.appTraffic)
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                .font(TLFont.caption2)
+                .foregroundColor(TLPalette.textSecondary)
                 .fixedSize()
             Image(systemName: "chevron.right")
-                .font(.system(size: 8))
-                .foregroundColor(.secondary.opacity(0.5))
-            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+                .font(TLFont.badge)
+                .foregroundColor(TLPalette.textSecondary.opacity(0.5))
+            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
         }
         .contentShape(Rectangle())
         .onTapGesture { showTraffic = true }
@@ -599,42 +599,42 @@ struct PopoverView: View {
 
     private var appTrafficPreview: some View {
         let top3 = Array(trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }.prefix(3))
-        return VStack(spacing: 4) {
+        return VStack(spacing: TLSpace.xs) {
             HStack(spacing: 0) {
                 Text(Localized.process)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.secondary)
+                    .font(TLFont.smallBold)
+                    .foregroundColor(TLPalette.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(Localized.upload)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.orange)
-                    .frame(width: 62, alignment: .trailing)
+                    .font(TLFont.smallBold)
+                    .foregroundColor(TLPalette.upload)
+                    .frame(width: TLSize.trafficUploadCol, alignment: .trailing)
                 Text(Localized.download)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.blue)
-                    .frame(width: 68, alignment: .trailing)
+                    .font(TLFont.smallBold)
+                    .foregroundColor(TLPalette.download)
+                    .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
             }
             ForEach(top3) { app in
                 HStack(spacing: 0) {
                     Text(app.processName)
-                        .font(.system(size: 10))
+                        .font(TLFont.medium)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Text(formatByteRate(app.bytesIn))
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.orange)
-                        .frame(width: 62, alignment: .trailing)
+                        .font(TLFont.mediumMono)
+                        .foregroundColor(TLPalette.upload)
+                        .frame(width: TLSize.trafficUploadCol, alignment: .trailing)
                     Text(formatByteRate(app.bytesOut))
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.blue)
-                        .frame(width: 68, alignment: .trailing)
+                        .font(TLFont.mediumMono)
+                        .foregroundColor(TLPalette.download)
+                        .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
                 }
             }
             Button(Localized.showMore) { showTraffic = true }
                 .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundColor(.blue)
+                .font(TLFont.caption)
+                .foregroundColor(TLPalette.download)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .contentShape(Rectangle())
@@ -644,19 +644,19 @@ struct PopoverView: View {
     private var profileSection: some View {
         let currentSSID = hotspotDetector.currentConnection?.ssid
         let currentProfile = currentSSID.flatMap { ProfileManager.shared.getProfile(ssid: $0) }
-        return VStack(spacing: 6) {
+        return VStack(spacing: TLSpace.sm) {
             if let profile = currentProfile {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            Text(profile.name).font(.body)
+                        HStack(spacing: TLSpace.xs) {
+                            Text(profile.name).font(TLFont.body)
                             if profile.isHotspot {
-                                Text("(\(Localized.hotspot))").font(.body).foregroundColor(.orange)
+                                Text("(\(Localized.hotspot))").font(TLFont.body).foregroundColor(TLPalette.upload)
                             }
                         }
-                        Text(profile.ssid).font(.caption).foregroundColor(.secondary)
+                        Text(profile.ssid).font(TLFont.caption).foregroundColor(TLPalette.textSecondary)
                         if let q = profile.quotaGB {
-                            Text("\(Localized.quota) \(String(format: "%.1f", q))GB").font(.caption2).foregroundColor(.secondary)
+                            Text("\(Localized.quota) \(String(format: "%.1f", q))GB").font(TLFont.caption2).foregroundColor(TLPalette.textSecondary)
                         }
                     }
                     Spacer()
@@ -680,40 +680,40 @@ struct PopoverView: View {
     }
 
     private var profileManagerSheet: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: TLSpace.xl) {
             Text(Localized.profileManagement)
-                .font(.headline)
-                .padding(.top, 16)
+                .font(TLFont.headline)
+                .padding(.top, TLSpace.xxl)
 
             if profiles.isEmpty {
                 Spacer()
                 Text(Localized.noProfiles)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
                 Spacer()
             } else {
                 List {
                     ForEach(profiles) { profile in
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 4) {
-                                    Text(profile.name).font(.body)
+                                HStack(spacing: TLSpace.xs) {
+                                    Text(profile.name).font(TLFont.body)
                                     if profile.isHotspot {
-                                        Text("(\(Localized.hotspot))").font(.body).foregroundColor(.orange)
+                                        Text("(\(Localized.hotspot))").font(TLFont.body).foregroundColor(TLPalette.upload)
                                     }
                                     if profile.ssid == ssidString {
-                                        Circle().fill(Color.orange).frame(width: 6, height: 6)
-                                        Text(Localized.connected).font(.caption2).foregroundColor(.orange)
+                                        Circle().fill(TLPalette.upload).frame(width: 6, height: 6)
+                                        Text(Localized.connected).font(TLFont.caption2).foregroundColor(TLPalette.upload)
                                     }
                                 }
-                                Text(profile.ssid).font(.caption).foregroundColor(.secondary)
+                                Text(profile.ssid).font(TLFont.caption).foregroundColor(TLPalette.textSecondary)
                                 if let q = profile.quotaGB {
-                                    Text("\(Localized.quota) \(String(format: "%.1f", q))GB").font(.caption2)
+                                    Text("\(Localized.quota) \(String(format: "%.1f", q))GB").font(TLFont.caption2)
                                 }
                                 if profile.ssid != ssidString {
                                     Text("\(Localized.lastConnected) \(relativeTimeString(profile.lastConnected))")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .font(TLFont.caption2)
+                                        .foregroundColor(TLPalette.textSecondary)
                                 }
                             }
                             Spacer()
@@ -744,29 +744,29 @@ struct PopoverView: View {
             Button(Localized.close) { showProfileManager = false }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .padding(.bottom, 16)
+                .padding(.bottom, TLSpace.xxl)
         }
-        .frame(width: 280, height: 300)
+        .frame(width: TLSize.sheetCompact, height: 300)
     }
 
     private var speedView: some View {
         HStack {
             VStack(alignment: .leading) {
                 Text(Localized.upload)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
                 Text(formatSpeed(networkMonitor.currentUploadSpeed))
-                    .font(.system(.title3, design: .monospaced))
-                    .foregroundColor(.orange)
+                    .font(TLFont.speed)
+                    .foregroundColor(TLPalette.upload)
             }
             Spacer()
             VStack(alignment: .trailing) {
                 Text(Localized.download)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
                 Text(formatSpeed(networkMonitor.currentDownloadSpeed))
-                    .font(.system(.title3, design: .monospaced))
-                    .foregroundColor(.blue)
+                    .font(TLFont.speed)
+                    .foregroundColor(TLPalette.download)
             }
         }
     }
@@ -824,18 +824,18 @@ struct PopoverView: View {
     private func detailRow(label: String, value: String, copyValue: String? = nil) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.secondary)
-                .frame(width: 96, alignment: .leading)
+                .font(TLFont.detail)
+                .foregroundColor(TLPalette.textSecondary)
+                .frame(width: TLSize.detailLabelWidth, alignment: .leading)
             HStack(spacing: 3) {
                 if copyValue != nil {
                     Image(systemName: "doc.on.doc")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary.opacity(0.4))
+                        .font(TLFont.small)
+                        .foregroundColor(TLPalette.copyHint)
                 }
                 Text(value)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.primary)
+                    .font(TLFont.detail)
+                    .foregroundColor(TLPalette.textPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
@@ -852,21 +852,21 @@ struct PopoverView: View {
     }
 
     private func sectionDivider(_ title: String) -> some View {
-        HStack(spacing: 6) {
-            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
-            Text(title).font(.caption2).foregroundColor(.secondary).fixedSize()
-            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+        HStack(spacing: TLSpace.sm) {
+            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
+            Text(title).font(TLFont.caption2).foregroundColor(TLPalette.textSecondary).fixedSize()
+            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
         }
     }
 
     private func collapsibleSectionDivider(_ title: String, isExpanded: Binding<Bool>) -> some View {
-        HStack(spacing: 6) {
-            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+        HStack(spacing: TLSpace.sm) {
+            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
             Image(systemName: isExpanded.wrappedValue ? "chevron.down" : "chevron.right")
-                .font(.system(size: 8))
-                .foregroundColor(.secondary)
-            Text(title).font(.caption2).foregroundColor(.secondary).fixedSize()
-            Rectangle().frame(height: 1).foregroundColor(Color(nsColor: .separatorColor))
+                .font(TLFont.badge)
+                .foregroundColor(TLPalette.textSecondary)
+            Text(title).font(TLFont.caption2).foregroundColor(TLPalette.textSecondary).fixedSize()
+            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
         }
         .contentShape(Rectangle())
         .onTapGesture { isExpanded.wrappedValue.toggle() }
@@ -877,32 +877,32 @@ struct PopoverView: View {
     }
 
     private var dnsPresetPicker: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: TLSpace.xl) {
             Text(Localized.dnsPresetPicker)
-                .font(.headline)
-                .padding(.top, 16)
+                .font(TLFont.headline)
+                .padding(.top, TLSpace.xxl)
 
             ForEach(DNSPreset.presets) { preset in
-                HStack(spacing: 8) {
+                HStack(spacing: TLSpace.md) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(preset.name).font(.body)
+                        Text(preset.name).font(TLFont.body)
                         Text(preset.description)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(TLFont.caption)
+                            .foregroundColor(TLPalette.textSecondary)
                         Text(preset.servers.joined(separator: ", "))
-                            .font(.caption2)
-                            .foregroundColor(.secondary.opacity(0.6))
+                            .font(TLFont.caption2)
+                            .foregroundColor(TLPalette.textSecondary.opacity(0.6))
                     }
                     Spacer()
                     Group {
                         if applyingPresetID == preset.id {
                             Text(Localized.dnsApplying)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(TLFont.caption)
+                                .foregroundColor(TLPalette.textSecondary)
                         } else if !preset.servers.isEmpty && currentDNSServers == preset.servers {
                             Text(Localized.dnsApplied)
-                                .font(.caption)
-                                .foregroundColor(.green)
+                                .font(TLFont.caption)
+                                .foregroundColor(TLPalette.success)
                                 .fontWeight(.semibold)
                         } else {
                             Button(Localized.apply) { confirmPreset = preset }
@@ -912,23 +912,23 @@ struct PopoverView: View {
                     }
                     .frame(minWidth: 48, alignment: .center)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 4)
+                .padding(.horizontal, TLSpace.xxl)
+                .padding(.vertical, TLSpace.xs)
                 Divider()
             }
 
             if let msg = dnsStatusMessage {
                 Text(msg)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
             }
 
             Button(Localized.close) { showDNSPicker = false }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .padding(.bottom, 16)
+                .padding(.bottom, TLSpace.xxl)
         }
-        .frame(width: 260)
+        .frame(width: TLSize.sheetCompact)
         .alert(item: $confirmPreset) { preset in
             Alert(
                 title: Text(Localized.dnsChangeTitle),
@@ -994,11 +994,11 @@ struct PopoverView: View {
 
     private func pingAlertColor(for type: AppNotification.NotificationType) -> Color {
         switch type {
-        case .pingWarning: return .orange
-        case .pingCritical: return .red
-        case .pingRecovery, .connectionRestored: return .green
-        case .connectionLost: return .blue
-        default: return .orange
+        case .pingWarning: return TLPalette.upload
+        case .pingCritical: return TLPalette.danger
+        case .pingRecovery, .connectionRestored: return TLPalette.success
+        case .connectionLost: return TLPalette.download
+        default: return TLPalette.upload
         }
     }
 
