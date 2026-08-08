@@ -225,6 +225,16 @@
 | 120 | 팝오버 닫힘 시 1초 tick 중지 (PopoverView) | P2 | ✅ |
 | 121 | Timer tolerance 부여 (MenuBarManager/TrafficMonitor) | P2 | ✅ |
 
+## 🔄 v0.25.2 — 팝오버 시트 좀비 상태 방지 (2026-08-06)
+
+> admin 프롬프트(절약 모드/DNS 프리셋)로 앱이 resignActive → popover 강제 닫힘 시 시트 @State가 좀비로 남아
+> 다음 오픈에서 팝오버 클릭 무반응. 재오픈 시 모든 시트 상태 리셋으로 해결.
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 122 | PopoverView.resetPopoverState() + 재오픈 시 시트 상태 초기화 (togglePopover show 직전) | P1 | ✅ |
+| 123 | 검증: 빌드/테스트 + 수기 재현 대비 (절약 모드 포함) | P1 | ✅ |
+
 ## 🔬 관찰 기록 — 에너지 사용 (2026-08-06)
 
 > 사용자: 배터리 '많은 에너지 사용' 1위가 TetherLens. 나중에 `bd`/에너지 프로파일로 원인 확인 필요.

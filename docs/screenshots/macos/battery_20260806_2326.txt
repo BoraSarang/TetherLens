@@ -1,0 +1,19 @@
+== 배터리 프로파일 리포트: 2026-08-06 23:27 ==
+측정 구간: 60초 (샘플 30개, 간격 2초)
+
+--- 프로세스별 CPU 사용률 ---
+tetherlens   평균  1.30%   최대  5.30%  (샘플 30)
+opencode     평균 12.50%   최대 25.04%  (샘플 30)
+tube         평균 21.84%   최대 42.27%  (샘플 30)
+
+--- 상위 10 프로세스 (전체 CPU%) ---
+ 122.5%  /usr/bin/nettop
+  43.8%  /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  29.6%  /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python
+  26.8%  /Applications/OpenCode.app/Contents/Frameworks/OpenCode
+  25.0%  /Users/lee/Applications/TubeKeep.app/Contents/MacOS/TubeKeep
+  23.2%  /Applications/Whale.app/Contents/Frameworks/Whale
+  22.4%  /Applications/OpenCode.app/Contents/Frameworks/OpenCode
+  17.9%  /Applications/Gemini.app/Contents/MacOS/Gemini
+  11.9%  /Applications/Whale.app/Contents/Frameworks/Whale
+  11.6%  /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python

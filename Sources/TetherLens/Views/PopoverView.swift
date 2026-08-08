@@ -177,6 +177,9 @@ struct PopoverView: View {
             tickSubscription?.cancel()
             tickSubscription = nil
         }
+        .onReceive(NotificationCenter.default.publisher(for: .init("popoverWillShow"))) { _ in
+            resetPopoverState()
+        }
     }
 
     @ViewBuilder
@@ -1081,6 +1084,25 @@ struct PopoverView: View {
 
     private func openSavingMode() {
         showSavingMode = true
+    }
+
+    /// 팝오버가 열릴 때 남아있던 시트 상태(좀비)를 전부 초기화한다.
+    /// admin 프롬프트(절약 모드/DNS 프리셋)로 인한 resignActive → popover 강제 닫힘 후
+    /// 재오픈할 때 이전 @State 시트 flag가 남아 클릭이 죽는 현상을 방지한다.
+    func resetPopoverState() {
+        showDNSPicker = false
+        dnsStatusMessage = nil
+        confirmPreset = nil
+        applyingPresetID = nil
+        showProfileManager = false
+        editingProfile = nil
+        showSettings = false
+        showSavingMode = false
+        usageReportConfig = nil
+        showTraffic = false
+        showAbout = false
+        showIPHistory = false
+        showNotifications = false
     }
 
     private func flag(from countryCode: String) -> String {

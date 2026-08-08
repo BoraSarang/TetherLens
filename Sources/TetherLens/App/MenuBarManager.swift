@@ -650,6 +650,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         if popover.isShown {
             popover.performClose(nil)
         } else {
+            // 이전에 남아있던 시트 상태(좀비)를 리셋한 뒤 다시 연다.
+            // admin 프롬프트로 resignActive → 팝오버 강제 닫힘 후 클릭이 죽는 문제 방지
+            NotificationCenter.default.post(name: .init("popoverWillShow"), object: nil)
             let positioningView: NSView
             let positioningBounds: NSRect
             if let button = statusItem.button {
