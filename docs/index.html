@@ -3,163 +3,135 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TetherLens — Wi-Fi 네트워크 사용량 추적</title>
+<title>TetherLens — 테더링 데이터의 감시 카메라</title>
+<meta property="og:title" content="TetherLens — 테더링 데이터의 감시 카메라">
+<meta property="og:description" content="메뉴바 하나로 핫스팟 데이터가 어디로 새는지 낱낱이 추적. QoS 사기 전에 지켜라.">
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+  :root {
+    --bg: #06060b;
+    --panel: #0c0e17;
+    --line: rgba(255,255,255,.08);
+    --text: #e8eaf2;
+    --muted: #8b90a5;
+    --accent: #2563eb;
+    --accent2: #0ea5e9;
+    --success: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+  }
+  html { scroll-behavior: smooth; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #0a0a0a;
-    color: #e0e0e0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
   }
-  .container {
-    width: 100%;
-    max-width: 720px;
-    padding: 0 24px;
+  /* 배경 글로우 */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(60% 50% at 15% 0%, rgba(37,99,235,.18), transparent),
+      radial-gradient(50% 45% at 85% 15%, rgba(14,165,233,.12), transparent),
+      radial-gradient(60% 55% at 50% 110%, rgba(37,99,235,.10), transparent);
   }
-  header {
-    width: 100%;
-    padding: 16px 0;
-    border-bottom: 1px solid #1a1a1a;
-  }
-  header .container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  header .logo {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #fff;
-  }
-  header .logo span { color: #555; font-weight: 400; }
-  header a {
-    color: #888;
-    text-decoration: none;
-    font-size: 0.875rem;
-    transition: color .2s;
-  }
-  header a:hover { color: #fff; }
+  .container { width: 100%; max-width: 960px; padding: 0 24px; margin: 0 auto; }
 
-  .hero {
-    text-align: center;
-    padding: 80px 0 60px;
-  }
-  .hero img {
-    width: 96px;
-    height: 96px;
-    border-radius: 22px;
-    margin-bottom: 20px;
-    box-shadow: 0 0 0 1px rgba(255,255,255,.06);
-  }
-  .hero h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: -.03em;
-  }
-  .hero p {
-    font-size: 1.125rem;
-    color: #888;
-    margin: 12px 0 32px;
-    line-height: 1.6;
-  }
+  /* 헤더 */
+  header { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px); background: rgba(6,6,11,.7); border-bottom: 1px solid var(--line); }
+  header .container { display: flex; align-items: center; justify-content: space-between; height: 58px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1rem; letter-spacing: -.02em; }
+  .logo img { width: 26px; height: 26px; border-radius: 7px; }
+  .logo b { background: linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  nav a { color: var(--muted); text-decoration: none; font-size: .875rem; margin-left: 24px; transition: color .2s; }
+  nav a:hover { color: #fff; }
+
+  /* 히어로 */
+  .hero { text-align: center; padding: 84px 0 56px; position: relative; }
   .hero .badge {
-    display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #666;
-    background: #141414;
-    padding: 4px 10px;
-    border-radius: 6px;
-    margin-bottom: 24px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .75rem; font-weight: 600; color: var(--accent2);
+    background: rgba(14,165,233,.08); border: 1px solid rgba(14,165,233,.25);
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 26px;
   }
-  .hero .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 32px;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all .2s;
-    cursor: pointer;
+  .hero .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .hero h1 {
+    font-size: clamp(2.4rem, 6vw, 4.2rem); font-weight: 800; letter-spacing: -.045em; line-height: 1.06;
+    background: linear-gradient(100deg, #fff 20%, #93c5fd 55%, #38bdf8 80%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
-  .hero .btn-primary {
-    background: #2563eb;
-    color: #fff;
+  .hero h1 em { font-style: normal; background: linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p.sub { margin: 22px auto 38px; max-width: 560px; font-size: 1.2rem; color: var(--muted); line-height: 1.65; }
+  .hero .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px; padding: 15px 34px; border-radius: 14px;
+    font-size: 1rem; font-weight: 700; text-decoration: none; transition: all .22s; cursor: pointer;
   }
-  .hero .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
-  .hero .btn-secondary {
-    background: #1a1a1a;
-    color: #aaa;
-    margin-left: 12px;
+  .btn-primary {
+    background: linear-gradient(90deg,var(--accent),var(--accent2)); color: #fff;
+    box-shadow: 0 10px 34px rgba(37,99,235,.35);
   }
-  .hero .btn-secondary:hover { background: #222; color: #fff; }
-  .hero .note {
-    font-size: 0.8125rem;
-    color: #555;
-    margin-top: 16px;
-  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(37,99,235,.5); }
+  .btn-ghost { background: rgba(255,255,255,.06); color: var(--text); border: 1px solid var(--line); }
+  .btn-ghost:hover { background: rgba(255,255,255,.12); transform: translateY(-2px); }
+  .hero .note { margin-top: 22px; font-size: .78rem; color: #51556b; }
+  .hero .note code { background: rgba(255,255,255,.06); padding: 2px 7px; border-radius: 6px; color: #aab2d9; }
 
-  .features {
-    padding: 60px 0;
-    border-top: 1px solid #1a1a1a;
+  /* 실시간 텔레메트리 바 — 시각적 임팩트 */
+  .telemetry {
+    margin: 40px auto 0; max-width: 640px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
   }
-  .features h2 {
-    text-align: center;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 40px;
+  .tel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 12px; text-align: center;
   }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
-  }
+  .tel .label { font-size: .7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .tel .val { margin-top: 6px; font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .tel .val.up { color: var(--warn); } .tel .val.down { color: var(--accent2); } .tel .val.gb { color: var(--success); }
+  .tel .status { margin-top: 6px; font-size: .7rem; color: var(--success); }
+
+  /* 기능 섹션 */
+  .section { padding: 72px 0; }
+  .section-head { text-align: center; margin-bottom: 48px; }
+  .section-head h2 { font-size: 2rem; font-weight: 800; letter-spacing: -.03em; }
+  .section-head p { color: var(--muted); margin-top: 10px; }
+  .features { display: grid; grid-template-columns: repeat(2,1fr); gap: 18px; }
   .card {
-    background: #111;
-    border: 1px solid #1a1a1a;
-    border-radius: 14px;
-    padding: 24px;
-    transition: border-color .2s;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px;
+    transition: border-color .25s, transform .25s; position: relative; overflow: hidden;
   }
-  .card:hover { border-color: #333; }
-  .card .icon { font-size: 1.5rem; margin-bottom: 10px; }
-  .card h3 {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: #fff;
-    margin-bottom: 6px;
+  .card::after {
+    content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .3s;
+    background: radial-gradient(120% 120% at 100% 0%, rgba(37,99,235,.16), transparent 55%);
   }
-  .card p {
-    font-size: 0.8125rem;
-    color: #666;
-    line-height: 1.6;
-  }
+  .card:hover { border-color: rgba(37,99,235,.4); transform: translateY(-3px); }
+  .card:hover::after { opacity: 1; }
+  .card .icon { font-size: 1.6rem; margin-bottom: 14px; }
+  .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; z-index:1; position: relative; }
+  .card p { font-size: .87rem; color: var(--muted); line-height: 1.6; position: relative; z-index: 1; }
 
-  footer {
-    width: 100%;
-    padding: 32px 0;
-    border-top: 1px solid #1a1a1a;
-    text-align: center;
-    font-size: 0.8125rem;
-    color: #444;
+  /* 배너 CTA */
+  .banner {
+    background: linear-gradient(120deg, rgba(37,99,235,.14), rgba(14,165,233,.08));
+    border: 1px solid rgba(37,99,235,.3); border-radius: 24px; padding: 48px 32px; text-align: center;
   }
-  footer a { color: #666; text-decoration: none; }
+  .banner h2 { font-size: 1.8rem; font-weight: 800; letter-spacing: -.03em; }
+  .banner p { color: var(--muted); margin: 12px 0 28px; }
+  .banner .btn { font-size: 1rem; }
+
+  footer { padding: 40px 0 48px; border-top: 1px solid var(--line); text-align: center; color: #4a4f63; font-size: .8rem; }
+  footer a { color: #7c83a5; text-decoration: none; }
   footer a:hover { color: #fff; }
 
   @media (max-width: 640px) {
-    .hero h1 { font-size: 1.75rem; }
-    .hero .btn-secondary { margin-left: 0; margin-top: 12px; }
-    .hero .btn { width: 100%; justify-content: center; }
-    .grid { grid-template-columns: 1fr; }
+    .features { grid-template-columns: 1fr; }
+    .telemetry { grid-template-columns: 1fr; }
+    nav a { margin-left: 12px; font-size: .78rem; }
+    .hero { padding-top: 60px; }
   }
 </style>
 </head>
@@ -167,68 +139,104 @@
 
 <header>
   <div class="container">
-    <div class="logo">TetherLens <span>β</span></div>
-    <a href="https://github.com/BoraSarang/TetherLens" target="_blank">GitHub</a>
+    <div class="logo"><img src="icon.png" alt=""><b>TetherLens</b></div>
+    <nav>
+      <a href="#features">기능</a>
+      <a href="https://github.com/BoraSarang/TetherLens" target="_blank">GitHub</a>
+    </nav>
   </div>
 </header>
 
 <main>
-  <div class="container">
-    <section class="hero">
-      <img src="icon.png" alt="TetherLens 아이콘" width="96" height="96">
-      <div class="badge">macOS 14+</div>
-      <h1>TetherLens</h1>
-      <p>메뉴바에서 바로 확인하는<br>Wi-Fi 네트워크 사용량 추적</p>
-      <div>
-        <a class="btn btn-primary" href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">
-          ↓ macOS 다운로드
-        </a>
-        <a class="btn btn-secondary" href="https://github.com/BoraSarang/TetherLens/releases/latest" target="_blank">
-          릴리스 보기
-        </a>
+  <section class="hero">
+    <div class="container">
+      <span class="badge"><span class="dot"></span> 실시간 감시 중</span>
+      <h1>테더링 데이터,<br><em>어디로 새는지 보여.</em></h1>
+      <p class="sub">
+        메뉴바 하나로 핫스팟의 <b>소중한 GB</b>를 경호하라.<br>
+        실시간 속도 · QoS 소진 예측 · 앱별 낭비범 추적.
+      </p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">⬇️ macOS에서 다운로드</a>
+        <a class="btn btn-ghost" href="https://github.com/BoraSarang/TetherLens/releases/latest" target="_blank">릴리스 보기</a>
       </div>
       <p class="note">
-        <a href="https://github.com/BoraSarang/TetherLens/releases" style="color:#555;">모든 릴리스</a>
+        최초 실행 경고 시 → <code>xattr -rd com.apple.quarantine /Applications/TetherLens.app</code>
       </p>
-      <p class="note" style="margin-top:24px;font-size:0.75rem;color:#444;line-height:1.6;max-width:400px;margin-left:auto;margin-right:auto;">
-        처음 실행 시 미확인 개발자 경고가 뜨면<br>
-        터미널에서 <code style="background:#111;padding:2px 6px;border-radius:4px;font-size:0.7rem;">xattr -rd com.apple.quarantine /Applications/TetherLens.app</code> 실행
-      </p>
-    </section>
 
-    <section class="features">
-      <h2>주요 기능</h2>
-      <div class="grid">
-        <div class="card">
-          <div class="icon">📊</div>
-          <h3>실시간 속도</h3>
-          <p>메뉴바에서 업로드/다운로드 속도를 실시간으로 확인하세요.</p>
+      <!-- 실시간 느낌의 텔레메트리 -->
+      <div class="telemetry">
+        <div class="tel">
+          <div class="label">▼ 다운로드</div>
+          <div class="val down" id="down">1.2 MB/s</div>
+          <div class="status">실시간</div>
         </div>
-        <div class="card">
-          <div class="icon">📱</div>
-          <h3>핫스팟 감지</h3>
-          <p>iOS 개인용 핫스팟과 Android 테더링을 자동으로 인식합니다.</p>
+        <div class="tel">
+          <div class="label">▲ 업로드</div>
+          <div class="val up" id="up">120 KB/s</div>
+          <div class="status">실시간</div>
         </div>
-        <div class="card">
-          <div class="icon">🎯</div>
-          <h3>할당량 관리</h3>
-          <p>일일/월간 데이터 할당량을 설정하고 초과 알림을 받으세요.</p>
-        </div>
-        <div class="card">
-          <div class="icon">📋</div>
-          <h3>세션 기록</h3>
-          <p>네트워크별 사용 이력을 자동 저장하고 통계로 확인합니다.</p>
+        <div class="tel">
+          <div class="label">오늘 사용</div>
+          <div class="val gb" id="today">1.87 GB</div>
+          <div class="status" id="quota">할당량 52%</div>
         </div>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-head">
+        <h2>비용이 곧 삶의 질인 사람들을 위해</h2>
+        <p>핫스팟 한 줄 한 줄이 경제입니다. TetherLens가 현황을 밝힙니다.</p>
+      </div>
+      <div class="features">
+        <div class="card"><div class="icon">💓</div><h3>메뉴바 실시간 속도</h3><p>▲▼ 업·다운을 두 줄로 표시. 상태색(초록→빨강)으로 할당량 압박을 직관화.</p></div>
+        <div class="card"><div class="icon">📱</div><h3>핫스팟 자동 감지</h3><p>iOS ↔ Android 테더링 구분, SSID 기반 프로필 자동 전환.</p></div>
+        <div class="card"><div class="icon">🎯</div><h3>QoS 방지 게이지</h3><p>오늘 사용량 vs 할당량. 50/80/95/100% 임계선 도달 시 알림.</p></div>
+        <div class="card"><div class="icon">🔮</div><h3>소진일 예측</h3><p>지금 페이스면 언제 바닥나는지 대시보드 카드로 예측.</p></div>
+        <div class="card"><div class="icon">📊</div><h3>대시보드 인사이트</h3><p>총/일평균 · 전기간 비교 · 최다 사용일 · 상위 앱. 상황이 보인다.</p></div>
+        <div class="card"><div class="icon">📍</div><h3>GPS/IP 위치 추적</h3><p>연결 위치 지도 핀과 이동 이력 타임라인으로 내 사용 경로를 확인.</p></div>
+        <div class="card"><div class="icon">🛰️</div><h3>연결 품질 모니터링</h3><p>DNS+게이트웨이 Ping RTT. 지속 위반 → 경고, 복구 자동 감지.</p></div>
+        <div class="card"><div class="icon">🚫</div><h3>스마트 절약 모드</h3><p>핫스팟 감지 시 softwareupdate·TimeMachine off, Apple 업데이트 서버 차단.</p></div>
+        <div class="card"><div class="icon">🌐</div><h3>DNS 프리셋</h3><p>1.1.1.1 / 8.8.8.8 프리셋을 시스템 네트워크 설정에 즉시 반영.</p></div>
+        <div class="card"><div class="icon">🔌</div><h3>앱별 트래픽 순위</h3><p>nettop 기반 — 어느 앱이 얼마나 쓰는지 실시간 소비범 명단.</p></div>
+        <div class="card"><div class="icon">🔋</div><h3>배터리 마니아</h3><p>슬립 시 폴링 중지, 팝오버 닫힘 시 tick 중지, 타이머 tolerance로 전력 최소화.</p></div>
+        <div class="card"><div class="icon">🛡️</div><h3>네이티브 &amp; 프라이버시</h3><p>Swift 6 / SQLite 로컬 저장. 데이터는 내 맥 안에서만.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="banner">
+        <h2>데이터가 경고등을 켜기 전에,<br>먼저 눈치채는 앱.</h2>
+        <p>macOS 14+ · Apple Silicon / Intel · 100% 네이티브</p>
+        <a class="btn btn-primary" href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">⬇️ 지금 다운로드</a>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="container">
-    <a href="https://github.com/BoraSarang/TetherLens" target="_blank">BoraSarang/TetherLens</a> · © 2026
+    <a href="https://github.com/BoraSarang/TetherLens" target="_blank">BoraSarang/TetherLens</a>
+    &nbsp;·&nbsp; © 2026 &nbsp;·&nbsp; <a href="https://github.com/BoraSarang/TetherLens/blob/main/docs/PRD.md">PRD</a>
   </div>
 </footer>
+
+<script>
+  // 실시간 느낌: 값이 살짝 변동하며 텔레메트리 애니메이션 (데모용)
+  function fmt(kbps, unit){ return (kbps/1000 >= 1) ? (kbps/1000).toFixed(1)+' '+unit : Math.max(kbps,1).toFixed(0)+' KB/s'; }
+  let lastUp=120, lastDown=1200;
+  setInterval(() => {
+    lastUp = lastUp*0.92 + Math.random()*90;
+    lastDown = lastDown*0.94 + Math.random()*700;
+    document.getElementById('up').textContent = fmt(lastUp,'MB/s');
+    document.getElementById('down').textContent = fmt(lastDown,'MB/s');
+  }, 1600);
+</script>
 
 </body>
 </html>
