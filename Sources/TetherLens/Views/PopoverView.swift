@@ -135,6 +135,7 @@ struct PopoverView: View {
             case "usageReport": openStatistics()
             case "appTraffic": showTraffic = true
             case "notifications": showNotifications = true
+            case "profileManager": showProfileManager = true
             case "dnsPreset": showDNSPicker = true
             case "savingMode": openSavingMode()
             case "settings": showSettings = true
@@ -687,22 +688,20 @@ struct PopoverView: View {
                         miniUsageStats(profile: profile)
                     }
                     Spacer()
-                    Button(Localized.statistics) {
-                        usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
+                    VStack(spacing: TLSpace.xs) {
+                        Button(Localized.statistics) {
+                            usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        Button(Localized.edit) {
+                            editingProfile = profile
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    Button(Localized.edit) {
-                        editingProfile = profile
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
                 }
             }
-            Button(Localized.manageProfiles) { showProfileManager = true }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .frame(maxWidth: .infinity)
         }
     }
 
@@ -850,6 +849,7 @@ struct PopoverView: View {
                 Button(Localized.usageReport) { openStatistics() }
                 Button(Localized.appTrafficButton) { showTraffic = true }
                 Button(Localized.notificationList) { showNotifications = true }
+                Button(Localized.manageProfiles) { showProfileManager = true }
                 Divider()
                 Button(Localized.dnsPresetApply) { showDNSPicker = true }
                 Button(savingModeActive ? Localized.savingModeOn : Localized.savingModeOff) { openSavingMode() }

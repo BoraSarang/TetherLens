@@ -210,6 +210,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         menu.addItem(moreMenuItem(Localized.notificationList) { [weak self] in
             self?.openPopoverAndTrigger("notifications")
         })
+        menu.addItem(moreMenuItem(Localized.manageProfiles) { [weak self] in
+            self?.openPopoverAndTrigger("profileManager")
+        })
         menu.addItem(.separator())
         menu.addItem(moreMenuItem(Localized.dnsPresetApply) { [weak self] in
             self?.openPopoverAndTrigger("dnsPreset")

@@ -84,9 +84,8 @@ class PingMonitor {
                 gatewayRTT = rtt
             }
             isReachable = (dnsRTT ?? .infinity) < 2.0 || (gatewayRTT ?? .infinity) < 2.0
-            if useDNS {
-                await checkAndNotify()
-            }
+            // 상태 전환 감지는 매 루프에서 수행 (useDNS일 때만 하면 끊김/복구 알림이 누락될 수 있음)
+            await checkAndNotify()
             useDNS.toggle()
             try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
         }
@@ -277,6 +276,7 @@ class PingMonitor {
     }
 
     private func postPingAlert(type: AppNotification.NotificationType, level: Int, message: String) async {
+        DebugLogger.shared.action("Network", "알림 발송: \(message) (type=\(type.rawValue) level=\(level))")
         NotificationManager.shared.add(type: type, message: message)
         NotificationCenter.default.post(name: .init("pingAlert"), object: nil, userInfo: [
             "message": message,
