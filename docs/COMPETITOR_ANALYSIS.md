@@ -1,7 +1,8 @@
 # TetherLens — 경쟁 앱 비교 분석
 
-**작성일**: 2026-07-25  
-**버전**: v1.0
+**작성일**: 2026-07-25 (v1.0)  
+**갱신일**: 2026-08-09 (v2.0 — 동종 앱 10종 리서치 추가)
+**버전**: v2.0
 
 ---
 
@@ -288,3 +289,136 @@ TetherLens는 **핫스팟/테더링 데이터 모니터링**이라는 틈새 시
 | **핵심 격차** | 앱 차단 기능 (NEFilterDataProvider) — 추가 시 경쟁 우위 확보 가능 |
 
 > **핵심 메시지**: "TripMode의 기능 대부분을 무료로 + TripMode에 없는 기능까지"
+
+---
+
+# 부록 A. 신규 동종 앱 리서치 (2026-08-09 기준)
+
+> 사용자 제안 10종 앱을 조사하고 TetherLens 대비 격차/참고 기능을 정리한다.
+> 기존 v1.0(구 경쟁자 중심)과 달리, 이 부록은 **신규 등장 앱 + Wi-Fi 일반 진단 앱**을 포함한다.
+
+## A.1 App / 제품 목록
+
+| # | 제품 | 유형 | 가격 | 배포 |
+|---|------|------|------|------|
+| 1 | **HotspotPeek 2.0** | 핫스팟/네트워크 데이터 카운터 | 무료 + Pro $4.99 | Mac App Store |
+| 2 | **Hotspot Guard** | 앱별 데이터 한도/차단 | 무료 (얼리액세스) | 직접 다운로드 |
+| 3 | **WiFi & IP Info – One Click 2.2** | 네트워크 대시보드 + 진단 | $0.99 + Pro $9.99 | Mac App Store |
+| 4 | **QuickNetStats** | 메뉴바 네트워크 상태 | 무료 (MIT, OSS) | Homebrew · GitHub |
+| 5 | **Wifilicious 2.0** | Wi-Fi 신호/속도/추세 + AI | 유료 (Mac Store/Setapp) | Mac App Store |
+| 6 | **yFi** | Wi-Fi 연결 안정성 | 무료 | Mac App Store |
+| 7 | **Adrian Granados WiFi Signal** | Wi-Fi 신호 감시 | 유료 | 직접/Mac Store |
+| 8 | **Wifiry (AppYogi)** | Wi-Fi 신호 강도 표시 | $9.99 | Mac App Store |
+| 9 | **WiFiSpoof 4** | MAC 주소 변경 | $24.99 | 직접 · Mac App Store |
+| 10 | **LeanRunning** | USB/WiFi 트리거 자동화 | $14.99 | 직접 |
+
+## A.2. 개별 상세 분석
+
+### A.2.1 HotspotPeek 2.0 — 가장 근접한 대체재
+| 항목 | 내용 |
+|------|------|
+| **핵심** | ~~iPhone 핫스팟만 감지~~ → v2.0에서 **모든 네트워크 측정**으로 재작성. 네트워크별 카운터, 월/주/일 리셋, 데이터 한도(90%/50%/75% 알림), 4GB wrap 대응, `netstat` 교차 검증(일치 0.02%), 바이트 중복 카운트 제거 |
+| **강점** | "단순함 + 정확성". 카운터 정확도에 대한 신뢰성 강조(리뷰에서 `nettop`/`netstat` 대비 검증 내세움). 무료로 기본 한도 추적 제공 |
+| **약점** | 앱별 트래픽 없음, 세션/통계/리포트 없음, QoS 게이지 없음, 프로필(SSID) 관리 없음. 기능이 매우 얕음 |
+| **벌 점** | ⭐ 카운터 정확성 → `netstat` 교차검증 아이디어. ⭐ "모든 네트워크 측정" (TetherLens는 iPhone 테더링 중심이므로 커튼 영역 확장안). ⭐ 메뉴바 사용량 한 줄 표시 UX |
+
+### A.2.2 Hotspot Guard — 앱별 가드 (TetherLens 최대 차이)
+| 항목 | 내용 |
+|------|------|
+| **핵심** | **앱별 데이터 한도** (분/시간), 앱 수준 경고/차단 선택, 시스템 업데이트 재시도→3진 프리즈(손실 절약), 앱 149종 내장 지식팩 제공 |
+| **특징** | "데이터가 줄줄 샌다" → per-app 가드. 마케딕(온프레미스이며 원격 조회 off-by-default) |
+| **약점** | 프로세스 차단 수준(방화벽 X), SIM플 드라이브, EBITDA 베타 |
+| **벌 점** | ⭐ TetherLens가 **없는 핵심 기능** = per-app 차단/한도. 현재 앱별 트래픽 순위만 있고, 차단·한도는 없음 → 최우선 후보 |
+
+### A.2.3 WiFi & IP Info – One Click 2.2 — 진단 (Insights) 분야 최강
+| 항목 | 내용 |
+|------|------|
+| **핵심** | 대시보드: SSID/시그널/로컬·외부 IP/게이트웨이/캡티브 포탈/uptime/업데이트 알림. VPN/proxy 감지(WireGuard·Tailscale·IPSec·PAC). 진단: latency/jitter/packet loss 그래프, 커스텀 ping 대상, traceroute("slow jump" marking). networkQuality(RPM/bufferbloat). DNS leak test. Connection Log (CSV export). Helpdesk 리포트 한 클릭 copy |
+| **특징** | v2.2가 배터리 최적화 폴pulling 정지, 쓸쓸 배치, 이벤트 구독 → 초기 에너지 문제 해결. SwiftUI/Swift 6, 12개 언어 |
+| **약점** | 핫스팟 특화 없음, 데이터 사용(quota) 추적 없음, 프로필 없음 |
+| **벌 점** | ⭐**진단 탭** (VPN/proxy·Latency/traceroute·DNS Leak·bufferbloat) — TetherLens는 ping만 있고 진단 세트가 전무 → 차별 근거. ⭐ 메뉴바 아이콘 상태 그래프(정상/비정상/연결 안 원 색상). ⭐ 프로얼 레포트(Markdown 하나로 헬프데스크 전달) — TetherLens의 Report 창과 유사 컨셉 재사용 가능 |
+
+### A.2.4 QuickNetStats — 연결 즉시 감지 + 링크 품질
+| 항목 | 내용 |
+|------|------|
+| **핵심** | **연결 상태 즉시 반영** (macOS 버전이라 불과). 링크 품질(Good/Minimal/Moderate) speedtest 없이 추정, IPv4 목록 클립보드 클릭 복사, 캡티브 포탈 확인, 연결 유형(Wi-Fi/Ethernet/Hotspot) 표시 |
+| **특징** | 무료 OSS, Homebrew 케스크. battery-light. macOS 13+ |
+| **벌 점** | ⭐ 이미 TetherLens가 핑/네트워크 감지에 해당 — 하지만 "빠른 끊김 감지(SW CLI)" + `Ethernet/Hotspot 구분` 아이디어는 활용 가능. IP 클립보드 UX 요구성 |
+
+### A.2.5 Wifilicious 2.0 — 신호/추가/속도/AI 분야
+| 항목 | 내용 |
+|------|------|
+| **핵심** | 시그널(우) tab: RSSI/SNR/noise floor/채널/bandwidth. **Speed** tab: Cloudflare 속도 테스트(연결~9/5MB, Wi-Fi 병목과 ISP 구분). **Trends**: last hour→month 시계열. **Details**: IPv4/6·BSSID·gateway·MAC·CC. Apple Intelligence 온디바이스 "Ask/요약" (macOS 26) |
+| **특징** | "Another Wow": iPhone에서도. 7메트릭 트렌드 저장. 온디바이스 strict(누도바0bytes). 14언어. Apple Store + Setapp |
+| **벌 점** | ⭐ **메뉴바 커스터마이징**(12개 토글 필드 선택)과 **시그널/대역 표시**는 현재 TetherLens 메뉴바에 부재. ⭐ **속도 테스트**(Cloudflare SpeedTest) TetherLens는 실시간 대역만 — "수도 테스트 한 번으로 ISP vs Wi-Fi 판별" 아이디어 |
+
+### A.2.6 yFi — TX rate 안정성
+| 항목 | 내용 |
+|------|------|
+| **핵심** | 메뉴송 위젯: 속도 급락 감지 → 경고/자동 재연결. 회의 중 앱 네트워크 절방 |
+| **벌 점** | TetherLens의 핑 안정성과 중복. 앱별 행동 모델(속도 급락 → 자동 재연결)은 화면에 참고만 |
+
+### A.2.7 Adrian Granados WiFi Signal — 신호 감시
+| 항목 | 내용 |
+|------|------|
+| **핵심** | 신호/SNR 임계 위반 알림, 로밍 감지, 메뉴바 커스텀 패턴 |
+| **벌 점** | 시그널 측정(위칭)은 WiFi Signal가 표준. TetherLens 시그널 표시가 없으면 이메일들이 있음. 로밍 감지(AP 변경) 아이디어 참고값 |
+
+### A.2.8 Wifiry / WiFiSpoof / LeanRunning (기타)
+| 제품 | 요지 | TetherLens 관계 |
+|------|------|----------------|
+| **Wifiry** | 메뉴바에 신호% + 강도 컨텍트색(그린/옐로우/레드), 네트워크 상세 | 시그널% + 컬러 규칙 표시 참조, 구세대 |
+| **WiFiSpoof** | MAC 주소 임스 품, 네트워크별 룰(직장/집) | 방화벽/프라이버시 별개 앱. 개념상 지세 TetherLens [외IP]와 별 스코프 |
+| **LeanRunning** | USB/WiFi 연결 이벤트 → 앱/쇼컷 자동 실행 | ⭐ WiFi 트리거 자동화 아이디어 — TetherLens의 "SSID → 프로필 전환/자동 실행"과 시너지될 수 있는 훅. 기능 확대 선택지 |
+
+## A.3. 기능 비교표 (신규 10종 vs TetherLens)
+
+| 기능 | TetherLens | HotspotPeek | Hotspot Guard | WiFi&IP OneClick | QuickNetStats | Wifilicious |
+|------|:--:|:--:|:--:|:--:|:--:|:--:|
+| **메뉴바 실시간 속도** | ✅ | ✅(한 줄) | ⬜ | ✅ | ✅ | ✅ |
+| **핫스팟/테더링 감지** | ✅ | ✅(모든 네트워크) | ✅ | ✅ | ✅ | ❌ |
+| **per-app 데이터 차단/한도** | ⬜ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **per-app 트래픽** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **네트워크/SSID 프로필** | ✅ | ✅(네트워크별) | ❌ | ❌ | ❌ | ❌ |
+| **QoS/할당량 게이지·소진日 예측** | ✅ | ✅(반영) | ⬜ | ❌ | ❌ | ❌ |
+| **세션 시간 추적** | ✅ | ❌ | ❌ | ✅(connection log) | ❌ | ❌ |
+| **VPN/proxy 감지** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **DNS leak · traceroute · bufferbloat** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **시그널 강도 (RSSI/SNR)** | ❌ | ❌ | ❌ | ✅(일부) | ❌ | ✅ |
+| **시그널 진단 탭** | ⬜ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **GPS/IP 위치 히스토리** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **DNS 프리셋 직접 변경** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **절약 모드(시스템 제어)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **모든 네트워크 측정** | ❌(iOS) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **위젯 자동화 트리거** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **오픈소스/로컬 프라이버시** | ✅ | 교차 검증 | 온디바 | 옵션 | ✅ OSS | 옵션 |
+
+> ⬜ = 미구현(계획 가능), ✅ = 지원, ❌ = 미지원
+
+## A.4. TetherLens 격차/기회 분석
+
+### A.4.1 신규 앱이 갖고 TetherLens가 없는 것
+| 우선순위 | 격차 | 참고 앱 | 근거 |
+|------|------|---------|------|
+| 🔴 **P0** | **per-app 데이터 차단/한도** | Hotspot Guard | TetherLens는 per-app **측정만** 제공. 데이터를 실제로 멈추는(블럭) 기능이 없어, "감시만 하고 행동하지 않는" 상태 |
+| 🟠 **P0** | **모든 네트워크 측정**(Android/MiFi 등) + 카운터 정확인(netstat 교차) | HotspotPeek | 현재 iPhone 테더링크로 한정. Android 핫스팟/MiFi/케이블 테더링 미측정 → 잠재 사용자 상실 |
+| 🟠 **P1** | **연결 진단**: VPN/proxy 감지 · DNS leak · traceroute · bufferbloat · 커스텀 ping | WiFi&IP | 핑 인프라를 재활용해 "신뢰/보증" 이미지 확보. 헬프데스크 리포트(Markdown) 연계 |
+| 🟡 **P1** | **메뉴바 커스터마이징**: 시그널/RSSI/네트워크명/대역·위젯 스트리트, IP 클립복사 | Wifilicious / UW Signal | 메뉴바 규율 UX 저평가 영역. 낮은 코드로 주요 변경 |
+| 🟡 **P2** | **외부 IP 복사 + 사용 내역 CSV/Markdown export** | WiFi&IP · QuickNetStats | 디버그/헬프데스크 공유용. Report 창 유지 보완 |
+| ⬜ **P2** | **WiFi 이벤트 → 자동화 트리거**(프로필 전환 시 앱 실행/자동 동작) | LeanRunning | SSID 프로필과 합성해 "핫스팟 가면 X 실행/정지" 자동화 |
+
+### A.4.2 TetherLens가 유지하는 강점 (신규 앱 대비)
+- **완전 무료 + OSS**: HotspotPeek(Win), One Click($9.99), Wifilicious(유료) 등 대비 격차
+- **per-app 트래픽 순위** 구현은 HotspotPeek/OneClick이 아직 북상하다 못함
+- **QoS 게이지+소진일 예측+기간 그래프**: 어떤 경쟁도 저수준
+- **세션·GPS·프로필·DNS 프리셋·절약 모드**: 융합 올인원이므로 경쟁 중 유일
+
+## A.5. 권장 사항 / 우선 구현 순서
+
+| 구분 | 우선순위 | 내용 | Impact |
+|------|---------|------|--------|
+| 신규 차별화 | **P0** | per-app 한도/차단 가드 (현시장 없음) | "측정 → 차단" 전환, 가장 주목 |
+| 커버 확장 | **P0** | 모든 네트워크(Android/MiFi) 측정 + 카운터 정확 개선 | 사용 기간 확대, 리뷰 신뢰 |
+| 신뢰 개선 | **P1** | 연결 진단 탭 + 커스텀 ping + 리포트 export | 파워유저 확보 |
+| UX 개선 | **P1** | 메뉴바 표시 커스터마이징 + IP 복사 | 이 남지 않는 편의 |
+| 고급 | **P2** | WiFi 자동화 트리거 (LeanRunning 방식) | 닉스 사용자 추가 |
