@@ -311,6 +311,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var trafficCollecting: String { value(kr: "트래픽 데이터를 수집 중입니다...", en: "Collecting traffic data...") }
   static var excludeSystem: String { value(kr: "시스템 프로세스 포함", en: "Include System Processes") }
   static var resetTraffic: String { value(kr: "초기화", en: "Reset") }
+  static var trafficResetConfirm: String { value(kr: "누적된 프로세스별 트래픽이 모두 초기화됩니다.", en: "All accumulated per-app traffic will be reset.") }
   static var block: String { value(kr: "차단", en: "Block") }
   static var blockingOn: String { value(kr: "차단 중", en: "Blocking") }
   static var blockedAppNotificationTitle: String { value(kr: "앱 트래픽 차단 감지", en: "App Traffic Blocked") }

@@ -61,8 +61,8 @@
 | # | Task | Priority | Status |
 |---|------|----------|--------|
 | 32 | NEFilterDataProvider System Extension — **보류 확정** (Apple 유료 개발자 계정 + 시스템 확장 필요, 무료/OSS 배포와 충돌. 2026-08-09 부록 A 코드베이스 검증으로 P0→보류) | P1 | ⏸ |
-| 33 | 앱별 트래픽 per-app 누적 total 초기화 버튼 | P2 | ⬜ |
-| 34 | 다크 모드 대응 | P3 | ⬜ |
+| 33 | 앱별 트래픽 per-app 누적 total 초기화 버튼 | P2 | ✅ (v0.27) — 기존 리셋 버튼 + 확인 다이얼로그 |
+| 34 | 다크 모드 대응 | P3 | ✅ (v0.27) — 시스템 팔레트 기반 자동 대응 점검 완료 |
 | 35 | IP 변경 이력 추적 (ip_log 테이블 + onIPChange 콜백) | P2 | ✅ |
 | 36 | 영문 현지화 (Localized.swift ~150개 키) | P1 | ✅ |
 | 37 | 세션 타임라인 뷰 (SessionTimelineView) | P2 | ✅ |
@@ -270,3 +270,13 @@
 | 129 | 메뉴바 표시 필드 확장: BSSID/링크속도/DNS 옵션 + SettingsView 토글 | P2 | ✅ |
 | 130 | 사용 내역 CSV/Markdown export (UsageReportView Save) | P2 | ✅ |
 | 131 | 검증: 빌드/delta/a11y-dump + CHANGELOG + 커밋 | P1 | ✅ |
+
+## ✅ v0.27.0 — 백로그 T-33/T-34 정리 (2026-08-10)
+
+> 계획: docs/plans/PLAN_v0.27_macos.md — 백로그 잔여 2건 마무리 (Future 섹션 33/34 ✅ 처리)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 132 | 트래픽 초기화 확인 다이얼로그 (T-33 기존 리셋 버튼 + 실수 방지 오버레이) | P2 | ✅ |
+| 133 | 다크 모드 점검 (T-34) — 시스템 팔레트 기반 자동 대응 확인 + 잔여 하드코딩 의도적 설계 검증 | P3 | ✅ |
+| 134 | 검증: 빌드 + 테스트(43개) + CHANGELOG/TODO/PLAN/세션 문서 | P1 | ✅ |

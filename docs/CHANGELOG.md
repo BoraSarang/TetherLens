@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.27.0] — 2026-08-10 — 백로그 T-33/T-34 정리
+
+> 계획: docs/plans/PLAN_v0.27_macos.md
+
+### Added
+- **트래픽 초기화 확인 다이얼로그 (T-33)** — 프로세스별 트래픽 헤더의 '초기화' 버튼이 즉시 초기화 대신 확인 오버레이(T-33 기존 ProfileEditor 패턴 재사용)를 거쳐 실행. 실수로 누적 데이터를 소거하는 것을 방지. `Localized.trafficResetConfirm` 신규
+
+### Fixed
+- **다크 모드 대응 점검 완료 (T-34)** — 전역 디자인 시스템 팔레트가 시스템 색(`Color.primary`/`nsColor`) 기반임을 확인해 자동 대응 상태로 정리. 잔여 하드코딩(HeatmapGrid `isDark` 분기, DebugPanel 검정 배경, 지도 마커 흰 테두리, 모달 dim)은 모두 의도적 설계로 다크 무관함을 점검
+
 ## [0.26.0] — 2026-08-09 — 네트워크 진단 센터 + SSID 자동화 + 메뉴바 확장
 
 > 경쟁 분석(COMPETITOR_ANALYSIS 부록 A) 코드베이스 검증으로 도출된 실질 격차 3종 통합.

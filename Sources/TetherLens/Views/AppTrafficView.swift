@@ -5,6 +5,7 @@ struct AppTrafficView: View {
     @ObservedObject private var blockManager = AppBlockManager.shared
     let onClose: () -> Void
     @AppStorage("appTraffic_show_system") private var showSystemProcesses = false
+    @State private var confirmReset = false
 
     private var blockedApps: Set<String> { blockManager.blockedApps }
 
@@ -27,6 +28,34 @@ struct AppTrafficView: View {
         }
         .padding(TLSpace.inset)
         .frame(width: TLSize.sheetStandard, height: 380)
+        .overlay {
+            if confirmReset {
+                Color.black.opacity(0.25)
+                    .ignoresSafeArea()
+
+                VStack(spacing: TLSpace.xxl) {
+                    Text(Localized.confirm).font(TLFont.headline)
+                    Text(Localized.trafficResetConfirm)
+                        .font(TLFont.body)
+                        .multilineTextAlignment(.center)
+                    HStack(spacing: TLSpace.xl) {
+                        Button(Localized.cancel) { confirmReset = false }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        Button(Localized.resetTraffic, role: .destructive) {
+                            monitor.resetAccumulated()
+                            confirmReset = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                }
+                .padding(TLSpace.xxxl)
+                .background(TLPalette.windowBackground)
+                .cornerRadius(TLRound.medium)
+                .shadow(radius: 10)
+            }
+        }
     }
 
     private var headerView: some View {
@@ -43,7 +72,7 @@ struct AppTrafficView: View {
                 .toggleStyle(.checkbox)
                 .controlSize(.small)
                 .font(TLFont.caption)
-            Button(Localized.resetTraffic) { monitor.resetAccumulated() }
+            Button(Localized.resetTraffic) { confirmReset = true }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
         }
