@@ -86,9 +86,10 @@ DataStore (SQLite via GRDB)
   - 1열: ▲ 업로드 속도 / ▼ 다운로드 속도
   - 2열: 업로드/다운로드 속도 값 (고정 폭, 모노스페이스)
   - 3열: 할당량 컬럼 — 상단 사용량(오늘), 하단 잔여(오늘) / SSID 표시 모드 / 속도 전용 모드
+- **표시 필드 옵션 (v0.26.0)**: `SettingsManager` 토글 3종 추가 — `showBSSIDInMenuBar`(BSSID), `showLinkSpeedInMenuBar`(링크 속도 Mbps), `showDNSInMenuBar`(DNS 1차 서버). 표시 우선순위: SSID > BSSID > 링크속도 > 총량, 하단열에는 DNS > 잔여
 - **속성 캐싱 (v0.22.2)**: `cacheAttributesIfNeeded(fontSize:)` — fontSize 변경 시에만 폰트/문단스타일/속성/컬럼 폭 재생성, 매초 재생성 최소화
 - 게이지 색: `colorForRatio` — green(< greenThreshold) / orange / red 경계 (`SavingModeManager` 단일화)
-- 갱신 주기: `SettingsManager.menuBarRefreshInterval` (기본 1초)
+- 갱신 주기: `SettingsManager.menuBarRefreshInterval` (기본 2초)
 
 ## 6. 팝오버 설계 (v0.23.0 재설계)
 
@@ -136,3 +137,31 @@ DataStore (SQLite via GRDB)
 - Info.plist 단일 원본: `Resources/Info.plist` (`build-macos.sh`가 번들 복사)
 - Sparkle(`SUFeedURL`/`SUPublicEDKey`) 유지 — 업데이트 채널 예정
 - 에러코드 체계(`E-MAC-*`) 및 `error_message_ko.json`: **미도입** (필요 시 AGENTS.macos.md 규칙에 따라 도입)
+
+## 11. 네트워크 진단 센터 (v0.26.0)
+
+- 진입점: 메뉴바 우클릭 `showMoreMenu()` → "네트워크 진단" → `DiagnosticsWindowController.show()`
+  - floating NSWindow (DebugPanelController 패턴), `DiagnosticsView` SwiftUI 패널
+- `Networking/NetworkDiagnostics.swift` (`@MainActor` 싱글턴) — 요청 시에만 실행, 상시 폴링 없음:
+  | 항목 | 구현 |
+  |------|------|
+  | 프록시/VPN | `/usr/sbin/scutil --proxy` 파싱 (Enable 키 + 서버 항목) |
+  | DNS 누수 | `scutil --dns` resolver 집합 vs `DNSManager.currentServers()` 대조 → 존재 여부 판정 |
+  | 커스텀 ping | `/sbin/ping -c 5` Process 실행 (인자 배열 직접 전달 — 셸 주입 방지) |
+  | traceroute | `/usr/sbin/traceroute -m 12 -q 1` — 12홉 경로 |
+  | bufferbloat | idle RTT 3회 평균 vs 다운로드 부하(Hetzner 1MB) 병행 RTT 평균 증가 폭 (≤5 양호 / ≤30 완충 / >30 위험) |
+  | Markdown 리포트 | `renderMarkdown(_:)` — 결과 5종을 마크다운으로 복사 |
+- Process 실행 헬퍼: `withCheckedContinuation` + `readDataToEndOfFile`, 타임아웃 시 `terminate()`
+
+## 12. SSID 자동화 트리거 (v0.26.0)
+
+- `Services/AutomationManager.swift` (`@MainActor`) + `AutomationRule`(Codable, UserDefaults `automation_rules_v1`)
+- 규칙 구조: `ssid` + `trigger(onConnect/onDisconnect)` + `action(launchApp/quitProcess/savingModeOn/savingModeOff)` + `target`
+- 평가 훅: `MenuBarManager.updateMenuBarText()` — SSID 변경(양/음) 시 `AutomationManager.evaluate(ssid:connected:)` 호출
+- 실행: 앱 실행 `NSWorkspace.openApplication`(Application 폴더 후보 탐색) / 프로세스 종료 `killall -q` / 절약 모드 `SavingModeController`
+- **쿨다운 60초**: `UserDefaults` 타임스탬프 키 `\(60)|\\(rule.id)` — 동일 규칙 중복 발화 방지
+
+## 13. 사용 내역 export (v0.26.0)
+
+- `ProfileManager.exportData(profileId:)` → `(csv, json, markdown)` 3종 반환 (v0.26.0에서 md 추가)
+- `UsageReportView` 내보내기 메뉴: CSV / JSON / Markdown (NSSavePanel)
