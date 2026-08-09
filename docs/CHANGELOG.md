@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.26.0] — 2026-08-09 — 네트워크 진단 센터 + SSID 자동화 + 메뉴바 확장
+
+> 경쟁 분석(COMPETITOR_ANALYSIS 부록 A) 코드베이스 검증으로 도출된 실질 격차 3종 통합.
+> 계획: docs/plans/PLAN_v0.26.0_macos.md
+
+### Added
+- **네트워크 진단 센터 (T-127)** — 메뉴바 우클릭 "네트워크 진단" → floating 패널. VPN/proxy 감지(`scutil --proxy`), DNS 누수 검사(시스템 resolver vs 설정 DNS 대조), 커스텀 ping(호스트 입력), traceroute(12홉), bufferbloat(idle/부하 RTT 증가 폭), 전체 결과 **Markdown 리포트 복사**
+- **SSID 자동화 트리거 (T-128)** — `AutomationRule`(연결/해제 시점, 앱 실행/프로세스 종료/절약 모드), UserDefaults 저장, 프로필 전환 훅에서 평가, 동일 규칙 60초 쿨다운. 설정 뷰에서 규칙 추가/활성/삭제
+- **메뉴바 표시 필드 확장 (T-129)** — 기존 토글(총량·모드·SSID)에 BSSID/링크 속도/DNS 3종 추가 (SettingsManager + MenuBarView)
+- **사용 내역 Markdown export (T-130)** — 기존 CSV/JSON에 Markdown 형식 추가 (ProfileManager.exportData)
+
+### Fixed
+- POPOVER 진단 창이 시스템 프롬프트로 인해 resignActive 시 닫히는 문제는 기존 T-122와 동일 처리(시트 리셋) — 진단 패널 추가로 신규 회귀 없음
+
 ## [0.25.4] — 2026-08-06 — 네트워크 연결 알림 누락 수정
 
 > 네트워크 끊김/복구 알림이 발생하지 않는 문제 수정
