@@ -320,7 +320,7 @@ TetherLens는 **핫스팟/테더링 데이터 모니터링**이라는 틈새 시
 | **핵심** | ~~iPhone 핫스팟만 감지~~ → v2.0에서 **모든 네트워크 측정**으로 재작성. 네트워크별 카운터, 월/주/일 리셋, 데이터 한도(90%/50%/75% 알림), 4GB wrap 대응, `netstat` 교차 검증(일치 0.02%), 바이트 중복 카운트 제거 |
 | **강점** | "단순함 + 정확성". 카운터 정확도에 대한 신뢰성 강조(리뷰에서 `nettop`/`netstat` 대비 검증 내세움). 무료로 기본 한도 추적 제공 |
 | **약점** | 앱별 트래픽 없음, 세션/통계/리포트 없음, QoS 게이지 없음, 프로필(SSID) 관리 없음. 기능이 매우 얕음 |
-| **벌 점** | ⭐ 카운터 정확성 → `netstat` 교차검증 아이디어. ⭐ "모든 네트워크 측정" (TetherLens는 iPhone 테더링 중심이므로 커튼 영역 확장안). ⭐ 메뉴바 사용량 한 줄 표시 UX |
+| **벌 점** | ⭐ 카운터 정확성 → `netstat` 교차검증 아이디어. ⭐ `netstat` 교차검증과 월/주/일·한도 알림은 TetherLens QoS와 겹침 (참고: TetherLens도 4종 네트워크 측정 이미 지원). ⭐ 메뉴바 사용량 한 줄 표시 UX |
 
 ### A.2.2 Hotspot Guard — 앱별 가드 (TetherLens 최대 차이)
 | 항목 | 내용 |
@@ -373,52 +373,61 @@ TetherLens는 **핫스팟/테더링 데이터 모니터링**이라는 틈새 시
 
 ## A.3. 기능 비교표 (신규 10종 vs TetherLens)
 
+> ⓘ 2026-08-09 코드베이스 검증 반영: TetherLens 열은 실제 소스(`HotspotDetector.swift`, `PopoverView.swift`, `SettingsManager.swift`, `TrafficMonitor.swift`, `AppBlockManager.swift`) 기준으로 정정.
+
 | 기능 | TetherLens | HotspotPeek | Hotspot Guard | WiFi&IP OneClick | QuickNetStats | Wifilicious |
 |------|:--:|:--:|:--:|:--:|:--:|:--:|
 | **메뉴바 실시간 속도** | ✅ | ✅(한 줄) | ⬜ | ✅ | ✅ | ✅ |
-| **핫스팟/테더링 감지** | ✅ | ✅(모든 네트워크) | ✅ | ✅ | ✅ | ❌ |
-| **per-app 데이터 차단/한도** | ⬜ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **per-app 트래픽** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **네트워크/SSID 프로필** | ✅ | ✅(네트워크별) | ❌ | ❌ | ❌ | ❌ |
-| **QoS/할당량 게이지·소진日 예측** | ✅ | ✅(반영) | ⬜ | ❌ | ❌ | ❌ |
-| **세션 시간 추적** | ✅ | ❌ | ❌ | ✅(connection log) | ❌ | ❌ |
+| **핫스팟/테더링 감지** | ✅ (4종) | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **per-app 데이터 차단/한도** | ⬜ (알림만) | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **per-app 트래픽 (nettop)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **네트워크/SSID 프로필** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **QoS/할당량 게이지·소진일 예측** | ✅ | ✅(일부) | ⬜ | ❌ | ❌ | ❌ |
+| **세션 시간 추적** | ✅ | ❌ | ❌ | ✅(conn log) | ❌ | ❌ |
+| **모든 네트워크 측정** | ✅ (iOS/Android/일반/유선) | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **IPv4 복사 (클립보드)** | ✅ (local/ext/gateway/BSSID/SSID) | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **메뉴바 표시 옵션 커스터마이징** | ✅ (3가지) | ❌ | ❌ | ✅ | ✅ | ✅ |
 | **VPN/proxy 감지** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **DNS leak · traceroute · bufferbloat** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **시그널 강도 (RSSI/SNR)** | ❌ | ❌ | ❌ | ✅(일부) | ❌ | ✅ |
-| **시그널 진단 탭** | ⬜ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| **RSSI/SNR 시그널 상세** | ✅ (RSSI/noise/링크속도) | ❌ | ❌ | ✅(일부) | ✅ | ✅ |
 | **GPS/IP 위치 히스토리** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **DNS 프리셋 직접 변경** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **절약 모드(시스템 제어)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **모든 네트워크 측정** | ❌(iOS) | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **위젯 자동화 트리거** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **오픈소스/로컬 프라이버시** | ✅ | 교차 검증 | 온디바 | 옵션 | ✅ OSS | 옵션 |
 
-> ⬜ = 미구현(계획 가능), ✅ = 지원, ❌ = 미지원
+> ⬜ = 미구현(계획 가능) · ✅ = 지원 · ❌ = 미지원
 
 ## A.4. TetherLens 격차/기회 분석
 
 ### A.4.1 신규 앱이 갖고 TetherLens가 없는 것
+
+> 2026-08-09 코드베이스 검증 후 정정: per-app 차단/NEFilter 제약, 모든 네트워크 측정 지원, IP 복사·메뉴바 옵션 존재를 반영.
+
 | 우선순위 | 격차 | 참고 앱 | 근거 |
 |------|------|---------|------|
-| 🔴 **P0** | **per-app 데이터 차단/한도** | Hotspot Guard | TetherLens는 per-app **측정만** 제공. 데이터를 실제로 멈추는(블럭) 기능이 없어, "감시만 하고 행동하지 않는" 상태 |
-| 🟠 **P0** | **모든 네트워크 측정**(Android/MiFi 등) + 카운터 정확인(netstat 교차) | HotspotPeek | 현재 iPhone 테더링크로 한정. Android 핫스팟/MiFi/케이블 테더링 미측정 → 잠재 사용자 상실 |
-| 🟠 **P1** | **연결 진단**: VPN/proxy 감지 · DNS leak · traceroute · bufferbloat · 커스텀 ping | WiFi&IP | 핑 인프라를 재활용해 "신뢰/보증" 이미지 확보. 헬프데스크 리포트(Markdown) 연계 |
-| 🟡 **P1** | **메뉴바 커스터마이징**: 시그널/RSSI/네트워크명/대역·위젯 스트리트, IP 클립복사 | Wifilicious / UW Signal | 메뉴바 규율 UX 저평가 영역. 낮은 코드로 주요 변경 |
-| 🟡 **P2** | **외부 IP 복사 + 사용 내역 CSV/Markdown export** | WiFi&IP · QuickNetStats | 디버그/헬프데스크 공유용. Report 창 유지 보완 |
-| ⬜ **P2** | **WiFi 이벤트 → 자동화 트리거**(프로필 전환 시 앱 실행/자동 동작) | LeanRunning | SSID 프로필과 합성해 "핫스팟 가면 X 실행/정지" 자동화 |
+| 🔴 **P0** | **per-app 데이터 차단/한도** | Hotspot Guard | TetherLens는 per-app **알림**까지만 구현(`AppBlockManager` — 데이터 사용 시 프로세스명 기반 UNNotification). 진짜 네트워크 차단(NEFilterDataProvider)은 **Apple 유료 개발자 계정 + 시스템 확장** 필요. 무료/OSS 배포와 충돌 → **구현 보류한 영역** |
+| 🟠 **P1** | **연결 진단 심화**: VPN/proxy 감지 · DNS leak · traceroute · bufferbloat(RPM) · 커스텀 ping | WiFi&IP OneClick | 핑 인프라 재활용. TetherLens는 RSSI/트래픽/핑은 있으나 VPN·DNS leak·traceroute는 결여. 헬프데스크 리포트(Markdown) 연계로 신뢰 확보 |
+| 🟡 **P1** | **메뉴바 표시 옵션 확장**: 시그널/네트워크명 3개 외 추가 항목 | Wifilicious | 현재 `menuBarMode(.speedOnly)` + `showTotalColumn` + `showSSIDInMenuBar` **3가지 옵션 이미 존재**. 기회는 "RSSI/속도 배지 등 더 많은 필드 선택"으로 축소 |
+| 🟡 **P2** | **사용 내역 CSV/Markdown export** | WiFi&IP · QuickNetStats | 디버그/헬프데스크 공유용. 이미 `copyValue` IP 복사는 있고, 마크다운 리포트 연결가 있는 Report 창을 확장 |
+| ⬜ **P2** | **WiFi 이벤트 → 자동화 트리거**: SSID 전환 시 앱 실행/종료·쇼컷 | LeanRunning | "핫스팟에 붙으면 절약 모드+X 종료, 홈 와이파이면 시놀로지 재개" 같은 자동 실행. 프로필 전환 훅과 결합 |
+
+> IP 클립보드 복사(SSID/BSSID/gateway/local/external IP)는 `PopoverView.detailRow(copyValue:)` 로 **이미 지원** → 격차 항목에서 제외.
 
 ### A.4.2 TetherLens가 유지하는 강점 (신규 앱 대비)
-- **완전 무료 + OSS**: HotspotPeek(Win), One Click($9.99), Wifilicious(유료) 등 대비 격차
-- **per-app 트래픽 순위** 구현은 HotspotPeek/OneClick이 아직 북상하다 못함
+- **완전 무료 + OSS**: One Click($9.99), Wifilicious(유료), Hotspot Guard(유료 예정) 대비 격차
+- **모든 네트워크 측정 + 세션 + SSID 자동 프로필**: `normalWiFi/iOSPersonalHotspot/androidHotspot/ethernet` 4종을 프로필로 자동 등록·전환 — 신규 경쟁 중 유일한 조합
+- **per-app 트래픽 순위(nettop)**: HotspotPeek/OneClick은 측정만 일부, TetherLens는 트래픽 순위까지
 - **QoS 게이지+소진일 예측+기간 그래프**: 어떤 경쟁도 저수준
-- **세션·GPS·프로필·DNS 프리셋·절약 모드**: 융합 올인원이므로 경쟁 중 유일
+- **IPv4/IPv6 복사, RSSI·링크속도·채널·대역 상세, DNS 프리셋 적용, 절약 모드**: 올인원 특화
 
 ## A.5. 권장 사항 / 우선 구현 순서
 
+> 2026-08-09 코드베이스 검증 반영 (per-app 차단·모든 네트워크·IP 복사 정정)
+
 | 구분 | 우선순위 | 내용 | Impact |
 |------|---------|------|--------|
-| 신규 차별화 | **P0** | per-app 한도/차단 가드 (현시장 없음) | "측정 → 차단" 전환, 가장 주목 |
-| 커버 확장 | **P0** | 모든 네트워크(Android/MiFi) 측정 + 카운터 정확 개선 | 사용 기간 확대, 리뷰 신뢰 |
-| 신뢰 개선 | **P1** | 연결 진단 탭 + 커스텀 ping + 리포트 export | 파워유저 확보 |
-| UX 개선 | **P1** | 메뉴바 표시 커스터마이징 + IP 복사 | 이 남지 않는 편의 |
-| 고급 | **P2** | WiFi 자동화 트리거 (LeanRunning 방식) | 닉스 사용자 추가 |
+| 신뢰 개선 | **P1** | 연결 진단 심화 (VPN/proxy 감지 · DNS leak · traceroute · 커스텀 ping) | 파워유저 확보, 기존 핑/RSSI 인프라 재사용 |
+| UX 개선 | **P1** | 메뉴바 표시 옵션 확장 + 사용 내역 Markdown/CSV export | 낮은 비용 편의, 헬프데스크 공유 |
+| 자동화 | **P2** | WiFi/SSID 전환 트리거 (프로필 → 앱/쇼컷 자동) | 고급 사용자, 프로필 훅과 결합 |
+| 원격 제어 | **보류** | per-app 네트워크 차단(NEFilter) | Apple 유료 개발자 + Network Extension 필요, 무료 배포와 충돌 → 행동 제한 |
