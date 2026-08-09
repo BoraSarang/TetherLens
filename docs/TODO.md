@@ -256,3 +256,16 @@
 |------|------|
 | macOS 배터리 메뉴에서 TetherLens가 에너지 사용 1위 | v0.25.1(슬립 폴링 중지 + tick 중지 + tolerance)이 어느 정도 완화하는지 먼저 확인 → 이후에도 1위면 `Instruments Energy Log`/`sample`로 핫스팟 분석 |
 | 의심 지점 | NetworkMonitor 1초 폴링(getifaddrs), MenuBarManager 메뉴바 갱신 타이머, TrafficMonitor nettop 주기 실행, PingMonitor 지속 ping, PopoverView 1초 tick, LocationManager 주기 위치 갱신 |
+
+## 🔄 v0.26.0 — 네트워크 진단 센터 + SSID 자동화 트리거 + 메뉴바 확장/export (2026-08-09)
+
+> 경쟁 분석(COMPETITOR_ANALYSIS 부록 A)을 코드베이스 기준 정정 후 도출된 실질 격차 3종 통합.
+> 계획: docs/plans/PLAN_v0.26.0_macos.md
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 127 | 연결 진단 센터 패널: VPN/proxy · DNS 누수 · 커스텀 ping · traceroute · bufferbloat · Markdown 리포트 | P1 | pending |
+| 128 | SSID 자동화 트리거: AutomationRule/Manager + 프로필 전환 훅 + 절약 모드 연동 | P1 | pending |
+| 129 | 메뉴바 표시 필드 확장: BSSID/링크속도/DNS 옵션 + SettingsView 토글 | P2 | pending |
+| 130 | 사용 내역 CSV/Markdown export (UsageReportView Save) | P2 | pending |
+| 131 | 검증: 빌드/delta/a11y-dump + CHANGELOG + 커밋 | P1 | pending |
