@@ -64,7 +64,8 @@ enum TLSize {
     static let popoverWidth:   CGFloat = 280
     static let sheetCompact:   CGFloat = 280   // 팝오버/프로필/DNS/IP히스토리/알림
     static let sheetSaving:    CGFloat = 300   // 절약 모드
-    static let sheetStandard:  CGFloat = 320   // 설정/트래픽
+    static let sheetStandard:  CGFloat = 320   // 설정
+    static let sheetTraffic:   CGFloat = 400   // 프로세스별 트래픽 (v0.27 가로 확장)
     static let sheetWide:      CGFloat = 640   // 사용량 리포트
     static let aboutSheet:     CGFloat = 240   // 정보 시트
 

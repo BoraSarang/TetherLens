@@ -27,7 +27,7 @@ struct AppTrafficView: View {
                 .padding(.bottom, TLSpace.md)
         }
         .padding(TLSpace.inset)
-        .frame(width: TLSize.sheetStandard, height: 380)
+        .frame(width: TLSize.sheetTraffic, height: 380)
         .overlay {
             if confirmReset {
                 Color.black.opacity(0.25)
