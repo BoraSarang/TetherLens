@@ -558,7 +558,7 @@ final class ProfileManager: @unchecked Sendable {
         }
     }
 
-    func exportData(profileId: UUID?) -> (csv: String, json: String) {
+    func exportData(profileId: UUID?) -> (csv: String, json: String, markdown: String) {
         let profiles = profileId.map { [$0].compactMap { getProfile(id: $0) } } ?? getAllProfiles()
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd HH:mm"
@@ -575,6 +575,10 @@ final class ProfileManager: @unchecked Sendable {
         var csvHeader = "Profile,Type,Start,End,Value\n"
         var csvBody = ""
         var jsonObject: [[String: Any]] = []
+        var mdHeader = "# TetherLens 사용 내역 리포트\n\n"
+        mdHeader += "- 생성: \(Date.now.formatted(date: .numeric, time: .standard))\n"
+        mdHeader += "\n| 구분 | 프로필 | 시작 | 종료 | 값 |\n|---|---|---|---|---|\n"
+        var mdBody = ""
 
         for p in profiles {
             let sessions = try! db.read { db in
@@ -586,7 +590,9 @@ final class ProfileManager: @unchecked Sendable {
             for s in sessions {
                 let usage = getSessionUsage(session: s)
                 let end = s.endTime.map { df.string(from: $0) } ?? ""
-                csvBody += "\(csvEscape(p.name)),Session,\(df.string(from: s.startTime)),\(end),\(usage.download + usage.upload)\n"
+                let value = String(usage.download + usage.upload)
+                csvBody += "\(csvEscape(p.name)),Session,\(df.string(from: s.startTime)),\(end),\(value)\n"
+                mdBody += "| Session | \(p.name) | \(df.string(from: s.startTime)) | \(end) | \(value) |\n"
                 jsonObject.append([
                     "profile": p.name, "type": "session",
                     "start": df.string(from: s.startTime), "end": end,
@@ -596,6 +602,7 @@ final class ProfileManager: @unchecked Sendable {
             let logs = getIPLogs(profileId: p.id)
             for l in logs {
                 csvBody += "\(csvEscape(p.name)),IP,\(df.string(from: l.firstSeenAt)),\(df.string(from: l.lastSeenAt)),\(csvEscape(l.ipAddress))\n"
+                mdBody += "| IP | \(p.name) | \(df.string(from: l.firstSeenAt)) | \(df.string(from: l.lastSeenAt)) | \(l.ipAddress) |\n"
                 jsonObject.append([
                     "profile": p.name, "type": "ip",
                     "first_seen": df.string(from: l.firstSeenAt),
@@ -606,7 +613,7 @@ final class ProfileManager: @unchecked Sendable {
         }
 
         let jsonData = try! JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted)
-        return (csvHeader + csvBody, String(data: jsonData, encoding: .utf8) ?? "[]")
+        return (csvHeader + csvBody, String(data: jsonData, encoding: .utf8) ?? "[]", mdHeader + mdBody)
     }
 
     func mergeStaleIPLogs() {

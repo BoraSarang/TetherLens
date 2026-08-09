@@ -40,7 +40,7 @@ struct UsageReportView: View {
     let preselectedProfileId: UUID?
 
     enum ExportFormat {
-        case csv, json
+        case csv, json, markdown
     }
 
     init(onClose: @escaping () -> Void, preselectedProfileId: UUID? = nil) {
@@ -109,6 +109,7 @@ struct UsageReportView: View {
                 Menu {
                     Button(Localized.exportCSV) { exportData(format: .csv) }
                     Button(Localized.exportJSON) { exportData(format: .json) }
+                    Button(Localized.exportMarkdown) { exportData(format: .markdown) }
                 } label: {
                     Label(Localized.export, systemImage: "square.and.arrow.up")
                         .font(TLFont.caption)
@@ -1125,8 +1126,13 @@ struct UsageReportView: View {
     private func exportData(format: ExportFormat) {
         let pid = selectedProfileId == allProfilesId ? nil : selectedProfileId
         let data = ProfileManager.shared.exportData(profileId: pid)
-        let content = format == .csv ? data.csv : data.json
-        let ext = format == .csv ? "csv" : "json"
+        let content: String
+        let ext: String
+        switch format {
+        case .csv: content = data.csv; ext = "csv"
+        case .json: content = data.json; ext = "json"
+        case .markdown: content = data.markdown; ext = "md"
+        }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "TetherLens-export.\(ext)"
         panel.allowedContentTypes = [UTType(filenameExtension: ext) ?? .data]

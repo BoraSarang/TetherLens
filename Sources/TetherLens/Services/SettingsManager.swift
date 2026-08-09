@@ -11,6 +11,9 @@ final class SettingsManager: @unchecked Sendable {
             "showTotalColumn": true,
             "menuBarMode": MenuBarMode.speedAndTotal.rawValue,
             "showSSIDInMenuBar": false,
+            "showBSSIDInMenuBar": false,
+            "showLinkSpeedInMenuBar": false,
+            "showDNSInMenuBar": false,
             "menuBarRefreshInterval": Self.defaultMenuBarRefreshInterval,
             "cacheRefreshInterval": Self.defaultCacheRefreshInterval,
             "trafficMonitorInterval": Self.defaultTrafficMonitorInterval,
@@ -50,6 +53,21 @@ final class SettingsManager: @unchecked Sendable {
     var showSSIDInMenuBar: Bool {
         get { defaults.bool(forKey: "showSSIDInMenuBar") }
         set { defaults.set(newValue, forKey: "showSSIDInMenuBar") }
+    }
+
+    var showBSSIDInMenuBar: Bool {
+        get { defaults.bool(forKey: "showBSSIDInMenuBar") }
+        set { defaults.set(newValue, forKey: "showBSSIDInMenuBar") }
+    }
+
+    var showLinkSpeedInMenuBar: Bool {
+        get { defaults.bool(forKey: "showLinkSpeedInMenuBar") }
+        set { defaults.set(newValue, forKey: "showLinkSpeedInMenuBar") }
+    }
+
+    var showDNSInMenuBar: Bool {
+        get { defaults.bool(forKey: "showDNSInMenuBar") }
+        set { defaults.set(newValue, forKey: "showDNSInMenuBar") }
     }
 
     var menuBarFontSize: Double {

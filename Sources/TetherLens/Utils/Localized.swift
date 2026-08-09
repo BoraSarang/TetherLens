@@ -129,6 +129,7 @@ enum Localized {
   static var usageReport: String { value(kr: "사용량 리포트", en: "Usage Report") }
   static var appTrafficButton: String { value(kr: "프로세스별 트래픽", en: "App Traffic") }
   static var notificationList: String { value(kr: "알림 기록", en: "Notifications") }
+  static var networkDiagnostics: String { value(kr: "네트워크 진단", en: "Network Diagnostics") }
     static var dnsPresetApply: String { value(kr: "DNS 프리셋", en: "DNS Preset") }
 static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
     static var savingModeOn: String { value(kr: "절약 모드 켜짐", en: "Saving Mode On") }
@@ -147,7 +148,19 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var menuBarModeSpeedTotal: String { value(kr: "속도 + 사용량", en: "Speed + Usage") }
   static var menuBarModeSpeedSSID: String { value(kr: "속도 + SSID", en: "Speed + SSID") }
   static var showSSIDInMenuBar: String { value(kr: "메뉴바에 SSID 표시", en: "Show SSID in Menu Bar") }
+  static var showBSSIDInMenuBar: String { value(kr: "메뉴바에 BSSID 표시", en: "Show BSSID in Menu Bar") }
+  static var showLinkSpeedInMenuBar: String { value(kr: "메뉴바에 링크 속도 표시", en: "Show Link Speed in Menu Bar") }
+  static var showDNSInMenuBar: String { value(kr: "메뉴바에 DNS 표시", en: "Show DNS in Menu Bar") }
   static var autoSwitchProfile: String { value(kr: "새 네트워크에 프로필 자동 등록", en: "Auto-Register Profile on New Network") }
+  static var automationTitle: String { value(kr: "자동화 (SSID 트리거)", en: "Automation (SSID Trigger)") }
+  static var automationEmpty: String { value(kr: "등록된 규칙이 없습니다. 아래 버튼으로 추가해 보세요.", en: "No rules yet. Add one below.") }
+  static var automationRuleName: String { value(kr: "규칙 이름", en: "Rule Name") }
+  static var automationSSID: String { value(kr: "SSID/네트워크 이름", en: "SSID / Network Name") }
+  static var automationTrigger: String { value(kr: "시점", en: "When") }
+  static var automationAction: String { value(kr: "동작", en: "Action") }
+  static var automationTarget: String { value(kr: "앱/프로세스 명 (절약 모드는 비움)", en: "App / Process Name (leave blank for Saving Mode)") }
+  static var automationAdd: String { value(kr: "추가", en: "Add") }
+  static var automationNewRule: String { value(kr: "+ 새 규칙 추가", en: "+ New Rule") }
   static var launchAtLogin: String { value(kr: "로그인 시 자동 실행", en: "Launch at Login") }
   static var menuBar: String { value(kr: "메뉴바", en: "Menu Bar") }
   static var fontSize: String { value(kr: "폰트 크기", en: "Font Size") }
@@ -208,6 +221,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var export: String { value(kr: "내보내기", en: "Export") }
   static var exportCSV: String { value(kr: "CSV 내보내기", en: "Export CSV") }
   static var exportJSON: String { value(kr: "JSON 내보내기", en: "Export JSON") }
+  static var exportMarkdown: String { value(kr: "Markdown 내보내기", en: "Export Markdown") }
   static var exportDone: String { value(kr: "내보내기 완료", en: "Export complete") }
   static var exportFailed: String { value(kr: "내보내기 실패", en: "Export failed") }
   static var allProfiles: String { value(kr: "전체 프로필", en: "All Profiles") }

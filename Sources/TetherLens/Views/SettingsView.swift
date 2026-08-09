@@ -9,6 +9,9 @@ struct SettingsView: View {
     @State private var launchAtLogin: Bool
     @State private var menuBarModeRaw: String
     @State private var showSSIDInMenuBar: Bool
+    @State private var showBSSIDInMenuBar: Bool
+    @State private var showLinkSpeedInMenuBar: Bool
+    @State private var showDNSInMenuBar: Bool
     @State private var autoSwitchProfile: Bool
 
     @State private var menuBarInterval: Double
@@ -20,6 +23,13 @@ struct SettingsView: View {
     @State private var notiAuthorized = false
     @State private var locationStatus: CLAuthorizationStatus = .notDetermined
     @State private var locationDiagnostics: [String] = []
+    @State private var autoRules: [AutomationRule] = []
+    @State private var showAddRule = false
+    @State private var ruleName = ""
+    @State private var ruleSSID = ""
+    @State private var ruleTriggerRaw = AutomationRule.TriggerType.onConnect.rawValue
+    @State private var ruleActionRaw = AutomationRule.ActionType.launchApp.rawValue
+    @State private var ruleTarget = ""
 
     let onClose: () -> Void
 
@@ -30,6 +40,9 @@ struct SettingsView: View {
         _launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled)
         _menuBarModeRaw = State(initialValue: s.menuBarMode.rawValue)
         _showSSIDInMenuBar = State(initialValue: s.showSSIDInMenuBar)
+        _showBSSIDInMenuBar = State(initialValue: s.showBSSIDInMenuBar)
+        _showLinkSpeedInMenuBar = State(initialValue: s.showLinkSpeedInMenuBar)
+        _showDNSInMenuBar = State(initialValue: s.showDNSInMenuBar)
         _autoSwitchProfile = State(initialValue: s.autoSwitchProfile)
         _menuBarInterval = State(initialValue: s.menuBarRefreshInterval)
         _cacheInterval = State(initialValue: s.cacheRefreshInterval)
@@ -37,6 +50,7 @@ struct SettingsView: View {
         _pingInterval = State(initialValue: s.pingInterval)
         _fontSize = State(initialValue: s.menuBarFontSize)
         _showAppTraffic = State(initialValue: UserDefaults.standard.object(forKey: "popover_show_app_traffic") as? Bool ?? true)
+        _autoRules = State(initialValue: AutomationManager.shared.rules)
     }
 
     private var menuBarOptions: [(String, Double)] { Localized.menuBarIntervalOptions }
@@ -79,6 +93,24 @@ struct SettingsView: View {
                         Toggle(Localized.showSSIDInMenuBar, isOn: $showSSIDInMenuBar)
                             .onChange(of: showSSIDInMenuBar) { _, newValue in
                                 SettingsManager.shared.showSSIDInMenuBar = newValue
+                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                            }
+
+                        Toggle(Localized.showBSSIDInMenuBar, isOn: $showBSSIDInMenuBar)
+                            .onChange(of: showBSSIDInMenuBar) { _, newValue in
+                                SettingsManager.shared.showBSSIDInMenuBar = newValue
+                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                            }
+
+                        Toggle(Localized.showLinkSpeedInMenuBar, isOn: $showLinkSpeedInMenuBar)
+                            .onChange(of: showLinkSpeedInMenuBar) { _, newValue in
+                                SettingsManager.shared.showLinkSpeedInMenuBar = newValue
+                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                            }
+
+                        Toggle(Localized.showDNSInMenuBar, isOn: $showDNSInMenuBar)
+                            .onChange(of: showDNSInMenuBar) { _, newValue in
+                                SettingsManager.shared.showDNSInMenuBar = newValue
                                 NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                             }
 
@@ -285,6 +317,85 @@ struct SettingsView: View {
                     .padding(.trailing, TLSpace.xxxl)
                 }
                 .padding(.vertical, TLSpace.xl)
+
+                Divider().padding(.horizontal, TLSpace.xl)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(Localized.automationTitle)
+                        .font(TLFont.subheadline).bold()
+
+                    if autoRules.isEmpty {
+                        Text(Localized.automationEmpty)
+                            .font(TLFont.caption2)
+                            .foregroundColor(TLPalette.textSecondary)
+                    }
+
+                    ForEach(autoRules) { rule in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(rule.name)
+                                    .font(TLFont.caption).bold()
+                                Text(rule.summary)
+                                    .font(TLFont.badge)
+                                    .foregroundColor(TLPalette.textSecondary)
+                            }
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { rule.isEnabled },
+                                set: { newValue in setRule(rule, enabled: newValue) }
+                            ))
+                            .labelsHidden()
+                            .controlSize(.small)
+                            Button(Localized.delete) { removeRule(rule) }
+                                .buttonStyle(.plain)
+                                .font(TLFont.caption)
+                                .foregroundColor(TLPalette.danger)
+                        }
+                        .padding(.leading, TLSpace.xl)
+                    }
+
+                    if showAddRule {
+                        VStack(alignment: .leading, spacing: 6) {
+                            TextField(Localized.automationRuleName, text: $ruleName)
+                                .textFieldStyle(.roundedBorder)
+                            TextField(Localized.automationSSID, text: $ruleSSID)
+                                .textFieldStyle(.roundedBorder)
+                            HStack {
+                                Picker(Localized.automationTrigger, selection: $ruleTriggerRaw) {
+                                    ForEach(AutomationRule.TriggerType.allCases) { t in
+                                        Text(t.label).tag(t.rawValue)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                Picker(Localized.automationAction, selection: $ruleActionRaw) {
+                                    ForEach(AutomationRule.ActionType.allCases) { a in
+                                        Text(a.label).tag(a.rawValue)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                            }
+                            TextField(Localized.automationTarget, text: $ruleTarget)
+                                .textFieldStyle(.roundedBorder)
+                            HStack {
+                                Button(Localized.automationAdd) { addRule() }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                Button(Localized.cancel) { resetRuleForm() }
+                                    .buttonStyle(.plain)
+                                    .controlSize(.small)
+                            }
+                        }
+                        .padding(.leading, TLSpace.xl)
+                    }
+
+                    Button(showAddRule ? Localized.cancel : Localized.automationNewRule) {
+                        if showAddRule { resetRuleForm() } else { showAddRule = true }
+                    }
+                    .buttonStyle(.plain)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.download)
+                }
+                .padding(.horizontal, TLSpace.xxxl)
             }
 
             Divider()
@@ -329,6 +440,40 @@ struct SettingsView: View {
                 applyPollingIntervals()
             }
         }
+    }
+
+    private func addRule() {
+        let name = ruleName.trimmingCharacters(in: .whitespaces)
+        let ssid = ruleSSID.trimmingCharacters(in: .whitespaces)
+        guard !ssid.isEmpty else { return }
+        var rule = AutomationRule(name: name.isEmpty ? ssid : name, ssid: ssid,
+                                  trigger: AutomationRule.TriggerType(rawValue: ruleTriggerRaw) ?? .onConnect,
+                                  action: AutomationRule.ActionType(rawValue: ruleActionRaw) ?? .launchApp,
+                                  target: ruleTarget.trimmingCharacters(in: .whitespaces))
+        AutomationManager.shared.save(rule)
+        autoRules = AutomationManager.shared.rules
+        resetRuleForm()
+    }
+
+    private func setRule(_ rule: AutomationRule, enabled: Bool) {
+        var updated = rule
+        updated.isEnabled = enabled
+        AutomationManager.shared.save(updated)
+        autoRules = AutomationManager.shared.rules
+    }
+
+    private func removeRule(_ rule: AutomationRule) {
+        AutomationManager.shared.delete(rule)
+        autoRules = AutomationManager.shared.rules
+    }
+
+    private func resetRuleForm() {
+        showAddRule = false
+        ruleName = ""
+        ruleSSID = ""
+        ruleTriggerRaw = AutomationRule.TriggerType.onConnect.rawValue
+        ruleActionRaw = AutomationRule.ActionType.launchApp.rawValue
+        ruleTarget = ""
     }
 
     private func applyPollingIntervals() {

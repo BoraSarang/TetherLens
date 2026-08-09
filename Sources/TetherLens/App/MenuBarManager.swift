@@ -210,6 +210,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         menu.addItem(moreMenuItem(Localized.notificationList) { [weak self] in
             self?.openPopoverAndTrigger("notifications")
         })
+        menu.addItem(.separator())
+        menu.addItem(moreMenuItem(Localized.networkDiagnostics) {
+            DiagnosticsWindowController.shared.show()
+        })
         menu.addItem(moreMenuItem(Localized.manageProfiles) { [weak self] in
             self?.openPopoverAndTrigger("profileManager")
         })
@@ -464,6 +468,9 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         let downloadStr = formatSpeed(download)
 
         let ssid = hotspotDetector.currentConnection?.ssid
+        if ssid == nil, let prev = lastAutoRegisterSSID {
+            AutomationManager.shared.evaluate(ssid: prev, connected: false)
+        }
         if let conn = hotspotDetector.currentConnection {
             switch conn.type {
             case .iOSPersonalHotspot, .androidHotspot:
@@ -480,6 +487,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         if let ssid = ssid, !ssid.isEmpty {
             if ssid != lastAutoRegisterSSID {
                 lastAutoRegisterSSID = ssid
+                AutomationManager.shared.evaluate(ssid: ssid, connected: true)
                 // SSID가 바뀌었으므로 이전 프로필의 스테일 캐시는 자동 전환 여부와 무관하게 무효화.
                 // 그렇지 않으면 autoSwitchProfile OFF 상태에서 이전 프로필로 새 세션이 열려 트래픽이 오염된다.
                 cachedProfile = nil
@@ -588,12 +596,30 @@ class MenuBarManager: NSObject, @unchecked Sendable {
 
         let mode = SettingsManager.shared.menuBarMode
         let showSSID = SettingsManager.shared.showSSIDInMenuBar
+        let showBSSID = SettingsManager.shared.showBSSIDInMenuBar
+        let showLinkSpeed = SettingsManager.shared.showLinkSpeedInMenuBar
+        let showDNS = SettingsManager.shared.showDNSInMenuBar
         var col3Top = totalStr
         var col3Bottom = remainingStr
-        if showSSID, let ssid = ssid, !ssid.isEmpty {
-            col3Top = ssid
-            col3Bottom = ""
-        } else if mode == .speedOnly {
+
+        if let conn = hotspotDetector.currentConnection {
+            let dnsText = showDNS ? conn.dnsServers.first : nil
+            var customTop: String?
+            if showSSID, let ssid = ssid, !ssid.isEmpty {
+                customTop = ssid
+            } else if showBSSID, let bssid = bssidFromType(conn.type), !bssid.isEmpty {
+                customTop = bssid
+            } else if showLinkSpeed, let speed = conn.linkSpeed {
+                customTop = "\(Int(speed / 1_000_000)) Mbps"
+            }
+            if let customTop {
+                col3Top = customTop
+                col3Bottom = dnsText ?? ""
+            } else if showDNS {
+                col3Bottom = dnsText ?? remainingStr
+            }
+        }
+        if mode == .speedOnly {
             col3Top = ""
             col3Bottom = ""
         }
@@ -673,6 +699,11 @@ class MenuBarManager: NSObject, @unchecked Sendable {
     private func togglePin() {
         popoverPinned.toggle()
         popover.behavior = popoverPinned ? .applicationDefined : .transient
+    }
+
+    private func bssidFromType(_ type: ConnectionType) -> String? {
+        if case .normalWiFi(_, let bssid) = type { return bssid }
+        return nil
     }
 
     private func formatSpeed(_ bps: Double) -> String {
