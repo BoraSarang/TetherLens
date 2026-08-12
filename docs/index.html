@@ -114,6 +114,16 @@
   .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; z-index:1; position: relative; }
   .card p { font-size: .87rem; color: var(--muted); line-height: 1.6; position: relative; z-index: 1; }
 
+  /* 스크린샷 */
+  .screenshots { display: grid; grid-template-columns: repeat(2,1fr); gap: 18px; }
+  .shot {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px;
+    transition: border-color .25s, transform .25s;
+  }
+  .shot:hover { border-color: rgba(37,99,235,.4); transform: translateY(-3px); }
+  .shot img { width: 100%; height: auto; border-radius: 12px; display: block; }
+  .shot .cap { margin-top: 12px; font-size: .8rem; font-weight: 600; color: var(--muted); text-align: center; }
+
   /* 배너 CTA */
   .banner {
     background: linear-gradient(120deg, rgba(37,99,235,.14), rgba(14,165,233,.08));
@@ -129,6 +139,7 @@
 
   @media (max-width: 640px) {
     .features { grid-template-columns: 1fr; }
+    .screenshots { grid-template-columns: 1fr; }
     .telemetry { grid-template-columns: 1fr; }
     nav a { margin-left: 12px; font-size: .78rem; }
     .hero { padding-top: 60px; }
@@ -142,6 +153,7 @@
     <div class="logo"><img src="images/icon.png" alt=""><b>TetherLens</b></div>
     <nav>
       <a href="#features">기능</a>
+      <a href="#screenshots">스크린샷</a>
       <a href="https://github.com/BoraSarang/TetherLens" target="_blank">GitHub</a>
     </nav>
   </div>
@@ -204,6 +216,25 @@
         <div class="card"><div class="icon">🔌</div><h3>앱별 트래픽 순위</h3><p>nettop 기반 — 어느 앱이 얼마나 쓰는지 실시간 소비범 명단.</p></div>
         <div class="card"><div class="icon">🔋</div><h3>배터리 마니아</h3><p>슬립 시 폴링 중지, 팝오버 닫힘 시 tick 중지, 타이머 tolerance로 전력 최소화.</p></div>
         <div class="card"><div class="icon">🛡️</div><h3>네이티브 &amp; 프라이버시</h3><p>Swift 6 / SQLite 로컬 저장. 데이터는 내 맥 안에서만.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="screenshots">
+    <div class="container">
+      <div class="section-head">
+        <h2>직접 보세요</h2>
+        <p>메뉴바 팝오버와 사용량 리포트, 이렇게 보입니다.</p>
+      </div>
+      <div class="screenshots">
+        <div class="shot">
+          <img src="images/popover-summary.png" alt="팝오버 요약 모드 스크린샷">
+          <div class="cap">팝오버 · 요약 모드</div>
+        </div>
+        <div class="shot">
+          <img src="images/usage-report.png" alt="사용량 리포트 스크린샷">
+          <div class="cap">사용량 리포트</div>
+        </div>
       </div>
     </div>
   </section>

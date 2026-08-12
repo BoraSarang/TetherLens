@@ -60,9 +60,9 @@ TetherLens는 메뉴바 하나로 **실시간 현황**과 **소진 예측**, 그
 
 ## 🖥️ 미리보기
 
-| 메뉴바 | 팝오버 |
+| 팝오버 (요약 모드) | 사용량 리포트 |
 |--------|--------|
-| ![메뉴바 UI](images/TetherLens_menubar.svg) | ![앱 아이콘](images/TetherLens.svg) |
+| ![팝오버 요약 모드](images/popover-summary.png) | ![사용량 리포트](images/usage-report.png) |
 
 ---
 
