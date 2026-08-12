@@ -31,6 +31,8 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     private var usageRefs: [Usage: Bool] = [:]
     private var lowPowerOverride = false
     private var isRunning = false
+    // acquire/release 불균형(누수) 탐지용 카운터 — Release 로그와 함께 출력한다.
+    private var usageBalance = 0
 
     private init() {}
 
@@ -38,9 +40,10 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     func acquire(reason: Usage) {
         let wasActive = isAnyUsageActive
         usageRefs[reason] = true
+        usageBalance += 1
         evaluateIfNeeded(wasActive: wasActive)
         Task { @MainActor in
-            DebugLogger.shared.action("Traffic", "acquire(\(reason)) → active=\(isAnyUsageActive) running=\(isRunning)")
+            DebugLogger.shared.action("Traffic", "acquire(\(reason)) → active=\(isAnyUsageActive) running=\(isRunning) balance=\(usageBalance)")
         }
     }
 
@@ -48,9 +51,21 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     func release(reason: Usage) {
         let wasActive = isAnyUsageActive
         usageRefs[reason] = false
+        usageBalance -= 1
         evaluateIfNeeded(wasActive: wasActive)
         Task { @MainActor in
-            DebugLogger.shared.action("Traffic", "release(\(reason)) → active=\(isAnyUsageActive) running=\(isRunning)")
+            DebugLogger.shared.action("Traffic", "release(\(reason)) → active=\(isAnyUsageActive) running=\(isRunning) balance=\(usageBalance)")
+        }
+    }
+
+    /// 앱 종료/모니터링 중지 — 모든 참조를 비우고 실제 중지한다.
+    func resetAllUsage() {
+        usageRefs = [:]
+        usageBalance = 0
+        lowPowerOverride = false
+        if isRunning {
+            stopLocked()
+            isRunning = false
         }
     }
 
@@ -80,16 +95,6 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         if isAnyUsageActive, !lowPowerOverride, !isRunning {
             start()
             isRunning = true
-        }
-    }
-
-    /// 앱 종료/모니터링 중지 — 모든 참조를 비우고 실제 중지한다.
-    func resetAllUsage() {
-        usageRefs = [:]
-        lowPowerOverride = false
-        if isRunning {
-            stopLocked()
-            isRunning = false
         }
     }
 
@@ -259,10 +264,9 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     }
 
     private func runNettop() -> String {
-        let interval = max(SettingsManager.shared.trafficMonitorInterval, 1)
-        // 샘플 윈도우를 refresh 간격과 일치시켜 미측정 구간을 줄인다.
-        // 예: interval 5s → -l 6(기준 + 5개 1초 델타)로 5초간 델타 누적
-        let samples = interval + 1
+        // 화면 표시는 "최근 delta"만 필요하므로 샘플 윈도우를 최소화한다.
+        // -l 2 = 기준 포인트 + 1초 델타 1개 → 실행 시간 ~2초 (v0.28.1, 이전엔 interval+1로 최대 11초)
+        let samples = 2
         let task = Process()
         task.launchPath = "/usr/bin/nettop"
         task.arguments = ["-P", "-J", "bytes_in,bytes_out", "-x", "-d", "-l", "\(samples)", "-n", "-s", "1"]
@@ -277,7 +281,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             }
             return ""
         }
-        DispatchQueue.global().asyncAfter(deadline: .now() + Double(max(interval + 2, 16))) { [weak task] in
+        DispatchQueue.global().asyncAfter(deadline: .now() + Double(max(samples + 2, 8))) { [weak task] in
             if task?.isRunning == true {
                 task?.terminate()
             }

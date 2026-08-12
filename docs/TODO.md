@@ -295,3 +295,14 @@
 | 139 | TrafficMonitor 지연 시작 (acquire/release 참조 카운팅 + PopoverView/AppTrafficView 제어) | P1 | ✅ |
 | 140 | 저전력 모드 강화 (powerStateChanged 구독 → traffic 중지 + ping 15초 + 메뉴바 5초) | P1 | ✅ |
 | 141 | 검증 (빌드/test.sh + pgrep nettop 확인) + CHANGELOG/세션 문서 | P1 | ✅ |
+
+## 🔄 v0.28.1 — nettop 잔여 스폰 수정 (팝오버 acquire 누수) (2026-08-12)
+
+> 원인: v0.28의 PopoverView `onAppear/onDisappear` 기반 acquire/release가 NSPopover transient 닫힘(외부 클릭/ESC)에서 onDisappear 미호출 → `usageRefs[.popover]` 잔류 → 앱 재시작 직후엔 없으나 팝오버 열고 닫은 뒤부터 주기적 nettop 스폰 (에너지 영향도 2,004 / 12h Power 2,315 실측).
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 142 | acquire/release를 NSPopoverDelegate(popoverDidShow/DidClose)로 이전 — MenuBarManager가 정확히 제어 | P1 | 🔄 |
+| 143 | PopoverView onAppear/onDisappear acquire/release 제거 (누수 원천 차단) | P1 | 🔄 |
+| 144 | nettop 샘플 윈도우 축소 (interval+1 → 고정 2) + acquire/release balance 로그 | P1 | 🔄 |
+| 145 | 검증: 재시작→팝오버 여닫기→pgrep nettop 0 + 에너지 영향도 + CHANGELOG/세션 문서 | P1 | 🔄 |

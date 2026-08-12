@@ -173,13 +173,12 @@ struct PopoverView: View {
             if tickSubscription == nil {
                 tickSubscription = tickPublisher.connect()
             }
-            // 팝오버가 표시되는 동안에만 nettop 기반 앱 트래픽을 수집 (에너지 최적화)
-            TrafficMonitor.shared.acquire(reason: .popover)
+            // TrafficMonitor 제어는 MenuBarManager(NSPopoverDelegate)에서 담당한다.
+            // (SwiftUI onAppear/onDisappear는 transient 닫힘에서 onDisappear 미호출 → acquire 누수 발생)
         }
         .onDisappear {
             tickSubscription?.cancel()
             tickSubscription = nil
-            TrafficMonitor.shared.release(reason: .popover)
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("popoverWillShow"))) { _ in
             resetPopoverState()

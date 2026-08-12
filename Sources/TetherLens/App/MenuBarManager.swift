@@ -9,7 +9,7 @@ private final class NotificationDelegate: NSObject, UNUserNotificationCenterDele
 }
 
 @MainActor
-class MenuBarManager: NSObject, @unchecked Sendable {
+class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
     private var timer: Timer?
@@ -315,6 +315,20 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             onTogglePin: { [weak self] in self?.togglePin() }
         )
         popover.contentViewController = NSHostingController(rootView: contentView)
+        // 팝오버 표시/닫힘을 OS 레벨에서 정확히 감지해 TrafficMonitor를 제어한다.
+        // (SwiftUI onAppear/onDisappear는 transient 닫힘에서 미호출되는 경우가 있어 사용하지 않는다)
+        popover.delegate = self
+    }
+
+    // MARK: - NSPopoverDelegate
+    // 팝오버가 표시되는 동안에만 nettop 기반 앱 트래픽을 수집 (에너지 최적화 — v0.28.1 이전)
+    // 참고: 외부 클릭/ESC/핀 해제 등 모든 닫힘 경로에서 popoverDidClose가 호출된다.
+    func popoverDidShow(_ notification: Notification) {
+        TrafficMonitor.shared.acquire(reason: .popover)
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        TrafficMonitor.shared.release(reason: .popover)
     }
 
     func startMonitoring() {

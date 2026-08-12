@@ -1,6 +1,16 @@
 # Changelog
 
-## [0.28] — 2026-08-12 — 에너지 최적화 (폴링 기본값 + TrafficMonitor 지연 시작 + 저전력 강화)
+## [0.28.1] — 2026-08-12 — 팝오버 acquire 누수로 인한 잔여 nettop 스폰 수정
+
+> 회귀 수정: v0.28의 TrafficMonitor 지연 시작에서 PopoverView `onAppear/onDisappear` 기반 acquire/release가 NSPopover transient 닫힘(외부 클릭/ESC)에서 onDisappear 미호출 → `usageRefs[.popover]` 잔류 → 팝오버 닫힌 뒤에도 주기적 nettop 스폰.
+> 실측: 앱 재시작 직후엔 nettop 0개, 팝오버 열고 닫은 뒤부터 주기적 스폰. 에너지 영향도 2,004 / 12h Power 2,315.
+
+### Fixed
+- **팝오버 acquire 누수 (T-142/T-143)** — SwiftUI 수명주기 의존 제거. PopoverView의 onAppear/onDisappear acquire/release 삭제, `MenuBarManager`가 `NSPopoverDelegate`(`popoverDidShow`/`popoverDidClose`)로 표시/닫힘을 정확히 감지해 TrafficMonitor `acquire(.popover)`/`release(.popover)` 호출. transient·핀·시트 겹침 등 모든 닫힘 경로를 OS 레벨에서 확실히 수신
+- **nettop 실행 시간 축소 (T-144)** — 샘플 윈도우를 `interval + 1`(기본 11초)에서 **고정 2**로 축소. 화면 표시는 기준+1초 델타만 필요. 스폰당 11초 → ~2초로 에너지 영향도 직접 경감
+
+### Added
+- **acquire/release balance 로그 (T-144)** — TrafficMonitor acquire/release에 balance 카운터 추가. 누수 발생 시 DebugPanel에서 즉시 확인 가능
 
 > 계획: docs/plans/PLAN_v0.28_macos.md
 > 관찰 근거: 배터리 이슈 심층 조사에서 실측 — 팝오버/시트가 닫혀 있어도 TrafficMonitor가 상시 nettop을 가동(nettop CPU 130%). 방전의 직접 원인은 시스템 충전 인식 실패(하드웨어)로 분리.
