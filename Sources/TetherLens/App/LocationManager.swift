@@ -11,9 +11,12 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     private(set) var lastLatitude: Double?
     private(set) var lastLongitude: Double?
     private var locationTimeoutTask: Task<Void, Never>?
+    /// 마지막으로 위치를 획득한 시각 — 15분 쿨다운으로 반복 CoreLocation 요청을 줄인다 (v0.28.2).
+    private var lastFetchDate: Date?
 
     private static let latKey = "last_latitude"
     private static let lngKey = "last_longitude"
+    private static let fetchCooldown: TimeInterval = 900 // 15분
 
     override init() {
         super.init()
@@ -71,6 +74,11 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     }
 
     func startUpdating() {
+        // 최근 15분 내 위치를 이미 획득했으면 CoreLocation을 다시 켜지 않는다 (에너지 절감 — v0.28.2).
+        if let last = lastFetchDate, Date().timeIntervalSince(last) < Self.fetchCooldown {
+            DebugLogger.shared.info("Location", "위치 갱신 스킵 (쿨다운 \(Int(Self.fetchCooldown))s 이내)")
+            return
+        }
         manager.startUpdatingLocation()
         DebugLogger.shared.system("Location", "위치 업데이트 시작")
         locationTimeoutTask?.cancel()
@@ -101,6 +109,7 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         Task { @MainActor in
             self.lastLatitude = loc.coordinate.latitude
             self.lastLongitude = loc.coordinate.longitude
+            self.lastFetchDate = Date()
             UserDefaults.standard.set(loc.coordinate.latitude, forKey: Self.latKey)
             UserDefaults.standard.set(loc.coordinate.longitude, forKey: Self.lngKey)
             locationTimeoutTask?.cancel()

@@ -411,11 +411,12 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             self?.recordCurrentUsage()
         }
 
-        ipRefreshTimer = scheduleTimer(1800) { [weak self] in
+        ipRefreshTimer = scheduleTimer(3600) { [weak self] in
             Task { [weak self] in
                 guard let self else { return }
                 if SavingModeManager.shared.isLowPowerMode {
-                    await DebugLogger.shared.system("Power", "저전력 모드 - IP 갱신 건너뜀")
+                    // 저전력 중 IP 갱신 스킵은 정상 동작 — info 레벨로 노이즈 최소화 (v0.28.2)
+                    DebugLogger.shared.info("Power", "저전력 모드 - IP 갱신 건너뜀")
                 } else {
                     await self.ipResolver.refresh()
                 }

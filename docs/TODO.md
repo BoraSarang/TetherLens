@@ -305,4 +305,16 @@
 | 142 | acquire/release를 NSPopoverDelegate(popoverDidShow/DidClose)로 이전 — MenuBarManager가 정확히 제어 | P1 | 🔄 |
 | 143 | PopoverView onAppear/onDisappear acquire/release 제거 (누수 원천 차단) | P1 | 🔄 |
 | 144 | nettop 샘플 윈도우 축소 (interval+1 → 고정 2) + acquire/release balance 로그 | P1 | 🔄 |
-| 145 | 검증: 재시작→팝오버 여닫기→pgrep nettop 0 + 에너지 영향도 + CHANGELOG/세션 문서 | P1 | 🔄 |
+| 145 | 검증: 재시작→팝오버 여닫기→pgrep nettop 0 + 에너지 영향도 + CHANGELOG/세션 문서 | P1 | ✅ |
+
+## 🔄 v0.28.2 — 네트워크 API 호출 최적화 (IP/위치 갱신 절감) (2026-08-13)
+
+> 관찰: DebugPanel 로그 분석 — 30분마다 IP 조회(ipify + ipapi.co 2회)를 IP가 동일해도 무조건 호출(12시간 96회), 위치는 5분마다 동일 좌표 갱신, 저전력 "IP 건너뜀" 로그도 30분마다 반복 노이즈.
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 146 | IP 동일 시 ipapi.co 지역 조회 생략 + lastFetch 갱신 (IPResolver) | P1 | 🔄 |
+| 147 | ipRefreshTimer 1800→3600초 (SSID 변경 force 체크는 유지) | P1 | 🔄 |
+| 148 | 저전력 "IP 갱신 건너뜀" 로그 info 레벨로 하향 | P2 | 🔄 |
+| 149 | 위치 갱신 쿨다운: 최근 15분 내 획득 시 스킵 (LocationManager) | P1 | 🔄 |
+| 150 | 검증: 빌드/test.sh + DebugPanel 로그(IP/위치 스킵 확인) + 문서/커밋 | P1 | 🔄 |

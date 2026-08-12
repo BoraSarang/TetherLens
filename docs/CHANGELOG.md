@@ -1,6 +1,19 @@
 # Changelog
 
-## [0.28.1] — 2026-08-12 — 팝오버 acquire 누수로 인한 잔여 nettop 스폰 수정
+## [0.28.2] — 2026-08-13 — 네트워크 API 호출 최적화 (IP/위치 갱신 절감)
+
+> 관찰: DebugPanel 로그 분석 — IP가 동일한데도 30분마다 `ipify`+`ipapi.co` 2회씩 무조건 호출(12시간 약 96회), 위치도 동일 좌표를 5분마다 재요청. v0.28.1(.nettop 누수) 종결 후 남은 에너지 낭비 요인 정리.
+
+### Changed
+- **IP 지역 조회 중복 제거 (T-146)** — `IPResolver.refresh`: `ipify`로 받은 IP가 기존 `externalIP`와 동일하면 `ipapi.co` 지역 조회를 생략하고 `lastFetch`만 갱신. IP 변경 시에만 지역/위치 메타데이터 재호출
+- **IP 갱신 타이머 30분→60분 (T-147)** — `MenuBarManager.ipRefreshTimer` 1800s → 3600s. SSID 변경 시 `force=true` 체크는 그대로 유지해 IP 변경 감지 능력 보존
+
+### Fixed
+- **불필요한 외부 API 호출** — IP가 변하지 않는 날 하루 2회(IP조회+지역조회)×48 → 지역 조회 0회 + IP 조회 24회
+
+### Added (logging)
+- **저전력 IP 스킵 로그 하향 (T-148)** — "저전력 모드 - IP 갱신 건너뜀"을 시스템레벨 → info 레벨로 낮춰 60분마다 찍히던 노이즈 제거
+- **위치 갱신 쿨다운 (T-149)** — `LocationManager.startUpdating`에 최근 15분 내 획득 시 스킵 `cooldownFetchTime` 추가. 동일 좌표의 5분 주기 CoreLocation 재요청 절감
 
 > 회귀 수정: v0.28의 TrafficMonitor 지연 시작에서 PopoverView `onAppear/onDisappear` 기반 acquire/release가 NSPopover transient 닫힘(외부 클릭/ESC)에서 onDisappear 미호출 → `usageRefs[.popover]` 잔류 → 팝오버 닫힌 뒤에도 주기적 nettop 스폰.
 > 실측: 앱 재시작 직후엔 nettop 0개, 팝오버 열고 닫은 뒤부터 주기적 스폰. 에너지 영향도 2,004 / 12h Power 2,315.

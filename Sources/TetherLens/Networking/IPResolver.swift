@@ -49,6 +49,12 @@ class IPResolver {
             DebugLogger.shared.apiResponse("Network", 200, "api.ipify.org", body: ["ip": newIP ?? ""])
 
             if let ip = newIP {
+                // 공인 IP가 기존과 동일하면 지역 조회를 생략한다 (에너지/API 절감 — v0.28.2).
+                guard ip != externalIP else {
+                    DebugLogger.shared.info("Network", "IP 동일(\(ip)) — 지역 조회 생략")
+                    lastFetch = Date()
+                    return
+                }
                 let geoURL = URL(string: "https://ipapi.co/\(ip)/json/")!
                 DebugLogger.shared.apiCall("Network", "GET", "https://ipapi.co/\(ip)/json/")
                 var geoRequest = URLRequest(url: geoURL)
