@@ -4,6 +4,11 @@ import Combine
 final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     static let shared = TrafficMonitor()
 
+    /// TrafficMonitor를 활성 상태로 끌어올리는 소비자 구분 (에너지 최적화 — 지연 시작).
+    enum Usage {
+        case popover, sheet, appBlock
+    }
+
     struct AppTraffic: Identifiable {
         let id: String
         let processName: String
@@ -22,9 +27,88 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     private var isRefreshing = false
     private let queue = DispatchQueue(label: "com.tetherlens.traffic", qos: .utility)
 
+    // 지연 시작 상태 — 모두 main actor 스레드에서 접근해 NSLock 없이 유지한다.
+    private var usageRefs: [Usage: Bool] = [:]
+    private var lowPowerOverride = false
+    private var isRunning = false
+
     private init() {}
 
-    func start() {
+    /// 소비자가 필요해질 때 호출 — 첫 참조가 생기면 실제 start()를 수행한다.
+    func acquire(reason: Usage) {
+        let wasActive = isAnyUsageActive
+        usageRefs[reason] = true
+        evaluateIfNeeded(wasActive: wasActive)
+        Task { @MainActor in
+            DebugLogger.shared.action("Traffic", "acquire(\(reason)) → active=\(isAnyUsageActive) running=\(isRunning)")
+        }
+    }
+
+    /// 소비자가 더 이상 보지 않을 때 호출 — 마지막 참조가 사라지면 실제 stop()을 수행한다.
+    func release(reason: Usage) {
+        let wasActive = isAnyUsageActive
+        usageRefs[reason] = false
+        evaluateIfNeeded(wasActive: wasActive)
+        Task { @MainActor in
+            DebugLogger.shared.action("Traffic", "release(\(reason)) → active=\(isAnyUsageActive) running=\(isRunning)")
+        }
+    }
+
+    /// 저전력 모드 전환 시 호출 — 활성 참조가 있어도 강제 중지/재개한다.
+    func setLowPower(_ enabled: Bool) {
+        guard lowPowerOverride != enabled else { return }
+        lowPowerOverride = enabled
+        if enabled {
+            if isRunning { stopLocked(); isRunning = false }
+        } else {
+            if isAnyUsageActive, !isRunning { start(); isRunning = true }
+        }
+        Task { @MainActor in
+            DebugLogger.shared.system("Power", "저전력 \(enabled ? "ON" : "OFF") - TrafficMonitor \(enabled ? "중지" : "재개")")
+        }
+    }
+
+    /// 시스템 슬립 등 일시 중지 — 참조 상태는 유지하고 중지만 수행한다.
+    func suspend() {
+        guard isRunning else { return }
+        stopLocked()
+        isRunning = false
+    }
+
+    /// 시스템 깨어남 등 재개 — 활성 참조가 있으면 재시작한다.
+    func resume() {
+        if isAnyUsageActive, !lowPowerOverride, !isRunning {
+            start()
+            isRunning = true
+        }
+    }
+
+    /// 앱 종료/모니터링 중지 — 모든 참조를 비우고 실제 중지한다.
+    func resetAllUsage() {
+        usageRefs = [:]
+        lowPowerOverride = false
+        if isRunning {
+            stopLocked()
+            isRunning = false
+        }
+    }
+
+    private var isAnyUsageActive: Bool {
+        usageRefs.values.contains { $0 }
+    }
+
+    private func evaluateIfNeeded(wasActive: Bool) {
+        let activeNow = isAnyUsageActive && !lowPowerOverride
+        if activeNow, !wasActive, !isRunning {
+            start()
+            isRunning = true
+        } else if !activeNow, wasActive, isRunning {
+            stopLocked()
+            isRunning = false
+        }
+    }
+
+    private func start() {
         // accumulated은 반드시 queue 안에서만 접근 (refresh와의 data race 방지).
         // serial queue FIFO로 리셋 → 이후 refresh 순서가 보장된다.
         queue.async { [weak self] in
@@ -56,7 +140,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         timer = refreshTimer
     }
 
-    func stop() {
+    private func stopLocked() {
         saveTimer?.invalidate()
         saveTimer = nil
         timer?.invalidate()

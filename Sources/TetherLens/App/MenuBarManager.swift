@@ -89,6 +89,14 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             self, selector: #selector(handleSystemWake),
             name: NSWorkspace.didWakeNotification, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handlePowerStateChanged),
+            name: .init("powerStateChanged"), object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleBlockedAppsChanged),
+            name: .init("blockedAppsChanged"), object: nil
+        )
     }
 
     /// 시스템 슬립 진입 — 모든 폴링을 일시중지한다 (배터리/CPU 절감).
@@ -101,7 +109,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         networkMonitor.stop()
         hotspotDetector.stop()
         pingMonitor.stop()
-        TrafficMonitor.shared.stop()
+        TrafficMonitor.shared.suspend()
         locationManager.stopUpdating()
     }
 
@@ -113,12 +121,37 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         networkMonitor.start()
         hotspotDetector.start()
         pingMonitor.start()
-        TrafficMonitor.shared.start()
+        TrafficMonitor.shared.resume()
         locationManager.startUpdating()
         setupTimers()
         refreshCache()
         updateMenuBarText()
         NotificationCenter.default.post(name: connectionChanged, object: nil)
+    }
+
+    /// 저전력 모드 토글 — TrafficMonitor 강제 중지/재개 + 메뉴바 갱신 주기 확대.
+    @objc private func handlePowerStateChanged() {
+        guard isMonitoring else { return }
+        let lowPower = SavingModeManager.shared.isLowPowerMode
+        DebugLogger.shared.system("Power", "저전력 모드 \(lowPower ? "ON" : "OFF")")
+        TrafficMonitor.shared.setLowPower(lowPower)
+        // 메뉴바 갱신 주기 재계산 (저전력 시 확대)
+        timer?.invalidate()
+        timer = nil
+        timer = scheduleTimer(effectiveMenuBarRefreshInterval) { [weak self] in
+            self?.updateMenuBarText()
+        }
+        updateMenuBarText()
+    }
+
+    /// 차단 목록 변경 — 차단 감지가 필요하면 TrafficMonitor를 상시 유지.
+    @objc private func handleBlockedAppsChanged() {
+        guard isMonitoring else { return }
+        if AppBlockManager.shared.blockedApps.isEmpty {
+            TrafficMonitor.shared.release(reason: .appBlock)
+        } else {
+            TrafficMonitor.shared.acquire(reason: .appBlock)
+        }
     }
 
     private func suspendTimers() {
@@ -146,8 +179,8 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         ipRefreshTimer = nil
         locationTimer?.invalidate()
         locationTimer = nil
-        TrafficMonitor.shared.stop()
-        TrafficMonitor.shared.start()
+        // TrafficMonitor는 참조 기반 지연 시작이라 간격 변경은 다음 refresh에 자동 반영된다.
+        TrafficMonitor.shared.resume()
         setupTimers()
         cacheNeedsInvalidation = true
         refreshCache()
@@ -305,7 +338,10 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         networkMonitor.start()
         hotspotDetector.start()
         pingMonitor.start()
-        TrafficMonitor.shared.start()
+        // 차단된 앱이 없으면 상시 nettop 구동이 불필요 — 차단 감지가 있을 때만 유지.
+        if !AppBlockManager.shared.blockedApps.isEmpty {
+            TrafficMonitor.shared.acquire(reason: .appBlock)
+        }
 
         ProfileManager.shared.cleanupOldLogs()
         ProfileManager.shared.mergeStaleIPLogs()
@@ -385,9 +421,17 @@ class MenuBarManager: NSObject, @unchecked Sendable {
             self?.refreshCache()
         }
 
-        timer = scheduleTimer(SettingsManager.shared.menuBarRefreshInterval) { [weak self] in
+        timer = scheduleTimer(effectiveMenuBarRefreshInterval) { [weak self] in
             self?.updateMenuBarText()
         }
+    }
+
+    /// 저전력 모드이면 메뉴바 갱신 주기를 최소 5초로 확대해 에너지를 절약한다.
+    private var effectiveMenuBarRefreshInterval: Double {
+        if SavingModeManager.shared.isLowPowerMode {
+            return max(SettingsManager.shared.menuBarRefreshInterval, 5.0)
+        }
+        return SettingsManager.shared.menuBarRefreshInterval
     }
 
     private func scheduleTimer(_ interval: Double, _ block: @escaping @MainActor () -> Void) -> Timer {
@@ -422,7 +466,7 @@ class MenuBarManager: NSObject, @unchecked Sendable {
         networkMonitor.stop()
         hotspotDetector.stop()
         pingMonitor.stop()
-        TrafficMonitor.shared.stop()
+        TrafficMonitor.shared.resetAllUsage()
         locationManager.stopUpdating()
     }
 

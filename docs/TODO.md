@@ -282,3 +282,16 @@
 | 134 | 검증: 빌드 + 테스트(43개) + CHANGELOG/TODO/PLAN/세션 문서 | P1 | ✅ |
 | 135 | 프로세스별 트래픽 가로 폭 확장 (320→400, TLSize.sheetTraffic 토큰 신설) | P2 | ✅ |
 | 136 | 검증: 재설치·실행 확인 + CHANGELOG/AGENTS.local 갱신 | P1 | ✅ |
+
+## 🔄 v0.28 — 에너지 최적화 (2026-08-12)
+
+> 관찰: 배터리 이슈 조사 실측 — TrafficMonitor가 팝오버/시트 닫힘에도 상시 nettop 가동(CPU 130%). 충전 인식 문제는 하드웨어 확인 사항이라 앱 측 낭비만 최적화.
+> 계획: docs/plans/PLAN_v0.28_macos.md
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 137 | PLAN 작성 + TODO 등록 | P1 | ✅ |
+| 138 | 폴링 기본값 조정 (menuBar 2→3, traffic 5→10, ping 3→5 — cache 유지) | P1 | ✅ |
+| 139 | TrafficMonitor 지연 시작 (acquire/release 참조 카운팅 + PopoverView/AppTrafficView 제어) | P1 | ✅ |
+| 140 | 저전력 모드 강화 (powerStateChanged 구독 → traffic 중지 + ping 15초 + 메뉴바 5초) | P1 | ✅ |
+| 141 | 검증 (빌드/test.sh + pgrep nettop 확인) + CHANGELOG/세션 문서 | P1 | ✅ |

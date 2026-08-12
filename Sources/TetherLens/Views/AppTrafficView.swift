@@ -28,6 +28,13 @@ struct AppTrafficView: View {
         }
         .padding(TLSpace.inset)
         .frame(width: TLSize.sheetTraffic, height: 380)
+        .onAppear {
+            // 시트가 열려 있는 동안에만 nettop 기반 앱 트래픽을 수집 (에너지 최적화)
+            TrafficMonitor.shared.acquire(reason: .sheet)
+        }
+        .onDisappear {
+            TrafficMonitor.shared.release(reason: .sheet)
+        }
         .overlay {
             if confirmReset {
                 Color.black.opacity(0.25)

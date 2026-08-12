@@ -23,10 +23,10 @@ final class SettingsManager: @unchecked Sendable {
         ])
     }
 
-    static let defaultMenuBarRefreshInterval: Double = 2.0
+    static let defaultMenuBarRefreshInterval: Double = 3.0
     static let defaultCacheRefreshInterval: Double = 5.0
-    static let defaultTrafficMonitorInterval: Double = 5.0
-    static let defaultPingInterval: Double = 3.0
+    static let defaultTrafficMonitorInterval: Double = 10.0
+    static let defaultPingInterval: Double = 5.0
     static let defaultMenuBarFontSize: Double = 9.0
     static let defaultQuotaWarningThreshold: Double = 1.0
 

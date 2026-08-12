@@ -75,7 +75,7 @@ class PingMonitor {
     private func pingLoop() async {
         var useDNS = true
         while !Task.isCancelled {
-            let interval = max(SettingsManager.shared.pingInterval, 1.0)
+            let interval = effectiveInterval
             let target = useDNS ? "8.8.8.8" : (gatewayAddress ?? "8.8.8.8")
             let rtt = await performPing(host: target)
             if useDNS {
@@ -89,6 +89,15 @@ class PingMonitor {
             useDNS.toggle()
             try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
         }
+    }
+
+    /// 저전력 모드이면 ping 주기를 최소 15초로 확대해 에너지를 절약한다.
+    private var effectiveInterval: TimeInterval {
+        let interval = max(SettingsManager.shared.pingInterval, 1.0)
+        if SavingModeManager.shared.isLowPowerMode {
+            return max(interval, 15.0)
+        }
+        return interval
     }
 
     private func checkAndNotify() async {

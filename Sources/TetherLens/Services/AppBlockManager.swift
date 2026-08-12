@@ -32,6 +32,7 @@ final class AppBlockManager: ObservableObject {
             set.remove(name)
         }
         blockedApps = set
+        NotificationCenter.default.post(name: .init("blockedAppsChanged"), object: nil)
     }
 
     func isBlocked(_ name: String) -> Bool {
