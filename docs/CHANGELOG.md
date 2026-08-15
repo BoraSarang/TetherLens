@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.28.3] — 2026-08-15 — GitHub 링크 + 랜딩 페이지 리디자인
+
+> 사용자 요청: AboutView에 GitHub 저장소/페이지 링크가 없음 → 링크 2개 추가. 동시에 GitHub Pages 랜딩 페이지(`docs/index.html`)를 ui-ux-pro-max 스킬 기반으로 전면 리디자인.
+
+### Added
+- **AboutView GitHub/GitHub Pages 링크 (T-151)** — 이메일(mailto) 버튼 아래에 GitHub 저장소(`github.com/BoraSarang/TetherLens`)와 GitHub Pages(`borasarang.github.io/TetherLens`) 버튼 2개 추가. accent+underline 스타일로 통일, 시트 높이 340→380
+
+### Changed
+- **랜딩 페이지 전면 리디자인 (T-152)** — `docs/index.html` (ui-ux-pro-max 스킬)
+  - 패턴: **Real-Time / Operations Landing** — Hero(라이브 데모 텔레메트리) → 메트릭 → How it works → 스크린샷 → CTA 배너
+  - 스타일: **OLED 다크 + 네온 HUD** (Cyberpunk 감성의 앱 브랜드 색상 블루/시안 절충), 스캔라인 오버레이, 네온 글로우, IBM Plex Mono 라벨
+  - 접근성: 이모지 → 인라인 SVG 아이콘(Phosphor 계열 14개), `prefers-reduced-motion` 대응, `:focus-visible` 테두리, 375/560/768/1024px 반응형
+  - 데모 텔레메트리: `prefers-reduced-motion` 시 정적 값 렌더링
+
 ## [0.28.2] — 2026-08-13 — 네트워크 API 호출 최적화 (IP/위치 갱신 절감)
 
 > 관찰: DebugPanel 로그 분석 — IP가 동일한데도 30분마다 `ipify`+`ipapi.co` 2회씩 무조건 호출(12시간 약 96회), 위치도 동일 좌표를 5분마다 재요청. v0.28.1(.nettop 누수) 종결 후 남은 에너지 낭비 요인 정리.

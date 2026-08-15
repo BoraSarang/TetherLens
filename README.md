@@ -60,9 +60,9 @@ TetherLens는 메뉴바 하나로 **실시간 현황**과 **소진 예측**, 그
 
 ## 🖥️ 미리보기
 
-| 팝오버 (요약 모드) | 사용량 리포트 |
-|--------|--------|
-| ![팝오버 요약 모드](images/popover-summary.png) | ![사용량 리포트](images/usage-report.png) |
+| 팝오버 (요약 모드) | QoS 방지 게이지 | 사용량 리포트 |
+|--------|--------|--------|
+| ![팝오버 요약 모드](images/popover-summary.png) | ![QoS 방지 게이지](images/popover-qos.png) | ![사용량 리포트](images/popover-report.png) |
 
 ---
 

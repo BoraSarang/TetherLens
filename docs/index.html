@@ -4,145 +4,217 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TetherLens — 테더링 데이터의 감시 카메라</title>
+<meta name="description" content="메뉴바 하나로 핫스팟 데이터가 어디로 새는지 낱낱이 추적. 실시간 속도 · QoS 소진 예측 · 앱별 소비 추적.">
 <meta property="og:title" content="TetherLens — 테더링 데이터의 감시 카메라">
-<meta property="og:description" content="메뉴바 하나로 핫스팟 데이터가 어디로 새는지 낱낱이 추적. QoS 사기 전에 지켜라.">
+<meta property="og:description" content="메뉴바 하나로 핫스팟 데이터가 어디로 새는지 낱낱이 추적.">
+<meta property="og:image" content="images/icon.png">
+<meta name="theme-color" content="#050508">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #06060b;
-    --panel: #0c0e17;
-    --line: rgba(255,255,255,.08);
-    --text: #e8eaf2;
-    --muted: #8b90a5;
-    --accent: #2563eb;
-    --accent2: #0ea5e9;
-    --success: #22c55e;
-    --warn: #f59e0b;
-    --danger: #ef4444;
+    --bg: #050508;
+    --panel: #0b0d12;
+    --panel-2: #0e1119;
+    --line: rgba(255,255,255,.07);
+    --line-strong: rgba(148,163,184,.22);
+    --text: #e6e9f2;
+    --muted: #8b93a7;
+    --muted-2: #565d73;
+    --primary: #3b82f6;
+    --cyan: #22d3ee;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --radius: 16px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   html { scroll-behavior: smooth; }
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font);
     background: var(--bg);
     color: var(--text);
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
   }
-  /* 배경 글로우 */
+  /* 배경: OLED 다크 + 네온 오로라 */
   body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
+    content: ""; position: fixed; inset: 0; z-index: -2;
     background:
-      radial-gradient(60% 50% at 15% 0%, rgba(37,99,235,.18), transparent),
-      radial-gradient(50% 45% at 85% 15%, rgba(14,165,233,.12), transparent),
-      radial-gradient(60% 55% at 50% 110%, rgba(37,99,235,.10), transparent);
+      radial-gradient(55% 45% at 12% 0%, rgba(59,130,246,.16), transparent 60%),
+      radial-gradient(45% 40% at 88% 12%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(65% 55% at 50% 112%, rgba(59,130,246,.12), transparent 60%);
   }
-  .container { width: 100%; max-width: 960px; padding: 0 24px; margin: 0 auto; }
+  /* 스캔라인 오버레이 (HUD 터미널 감성) */
+  body::after {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px, transparent 3px,
+      rgba(148,163,184,.025) 3px, rgba(148,163,184,.025) 4px
+    );
+    opacity: .6;
+  }
+  .container { width: 100%; max-width: 1024px; padding: 0 24px; margin: 0 auto; }
+  .mono { font-family: var(--mono); }
+  a, button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 6px; }
 
-  /* 헤더 */
-  header { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px); background: rgba(6,6,11,.7); border-bottom: 1px solid var(--line); }
-  header .container { display: flex; align-items: center; justify-content: space-between; height: 58px; }
-  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1rem; letter-spacing: -.02em; }
+  /* ── 헤더 ── */
+  header { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); background: rgba(5,5,8,.72); border-bottom: 1px solid var(--line); }
+  header .container { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 16px; }
+  .logo { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.02rem; letter-spacing: -.02em; text-decoration: none; color: var(--text); }
   .logo img { width: 26px; height: 26px; border-radius: 7px; }
-  .logo b { background: linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-  nav a { color: var(--muted); text-decoration: none; font-size: .875rem; margin-left: 24px; transition: color .2s; }
-  nav a:hover { color: #fff; }
-
-  /* 히어로 */
-  .hero { text-align: center; padding: 84px 0 56px; position: relative; }
-  .hero .badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: .75rem; font-weight: 600; color: var(--accent2);
-    background: rgba(14,165,233,.08); border: 1px solid rgba(14,165,233,.25);
-    padding: 6px 14px; border-radius: 999px; margin-bottom: 26px;
+  .logo b { background: linear-gradient(90deg,#7db4ff,#4dd7f2); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  nav { display: flex; align-items: center; gap: 6px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: .86rem; padding: 8px 12px; border-radius: 9px; transition: color .2s, background .2s; }
+  nav a:hover { color: #fff; background: rgba(255,255,255,.05); }
+  .nav-cta {
+    margin-left: 8px; color: #fff; font-weight: 600; font-size: .86rem;
+    background: linear-gradient(90deg,var(--primary),var(--cyan));
+    padding: 9px 16px; border-radius: 10px; text-decoration: none;
+    box-shadow: 0 4px 18px rgba(59,130,246,.35); transition: transform .2s, box-shadow .2s;
   }
-  .hero .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 1.6s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(59,130,246,.5); }
+
+  /* ── 히어로 ── */
+  .hero { text-align: center; padding: 88px 0 40px; position: relative; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .74rem; font-weight: 600; color: var(--green);
+    background: rgba(52,211,153,.07); border: 1px solid rgba(52,211,153,.28);
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 28px; letter-spacing: .02em;
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
   .hero h1 {
-    font-size: clamp(2.4rem, 6vw, 4.2rem); font-weight: 800; letter-spacing: -.045em; line-height: 1.06;
-    background: linear-gradient(100deg, #fff 20%, #93c5fd 55%, #38bdf8 80%);
+    font-size: clamp(2.5rem, 6.4vw, 4.4rem); font-weight: 800; letter-spacing: -.05em; line-height: 1.04;
+    background: linear-gradient(105deg, #fff 18%, #a8c8ff 52%, #59d9f2 82%);
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   }
-  .hero h1 em { font-style: normal; background: linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-  .hero p.sub { margin: 22px auto 38px; max-width: 560px; font-size: 1.2rem; color: var(--muted); line-height: 1.65; }
+  .hero h1 em { font-style: normal; color: transparent; }
+  .hero .sub { margin: 24px auto 36px; max-width: 560px; font-size: 1.16rem; color: var(--muted); line-height: 1.7; }
+  .hero .sub b { color: #cdd6ea; }
   .hero .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
   .btn {
-    display: inline-flex; align-items: center; gap: 10px; padding: 15px 34px; border-radius: 14px;
-    font-size: 1rem; font-weight: 700; text-decoration: none; transition: all .22s; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 10px; padding: 15px 32px; border-radius: 13px;
+    font-size: .98rem; font-weight: 700; text-decoration: none; transition: transform .22s, box-shadow .22s, background .22s;
   }
+  .btn svg { width: 18px; height: 18px; }
   .btn-primary {
-    background: linear-gradient(90deg,var(--accent),var(--accent2)); color: #fff;
-    box-shadow: 0 10px 34px rgba(37,99,235,.35);
+    background: linear-gradient(90deg,var(--primary),var(--cyan)); color: #fff;
+    box-shadow: 0 10px 34px rgba(59,130,246,.38);
   }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 44px rgba(37,99,235,.5); }
-  .btn-ghost { background: rgba(255,255,255,.06); color: var(--text); border: 1px solid var(--line); }
-  .btn-ghost:hover { background: rgba(255,255,255,.12); transform: translateY(-2px); }
-  .hero .note { margin-top: 22px; font-size: .78rem; color: #51556b; }
-  .hero .note code { background: rgba(255,255,255,.06); padding: 2px 7px; border-radius: 6px; color: #aab2d9; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 46px rgba(59,130,246,.55); }
+  .btn-ghost { background: rgba(255,255,255,.05); color: var(--text); border: 1px solid var(--line-strong); }
+  .btn-ghost:hover { background: rgba(255,255,255,.1); transform: translateY(-2px); }
+  .hero .note { margin-top: 22px; font-size: .78rem; color: var(--muted-2); font-family: var(--mono); }
+  .hero .note code { background: rgba(255,255,255,.06); padding: 3px 8px; border-radius: 6px; color: #8fb3f2; font-size: .74rem; }
 
-  /* 실시간 텔레메트리 바 — 시각적 임팩트 */
+  /* ── 실시간 텔레메트리 HUD ── */
   .telemetry {
-    margin: 40px auto 0; max-width: 640px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
+    margin: 48px auto 0; max-width: 680px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
   }
   .tel {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 12px; text-align: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 14px; text-align: center; position: relative; overflow: hidden;
   }
-  .tel .label { font-size: .7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-  .tel .val { margin-top: 6px; font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .tel .val.up { color: var(--warn); } .tel .val.down { color: var(--accent2); } .tel .val.gb { color: var(--success); }
-  .tel .status { margin-top: 6px; font-size: .7rem; color: var(--success); }
+  .tel::before { content: ""; position: absolute; inset: 0; opacity: .5; background: radial-gradient(80% 90% at 50% 0%, rgba(59,130,246,.10), transparent 70%); }
+  .tel .label { font-size: .68rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-family: var(--mono); }
+  .tel .val { margin-top: 8px; font-size: 1.18rem; font-weight: 800; font-variant-numeric: tabular-nums; font-family: var(--mono); }
+  .tel .val.down { color: var(--cyan); text-shadow: 0 0 16px rgba(34,211,238,.35); }
+  .tel .val.up { color: var(--amber); text-shadow: 0 0 16px rgba(251,191,36,.3); }
+  .tel .val.gb { color: var(--green); text-shadow: 0 0 16px rgba(52,211,153,.3); }
+  .tel .status { margin-top: 8px; font-size: .7rem; color: var(--green); font-family: var(--mono); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .tel .status .led { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .tel .stamp { margin-top: 2px; font-size: .64rem; color: var(--muted-2); font-family: var(--mono); }
 
-  /* 기능 섹션 */
-  .section { padding: 72px 0; }
-  .section-head { text-align: center; margin-bottom: 48px; }
-  .section-head h2 { font-size: 2rem; font-weight: 800; letter-spacing: -.03em; }
-  .section-head p { color: var(--muted); margin-top: 10px; }
-  .features { display: grid; grid-template-columns: repeat(2,1fr); gap: 18px; }
+  /* ── 섹션 공통 ── */
+  .section { padding: 84px 0; }
+  .section-head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
+  .section-head .eyebrow { font-size: .74rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--cyan); font-family: var(--mono); margin-bottom: 14px; }
+  .section-head h2 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); font-weight: 800; letter-spacing: -.03em; }
+  .section-head p { color: var(--muted); margin-top: 12px; font-size: 1rem; line-height: 1.65; }
+
+  /* ── 기능 그리드 ── */
+  .features { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
   .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px;
-    transition: border-color .25s, transform .25s; position: relative; overflow: hidden;
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px 24px; transition: border-color .25s, transform .25s, background .25s;
+    position: relative; overflow: hidden;
   }
   .card::after {
     content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .3s;
-    background: radial-gradient(120% 120% at 100% 0%, rgba(37,99,235,.16), transparent 55%);
+    background: radial-gradient(120% 120% at 100% 0%, rgba(59,130,246,.14), transparent 55%);
+    pointer-events: none;
   }
-  .card:hover { border-color: rgba(37,99,235,.4); transform: translateY(-3px); }
+  .card:hover { border-color: rgba(59,130,246,.4); transform: translateY(-3px); background: var(--panel-2); }
   .card:hover::after { opacity: 1; }
-  .card .icon { font-size: 1.6rem; margin-bottom: 14px; }
-  .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; z-index:1; position: relative; }
-  .card p { font-size: .87rem; color: var(--muted); line-height: 1.6; position: relative; z-index: 1; }
-
-  /* 스크린샷 */
-  .screenshots { display: grid; grid-template-columns: repeat(2,1fr); gap: 18px; }
-  .shot {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px;
-    transition: border-color .25s, transform .25s;
+  .card .icon {
+    width: 42px; height: 42px; border-radius: 11px; margin-bottom: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, rgba(59,130,246,.16), rgba(34,211,238,.10));
+    border: 1px solid rgba(59,130,246,.25); position: relative; z-index: 1;
   }
-  .shot:hover { border-color: rgba(37,99,235,.4); transform: translateY(-3px); }
-  .shot img { width: 100%; height: auto; border-radius: 12px; display: block; }
+  .card .icon svg { width: 21px; height: 21px; color: var(--cyan); }
+  .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; position: relative; z-index: 1; }
+  .card p { font-size: .855rem; color: var(--muted); line-height: 1.62; position: relative; z-index: 1; }
+
+  /* ── How it works ── */
+  .steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; counter-reset: step; }
+  .step {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px 24px; position: relative;
+  }
+  .step .num {
+    font-family: var(--mono); font-size: .78rem; font-weight: 600; color: var(--cyan);
+    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 16px;
+  }
+  .step .num::before { content: ""; width: 22px; height: 1px; background: rgba(34,211,238,.4); }
+  .step h3 { font-size: 1.02rem; font-weight: 700; margin-bottom: 8px; }
+  .step p { font-size: .855rem; color: var(--muted); line-height: 1.62; }
+
+  /* ── 스크린샷 ── */
+  .screenshots { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; }
+  .shot {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px; transition: border-color .25s, transform .25s;
+  }
+  .shot:hover { border-color: rgba(59,130,246,.4); transform: translateY(-3px); }
+  .shot img { width: 100%; height: auto; border-radius: 11px; display: block; }
   .shot .cap { margin-top: 12px; font-size: .8rem; font-weight: 600; color: var(--muted); text-align: center; }
 
-  /* 배너 CTA */
+  /* ── 배너 CTA ── */
   .banner {
-    background: linear-gradient(120deg, rgba(37,99,235,.14), rgba(14,165,233,.08));
-    border: 1px solid rgba(37,99,235,.3); border-radius: 24px; padding: 48px 32px; text-align: center;
+    background: linear-gradient(120deg, rgba(59,130,246,.16), rgba(34,211,238,.08));
+    border: 1px solid rgba(59,130,246,.32); border-radius: 24px; padding: 56px 32px; text-align: center; position: relative; overflow: hidden;
   }
-  .banner h2 { font-size: 1.8rem; font-weight: 800; letter-spacing: -.03em; }
-  .banner p { color: var(--muted); margin: 12px 0 28px; }
-  .banner .btn { font-size: 1rem; }
+  .banner::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(70% 80% at 50% 0%, rgba(59,130,246,.14), transparent 70%); }
+  .banner h2 { font-size: clamp(1.5rem, 3.2vw, 2.1rem); font-weight: 800; letter-spacing: -.03em; position: relative; z-index: 1; }
+  .banner p { color: var(--muted); margin: 14px 0 30px; position: relative; z-index: 1; font-family: var(--mono); font-size: .84rem; }
+  .banner .btn { position: relative; z-index: 1; }
 
-  footer { padding: 40px 0 48px; border-top: 1px solid var(--line); text-align: center; color: #4a4f63; font-size: .8rem; }
-  footer a { color: #7c83a5; text-decoration: none; }
+  /* ── 푸터 ── */
+  footer { padding: 42px 0 52px; border-top: 1px solid var(--line); text-align: center; color: var(--muted-2); font-size: .8rem; }
+  footer a { color: #8aa0c4; text-decoration: none; transition: color .2s; }
   footer a:hover { color: #fff; }
 
-  @media (max-width: 640px) {
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    body::after { opacity: .25; }
+  }
+  @media (max-width: 768px) {
+    .features { grid-template-columns: repeat(2,1fr); }
+    .steps { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
     .features { grid-template-columns: 1fr; }
     .screenshots { grid-template-columns: 1fr; }
-    .telemetry { grid-template-columns: 1fr; }
-    nav a { margin-left: 12px; font-size: .78rem; }
-    .hero { padding-top: 60px; }
+    .telemetry { grid-template-columns: 1fr; max-width: 280px; }
+    nav a:not(.nav-cta) { display: none; }
+    .hero { padding-top: 64px; }
   }
 </style>
 </head>
@@ -150,16 +222,18 @@
 
 <header>
   <div class="container">
-    <div class="logo"><img src="images/icon.png" alt=""><b>TetherLens</b></div>
+    <a class="logo" href="#top"><img src="images/icon.png" alt=""><b>TetherLens</b></a>
     <nav>
       <a href="#features">기능</a>
+      <a href="#how">동작 원리</a>
       <a href="#screenshots">스크린샷</a>
-      <a href="https://github.com/BoraSarang/TetherLens" target="_blank">GitHub</a>
+      <a href="https://github.com/BoraSarang/TetherLens" target="_blank" rel="noopener">GitHub</a>
+      <a class="nav-cta" href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">다운로드</a>
     </nav>
   </div>
 </header>
 
-<main>
+<main id="top">
   <section class="hero">
     <div class="container">
       <span class="badge"><span class="dot"></span> 실시간 감시 중</span>
@@ -169,29 +243,32 @@
         실시간 속도 · QoS 소진 예측 · 앱별 낭비범 추적.
       </p>
       <div class="cta">
-        <a class="btn btn-primary" href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">⬇️ macOS에서 다운로드</a>
-        <a class="btn btn-ghost" href="https://github.com/BoraSarang/TetherLens/releases/latest" target="_blank">릴리스 보기</a>
+        <a class="btn btn-primary" href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">
+          <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 40v112m0 0 40-40m-40 40L88 112"/><path d="M200 168v24a24 24 0 0 1-24 24H80a24 24 0 0 1-24-24v-24"/></svg>
+          macOS에서 다운로드
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/BoraSarang/TetherLens/releases/latest" target="_blank" rel="noopener">릴리스 보기</a>
       </div>
-      <p class="note">
-        최초 실행 경고 시 → <code>xattr -rd com.apple.quarantine /Applications/TetherLens.app</code>
-      </p>
+      <p class="note">최초 실행 경고 시 → <code>xattr -rd com.apple.quarantine /Applications/TetherLens.app</code></p>
 
-      <!-- 실시간 느낌의 텔레메트리 -->
-      <div class="telemetry">
+      <div class="telemetry" role="group" aria-label="실시간 데모 텔레메트리">
         <div class="tel">
           <div class="label">▼ 다운로드</div>
           <div class="val down" id="down">1.2 MB/s</div>
-          <div class="status">실시간</div>
+          <div class="status"><span class="led" aria-hidden="true"></span>LIVE</div>
+          <div class="stamp" id="stamp">데모</div>
         </div>
         <div class="tel">
           <div class="label">▲ 업로드</div>
           <div class="val up" id="up">120 KB/s</div>
-          <div class="status">실시간</div>
+          <div class="status"><span class="led" aria-hidden="true"></span>LIVE</div>
+          <div class="stamp">데모</div>
         </div>
         <div class="tel">
           <div class="label">오늘 사용</div>
           <div class="val gb" id="today">1.87 GB</div>
-          <div class="status" id="quota">할당량 52%</div>
+          <div class="status"><span class="led" aria-hidden="true"></span>할당량 52%</div>
+          <div class="stamp">데모</div>
         </div>
       </div>
     </div>
@@ -200,22 +277,88 @@
   <section class="section" id="features">
     <div class="container">
       <div class="section-head">
+        <div class="eyebrow">Capabilities</div>
         <h2>비용이 곧 삶의 질인 사람들을 위해</h2>
         <p>핫스팟 한 줄 한 줄이 경제입니다. TetherLens가 현황을 밝힙니다.</p>
       </div>
       <div class="features">
-        <div class="card"><div class="icon">💓</div><h3>메뉴바 실시간 속도</h3><p>▲▼ 업·다운을 두 줄로 표시. 상태색(초록→빨강)으로 할당량 압박을 직관화.</p></div>
-        <div class="card"><div class="icon">📱</div><h3>핫스팟 자동 감지</h3><p>iOS ↔ Android 테더링 구분, SSID 기반 프로필 자동 전환.</p></div>
-        <div class="card"><div class="icon">🎯</div><h3>QoS 방지 게이지</h3><p>오늘 사용량 vs 할당량. 50/80/95/100% 임계선 도달 시 알림.</p></div>
-        <div class="card"><div class="icon">🔮</div><h3>소진일 예측</h3><p>지금 페이스면 언제 바닥나는지 대시보드 카드로 예측.</p></div>
-        <div class="card"><div class="icon">📊</div><h3>대시보드 인사이트</h3><p>총/일평균 · 전기간 비교 · 최다 사용일 · 상위 앱. 상황이 보인다.</p></div>
-        <div class="card"><div class="icon">📍</div><h3>GPS/IP 위치 추적</h3><p>연결 위치 지도 핀과 이동 이력 타임라인으로 내 사용 경로를 확인.</p></div>
-        <div class="card"><div class="icon">🛰️</div><h3>연결 품질 모니터링</h3><p>DNS+게이트웨이 Ping RTT. 지속 위반 → 경고, 복구 자동 감지.</p></div>
-        <div class="card"><div class="icon">🚫</div><h3>스마트 절약 모드</h3><p>핫스팟 감지 시 softwareupdate·TimeMachine off, Apple 업데이트 서버 차단.</p></div>
-        <div class="card"><div class="icon">🌐</div><h3>DNS 프리셋</h3><p>1.1.1.1 / 8.8.8.8 프리셋을 시스템 네트워크 설정에 즉시 반영.</p></div>
-        <div class="card"><div class="icon">🔌</div><h3>앱별 트래픽 순위</h3><p>nettop 기반 — 어느 앱이 얼마나 쓰는지 실시간 소비범 명단.</p></div>
-        <div class="card"><div class="icon">🔋</div><h3>배터리 마니아</h3><p>슬립 시 폴링 중지, 팝오버 닫힘 시 tick 중지, 타이머 tolerance로 전력 최소화.</p></div>
-        <div class="card"><div class="icon">🛡️</div><h3>네이티브 &amp; 프라이버시</h3><p>Swift 6 / SQLite 로컬 저장. 데이터는 내 맥 안에서만.</p></div>
+
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M80 40v176m0 0 40-40m-40 40L40 176M176 40v176m0 0 40-40m-40 40-40-40"/></svg></span>
+          <h3>메뉴바 실시간 속도</h3><p>▲▼ 업·다운을 두 줄로 표시. 상태색(초록→빨강)으로 할당량 압박을 직관화.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><rect x="72" y="32" width="112" height="192" rx="16"/><path d="M112 200h32"/><circle cx="128" cy="56" r="6" fill="currentColor"/></svg></span>
+          <h3>핫스팟 자동 감지</h3><p>iOS ↔ Android 테더링 구분, SSID 기반 프로필 자동 전환.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M24 184a104 104 0 1 1 208 0"/><path d="M128 152l44-40"/><path d="M128 184a24 24 0 1 1 0-32v32Z"/></svg></span>
+          <h3>QoS 방지 게이지</h3><p>오늘 사용량 vs 할당량. 50/80/95/100% 임계선 도달 시 알림.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="48" width="192" height="168" rx="8"/><path d="M32 96h192M80 40v16M176 40v16M64 128h32M64 160h32M128 128h32M128 160h32"/></svg></span>
+          <h3>소진일 예측</h3><p>지금 페이스면 언제 바닥나는지 대시보드 카드로 예측.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M32 200V80m48 120V40m48 160v-72m48 72V96"/><path d="M32 200h192"/></svg></span>
+          <h3>대시보드 인사이트</h3><p>총/일평균 · 전기간 비교 · 최다 사용일 · 상위 앱. 상황이 보인다.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M200 168a56 56 0 0 0-56-56h-8"/><circle cx="136" cy="112" r="40"/><path d="M128 200c-24 0-40-16-56-32s-32-32-56-32M48 136c-16 8-24 24-16 40"/></svg></span>
+          <h3>GPS/IP 위치 추적</h3><p>연결 위치 지도 핀과 이동 이력 타임라인으로 내 사용 경로를 확인.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M72 72H24v32M184 72h48v32"/><path d="M24 88c16 48 48 72 80 72s64-24 80-72"/><circle cx="104" cy="104" r="8" fill="currentColor"/></svg></span>
+          <h3>연결 품질 모니터링</h3><p>DNS+게이트웨이 Ping RTT. 지속 위반 → 경고, 복구 자동 감지.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M128 32l96 32v64c0 64-40 96-96 128-56-32-96-64-96-128V64Z"/><path d="m88 128 24 24 56-56"/></svg></span>
+          <h3>스마트 절약 모드</h3><p>핫스팟 감지 시 softwareupdate·TimeMachine off, Apple 업데이트 서버 차단.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><circle cx="128" cy="128" r="96"/><path d="M32 128h192M128 32c40 40 40 152 0 192M128 32c-40 40-40 152 0 192"/></svg></span>
+          <h3>DNS 프리셋</h3><p>1.1.1.1 / 8.8.8.8 프리셋을 시스템 네트워크 설정에 즉시 반영.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M40 96v64M88 64v128M136 40v176M184 80v96M232 96v64"/></svg></span>
+          <h3>앱별 트래픽 순위</h3><p>nettop 기반 — 어느 앱이 얼마나 쓰는지 실시간 소비범 명단.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="64" width="192" height="128" rx="16"/><path d="M72 128h40M168 128h16M56 160h24M176 160h24"/><rect x="192" y="104" width="32" height="24" rx="6"/></svg></span>
+          <h3>배터리 마니아</h3><p>슬립 시 폴링 중지, 팝오버 닫힘 시 tick 중지, 타이머 tolerance로 전력 최소화.</p>
+        </div>
+        <div class="card">
+          <span class="icon" aria-hidden="true"><svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><rect x="40" y="88" width="176" height="96" rx="8"/><path d="M96 136h64M128 88v-16a16 16 0 0 1 16-16h8"/><path d="M168 112h24M168 144h16"/></svg></span>
+          <h3>네이티브 &amp; 프라이버시</h3><p>Swift 6 / SQLite 로컬 저장. 데이터는 내 맥 안에서만.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">How it works</div>
+        <h2>설치하고, 연결하고, 지켜보세요</h2>
+        <p>두 번의 클릭으로 감시 카메라가 켜집니다.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <span class="num">01</span>
+          <h3>설치</h3>
+          <p>GitHub 릴리스에서 다운로드 후, 터미널에서 Gatekeeper 경고를 해제하고 실행합니다.</p>
+        </div>
+        <div class="step">
+          <span class="num">02</span>
+          <h3>핫스팟 연결</h3>
+          <p>iPhone/Android 테더링을 켜면 SSID 기반 프로필이 자동 등록되고 절약 모드가 준비됩니다.</p>
+        </div>
+        <div class="step">
+          <span class="num">03</span>
+          <h3>실시간 감시</h3>
+          <p>메뉴바에서 속도·사용량·QoS 게이지를 확인하고, 앱별 낭비범을 추적합니다.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -223,8 +366,9 @@
   <section class="section" id="screenshots">
     <div class="container">
       <div class="section-head">
+        <div class="eyebrow">Screenshots</div>
         <h2>직접 보세요</h2>
-        <p>메뉴바 팝오버와 사용량 리포트, 이렇게 보입니다.</p>
+        <p>팝오버와 리포트, 실제 모습 그대로입니다.</p>
       </div>
       <div class="screenshots">
         <div class="shot">
@@ -232,7 +376,11 @@
           <div class="cap">팝오버 · 요약 모드</div>
         </div>
         <div class="shot">
-          <img src="images/usage-report.png" alt="사용량 리포트 스크린샷">
+          <img src="images/popover-qos.png" alt="QoS 방지 게이지 스크린샷">
+          <div class="cap">QoS 방지 게이지</div>
+        </div>
+        <div class="shot">
+          <img src="images/popover-report.png" alt="사용량 리포트 스크린샷">
           <div class="cap">사용량 리포트</div>
         </div>
       </div>
@@ -244,7 +392,10 @@
       <div class="banner">
         <h2>데이터가 경고등을 켜기 전에,<br>먼저 눈치채는 앱.</h2>
         <p>macOS 14+ · Apple Silicon / Intel · 100% 네이티브</p>
-        <a class="btn btn-primary" href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">⬇️ 지금 다운로드</a>
+        <a class="btn btn-primary" href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">
+          <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 40v112m0 0 40-40m-40 40L88 112"/><path d="M200 168v24a24 24 0 0 1-24 24H80a24 24 0 0 1-24-24v-24"/></svg>
+          지금 다운로드
+        </a>
       </div>
     </div>
   </section>
@@ -252,21 +403,27 @@
 
 <footer>
   <div class="container">
-    <a href="https://github.com/BoraSarang/TetherLens" target="_blank">BoraSarang/TetherLens</a>
+    <a href="https://github.com/BoraSarang/TetherLens" target="_blank" rel="noopener">BoraSarang/TetherLens</a>
     &nbsp;·&nbsp; © 2026 &nbsp;·&nbsp; <a href="https://github.com/BoraSarang/TetherLens/blob/main/docs/PRD.md">PRD</a>
   </div>
 </footer>
 
 <script>
-  // 실시간 느낌: 값이 살짝 변동하며 텔레메트리 애니메이션 (데모용)
-  function fmt(kbps, unit){ return (kbps/1000 >= 1) ? (kbps/1000).toFixed(1)+' '+unit : Math.max(kbps,1).toFixed(0)+' KB/s'; }
+  // 데모 텔레메트리 — 실시간 느낌 (실제 측정값 아님, 데모 명시)
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function fmt(kbps){ return (kbps/1000 >= 1) ? (kbps/1000).toFixed(1)+' MB/s' : Math.max(kbps,1).toFixed(0)+' KB/s'; }
   let lastUp=120, lastDown=1200;
-  setInterval(() => {
+  const tick = () => {
     lastUp = lastUp*0.92 + Math.random()*90;
     lastDown = lastDown*0.94 + Math.random()*700;
-    document.getElementById('up').textContent = fmt(lastUp,'MB/s');
-    document.getElementById('down').textContent = fmt(lastDown,'MB/s');
-  }, 1600);
+    document.getElementById('up').textContent = fmt(lastUp);
+    document.getElementById('down').textContent = fmt(lastDown);
+  };
+  if (!reduced) {
+    setInterval(tick, 1600);
+  } else {
+    tick();
+  }
 </script>
 
 </body>

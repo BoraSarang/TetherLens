@@ -42,6 +42,22 @@ struct AboutView: View {
                 .font(TLFont.caption)
                 .foregroundColor(TLPalette.accent)
                 .underline()
+
+                Button("github.com/BoraSarang/TetherLens") {
+                    NSWorkspace.shared.open(URL(string: "https://github.com/BoraSarang/TetherLens")!)
+                }
+                .buttonStyle(.plain)
+                .font(TLFont.caption)
+                .foregroundColor(TLPalette.accent)
+                .underline()
+
+                Button("borasarang.github.io/TetherLens") {
+                    NSWorkspace.shared.open(URL(string: "https://borasarang.github.io/TetherLens")!)
+                }
+                .buttonStyle(.plain)
+                .font(TLFont.caption)
+                .foregroundColor(TLPalette.accent)
+                .underline()
             }
 
             Spacer()
@@ -52,7 +68,7 @@ struct AboutView: View {
         }
         .padding(24)
         .padding(.bottom, TLSpace.xl)
-        .frame(width: TLSize.aboutSheet, height: 340)
+        .frame(width: TLSize.aboutSheet, height: 380)
     }
 
     private func detailRow(label: String, value: String) -> some View {
