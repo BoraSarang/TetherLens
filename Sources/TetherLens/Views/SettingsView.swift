@@ -30,6 +30,7 @@ struct SettingsView: View {
     @State private var ruleTriggerRaw = AutomationRule.TriggerType.onConnect.rawValue
     @State private var ruleActionRaw = AutomationRule.ActionType.launchApp.rawValue
     @State private var ruleTarget = ""
+    @State private var selectedTab = 0
 
     init() {
         let s = SettingsManager.shared
@@ -57,27 +58,48 @@ struct SettingsView: View {
 
     var body: some View {
         // 맥 설정 앱 컨벤션 (macos-app-design §17): 상단 탭 + Form(.grouped) 섹션 카드 + 닫기 버튼 없음
-        TabView {
+        TabView(selection: $selectedTab) {
             menuBarTab
                 .tabItem { Label(Localized.menuBar, systemImage: "menubar.rectangle") }
+                .tag(0)
             permissionsTab
                 .tabItem { Label(Localized.permissions, systemImage: "lock.shield") }
+                .tag(1)
             notificationsTab
                 .tabItem { Label(Localized.notifications, systemImage: "bell") }
+                .tag(2)
             performanceTab
                 .tabItem { Label(Localized.performance, systemImage: "gauge.with.dots.needle.bottom.50percent") }
+                .tag(3)
             automationTab
                 .tabItem { Label(Localized.automationTitle, systemImage: "bolt") }
+                .tag(4)
         }
         .frame(width: TLSize.settingsWindow.w, height: TLSize.settingsWindow.h)
         .onAppear {
             refreshPermissions()
+            pinWindowTitle()
+        }
+        .onChange(of: selectedTab) { _, _ in
+            pinWindowTitle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didUpdateNotification)) { note in
+            guard let win = note.object as? NSWindow, win.isVisible, win.title != Localized.settings else { return }
+            win.title = Localized.settings
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshPermissions()
         }
         .onDisappear {
             applyPollingIntervals()
+        }
+    }
+
+    // Settings scene은 TabView 선택 탭 이름이 창 제목에 반영되므로 "설정"으로 고정 (v0.30)
+    private func pinWindowTitle() {
+        DispatchQueue.main.async {
+            guard let win = NSApp.keyWindow, win.title != Localized.settings else { return }
+            win.title = Localized.settings
         }
     }
 
