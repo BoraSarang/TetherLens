@@ -14,7 +14,6 @@ struct AppTrafficView: View {
 
     var body: some View {
         VStack(spacing: TLSpace.xl) {
-            headerView
             if monitor.apps.isEmpty {
                 emptyView
             } else {
@@ -23,6 +22,22 @@ struct AppTrafficView: View {
         }
         .padding(TLSpace.inset)
         .frame(width: TLSize.trafficWindow.w, height: TLSize.trafficWindow.h)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                if isBlockingActive {
+                    Label(Localized.blockingOn, systemImage: "hand.raised.fill")
+                        .font(TLFont.caption.bold())
+                        .foregroundColor(TLPalette.danger)
+                }
+                Toggle(Localized.excludeSystem, isOn: $showSystemProcesses)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .font(TLFont.caption)
+                Button(Localized.resetTraffic) { confirmReset = true }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+        }
         .onAppear {
             // 시트가 열려 있는 동안에만 nettop 기반 앱 트래픽을 수집 (에너지 최적화)
             TrafficMonitor.shared.acquire(reason: .sheet)
@@ -57,26 +72,6 @@ struct AppTrafficView: View {
                 .cornerRadius(TLRound.medium)
                 .shadow(radius: 10)
             }
-        }
-    }
-
-    private var headerView: some View {
-        HStack {
-            Text(Localized.appTraffic)
-                .font(TLFont.headline)
-            Spacer()
-            if isBlockingActive {
-                Label(Localized.blockingOn, systemImage: "hand.raised.fill")
-                    .font(TLFont.caption.bold())
-                    .foregroundColor(TLPalette.danger)
-            }
-            Toggle(Localized.excludeSystem, isOn: $showSystemProcesses)
-                .toggleStyle(.checkbox)
-                .controlSize(.small)
-                .font(TLFont.caption)
-            Button(Localized.resetTraffic) { confirmReset = true }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
         }
     }
 

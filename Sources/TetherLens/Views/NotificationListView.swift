@@ -4,22 +4,7 @@ struct NotificationListView: View {
     @ObservedObject private var manager = NotificationManager.shared
 
     var body: some View {
-        VStack(spacing: TLSpace.xl) {
-            HStack {
-                Text(Localized.notificationListTitle)
-                    .font(TLFont.headline)
-                Spacer()
-                if !manager.notifications.isEmpty {
-                    Button(Localized.clearAll) { manager.clearAll() }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                }
-            }
-            .padding(.horizontal, TLSpace.xxl)
-            .padding(.top, TLSpace.xxl)
-
-            Divider()
-
+        VStack(spacing: 0) {
             if manager.notifications.isEmpty {
                 Spacer()
                 Text(Localized.noNotifications)
@@ -48,6 +33,15 @@ struct NotificationListView: View {
             }
         }
         .frame(width: TLSize.notificationsWindow.w, height: TLSize.notificationsWindow.h)
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                if !manager.notifications.isEmpty {
+                    Button(Localized.clearAll) { manager.clearAll() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            }
+        }
     }
 
     private func notificationIcon(for type: AppNotification.NotificationType) -> String {
