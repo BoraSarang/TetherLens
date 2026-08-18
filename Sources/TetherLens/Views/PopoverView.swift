@@ -10,7 +10,7 @@ struct PopoverView: View {
     let onTogglePin: (() -> Void)?
     @State private var pinned = false
 
-    private struct PingAlert {
+    private struct PingAlert: Equatable {
         let message: String
         let type: AppNotification.NotificationType
     }
@@ -160,18 +160,27 @@ struct PopoverView: View {
         .onReceive(NotificationCenter.default.publisher(for: .init("popoverWillShow"))) { _ in
             resetPopoverState()
         }
+        .animation(.easeOut(duration: 0.2), value: quotaAlertMessage)
+        .animation(.easeOut(duration: 0.2), value: pingAlert)
+        .animation(.easeOut(duration: 0.2), value: copiedIPMessage)
+        .animation(.easeOut(duration: 0.2), value: summaryMode)
+        .animation(.easeOut(duration: 0.2), value: expandedConnectionInfo)
+        .animation(.easeOut(duration: 0.2), value: expandedAddressInfo)
     }
 
     @ViewBuilder
     private var bannerStack: some View {
         if let msg = quotaAlertMessage {
             quotaBanner(msg)
+                .transition(.move(edge: .top).combined(with: .opacity))
         }
         if let alert = pingAlert {
             pingBanner(alert)
+                .transition(.move(edge: .top).combined(with: .opacity))
         }
         if let msg = copiedIPMessage {
             copiedBanner(msg)
+                .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 
@@ -905,7 +914,9 @@ struct PopoverView: View {
             Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
         }
         .contentShape(Rectangle())
-        .onTapGesture { isExpanded.wrappedValue.toggle() }
+        .onTapGesture {
+            withAnimation(.easeOut(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
+        }
         .onHover { inside in
             if inside { NSCursor.pointingHand.push() }
             else { NSCursor.pop() }

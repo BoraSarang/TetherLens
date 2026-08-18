@@ -36,6 +36,7 @@ struct QoSGauge: View {
                     RoundedRectangle(cornerRadius: TLRound.small)
                         .fill(gaugeColor)
                         .frame(width: geometry.size.width * ratio, height: 12)
+                        .animation(.easeOut(duration: 0.5), value: ratio)
                 }
             }
             .frame(height: 12)

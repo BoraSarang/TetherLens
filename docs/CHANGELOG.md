@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.29.0] — 2026-08-18 — 맥 앱 전면 리디자인 Phase 1~4 (구조 + 디자인 시스템 + 화면별 정제 + DebugPanel)
+## [0.29.0] — 2026-08-18 — 맥 앱 전면 리디자인 Phase 1~5 (구조 + 디자인 시스템 + 화면별 정제 + DebugPanel + 모션)
 
 > 사용자 요청: 3개 스킬(macos-app-design / ios-the-final-5-percent / apple-design) 기반으로 "아, 맥 앱이구나" 느낌의 전체 UI 리디자인. 확정 사항: 시트→별도 윈도우 전환 / 메뉴바 아이콘+숫자 병행 / Phase 1~2 먼저. 계획: docs/plans/PLAN_v0.29.0_macos.md
 
@@ -23,6 +23,12 @@
 - **Window 뷰 닫기 버튼 제거** — AppTraffic/Notifications/About의 하단 `닫기` 버튼 + `onClose` + 래퍼의 `@Environment(\.dismiss)` 제거 (시스템 창 닫기로 통일)
 - **Window 뷰 툴바 통일** — AppTraffic(차단 ON 배지/시스템 토글/초기화)와 Notifications(전체 지우기) 헤더 제거 → `.toolbar(.primaryAction)`로 이동
 - **DebugPanel 시스템 팔레트 정제** — 하드코딩 검정 배경/흰 텍스트 → `Color(.windowBackgroundColor)`+`Color(.textBackgroundColor)` 다크/라이트 자동 대응. 이모지(🐛📌X) → SF Symbol(`ladybug`/`arrow.down.to.line`/`xmark`). 로그 레벨 색 하드코딩 RGB → 시스템 색상(`red`/`yellow`/`blue`/`green`/`purple`/`secondary`), 폰트 10pt→11pt SF Mono
+
+### Changed (Phase 5 — 모션, T-164)
+- **배너 모션** — quota/ping/copied 배너 등장·퇴장 `move(edge:.top)+opacity`(0.2s easeOut)
+- **섹션 모션** — 연결 정보/주소 정보 접기·펼치기 0.2s easeOut (withAnimation)
+- **QoSGauge 게이지 바** — 사용량 비율 변화 시 0.5s easeOut으로 부드럽게 채움
+- **PingAlert Equatable 추가** — `.animation(value:)` 연동
 
 ### Fixed
 - **`Settings { EmptyView() }` 제거 (T-157)** — 실제 SettingsView로 교체, 설정 창이 별도 윈도우로 열림

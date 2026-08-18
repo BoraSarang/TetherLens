@@ -1,6 +1,6 @@
 # 세션 로그 — 2026-08-18 (macOS)
 
-## v0.29.0 — 맥 앱 전면 리디자인 Phase 1~4
+## v0.29.0 — 맥 앱 전면 리디자인 Phase 1~5
 
 ### 1. 무엇을 (T-번호)
 - T-155 Theme.swift Display P3 브랜드 팔레트 + on-color 토큰 ✅
@@ -12,6 +12,7 @@
 - T-161 검증 (진행 중)
 - T-162 Phase 3 화면별 정제: SettingsView TabView+Form(.grouped), UsageReportView NavigationSplitView, Window 뷰 닫기 버튼 제거 ✅
 - T-163 Phase 4 DebugPanel: 시스템 팔레트 + SF Symbol 정제 ✅
+- T-164 Phase 5 모션: 배너/섹션 전환 0.2s + QoSGauge 채움 0.5s ✅
 
 ### 2. 플랫폼
 - [macOS]
@@ -23,6 +24,7 @@
 - 메뉴바 스크린샷 docs/screenshots/macos/v0.29_menubar.png (90KB) — **이미지 검증은 사용자 확인 필요 (텍스트 전용 모델)**
 - Phase 3 (T-162): SettingsView 재구성 + UsageReportView NavigationSplitView + 닫기 버튼 제거 — 빌드/테스트 통과, 사용자 육안 확인 필요
 - Phase 4 (T-163): DebugPanel 시스템 팔레트(다크/라이트 대응) + SF Symbol(ladybug/arrow.down.to.line/xmark) — 빌드/테스트 통과, 사용자 육안 확인 필요
+- Phase 5 (T-164): 모션 — 배너 move+opacity, 섹션 확장 0.2s, QoSGauge 바 0.5s. PingAlert Equatable 추가 — 빌드/테스트 통과
 
 ### 4. 남은 TODO
 - T-161/T-162 검증 마무리: 윈도우 5종 열림 + Settings 탭 + 리포트 사이드바 + 다크/라이트 확인 → 커밋/릴리즈

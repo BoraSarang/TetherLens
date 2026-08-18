@@ -330,7 +330,7 @@
 | 153 | 스크린샷 검증: 데스크톱/모바일 렌더링 + docs/screenshots 저장 + 다운로드 링크 302 확인 | P2 | ✅ |
 | 154 | 검증: test.sh + build-macos.sh debug + 문서/커밋/릴리즈 | P1 | ✅ |
 
-## 🔄 v0.29.0 — 맥 앱 전면 리디자인 Phase 1~4 (구조 + 디자인 시스템 + 화면별 정제 + DebugPanel) (2026-08-15)
+## 🔄 v0.29.0 — 맥 앱 전면 리디자인 Phase 1~5 (구조 + 디자인 시스템 + 화면별 정제 + DebugPanel + 모션) (2026-08-15)
 
 > 사용자 요청: 3개 스킬(macos-app-design / ios-the-final-5-percent / apple-design) 기반 전체 UI/UX 변경. 목표 "아.. 맥 앱이구나". 확정: 별도 윈도우 전환 / 메뉴바 아이콘+숫자 병행 / Phase 1~2 먼저. 계획: docs/plans/PLAN_v0.29.0_macos.md
 
@@ -345,5 +345,6 @@
 | 161 | 검증: test.sh/build + 6화면 스크린샷 + 다크/라이트 + 문서/커밋/릴리즈 | P1 | 🔄 |
 | 162 | Phase 3 화면별 정제: Settings TabView+Form(.grouped) / UsageReport NavigationSplitView / Window 뷰 닫기 버튼 제거 | P1 | ✅ |
 | 163 | Phase 4 DebugPanel: 시스템 팔레트(다크/라이트 대응) + SF Symbol 정제 | P1 | ✅ |
+| 164 | Phase 5 모션: 배너/섹션 전환 0.2s + QoSGauge 채움 0.5s | P2 | ✅ |
 
-> 커밋: dab5d83 (T-155~160, Phase 1~2), 0c8b814 (T-162, Phase 3), 0868dc5 (Window 툴바 통일)
+> 커밋: dab5d83 (T-155~160, Phase 1~2), 0c8b814 (T-162, Phase 3), 0868dc5 (Window 툴바 통일), 7d72b5a (T-163, Phase 4)
