@@ -13,6 +13,7 @@
 - T-162 Phase 3 화면별 정제: SettingsView TabView+Form(.grouped), UsageReportView NavigationSplitView, Window 뷰 닫기 버튼 제거 ✅
 - T-163 Phase 4 DebugPanel: 시스템 팔레트 + SF Symbol 정제 ✅
 - T-164 Phase 5 모션: 배너/섹션 전환 0.2s + QoSGauge 채움 0.5s ✅
+- **릴리즈 완료**: v0.29.0 태그 + main push + release 빌드 (DebugPanel OFF) — 리포트 잘림 수정(e7f3d1f) 후 사용자 "정상이다" 확인
 
 ### 2. 플랫폼
 - [macOS]
@@ -27,8 +28,8 @@
 - Phase 5 (T-164): 모션 — 배너 move+opacity, 섹션 확장 0.2s, QoSGauge 바 0.5s. PingAlert Equatable 추가 — 빌드/테스트 통과
 
 ### 4. 남은 TODO
-- T-161/T-162 검증 마무리: 윈도우 5종 열림 + Settings 탭 + 리포트 사이드바 + 다크/라이트 확인 → 커밋/릴리즈
-- (이후 Phase) 화면별 정제(온보딩 등) / DebugPanel / 모션
+- T-161 잔여: 설정 5탭/팝오버/DebugPanel 육안 확인 (사용자) — 리포트는 확인 완료("정상이다")
+- (차기 버전 후보) 화면별 정제 마무리(온보딩), Cmd-K 팔레트, 메뉴바 단축키, 스크린샷 검증
 
 ### 5. 다음 에이전트 전달 로그
 - UsageReportView: NavigationSplitView + List(selection:$viewMode) + .listStyle(.sidebar), toolbar .primaryAction에 내보내기. `onClose`/`TLSize.sidebarWidth` 제거됨
