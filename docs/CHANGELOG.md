@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.30.0] — 2026-08-18 — 메뉴바 강화 + Cmd-K 커맨드 팔레트
+
+> macos-app-design 스킬 §4~§6 미충족 항목(메뉴바/단축키/Cmd-K) 보완. 계획: docs/plans/PLAN_v0.30.0_macos.md
+
+### Added
+- **메뉴바 Window/View 메뉴 + 단축키 (T-165)** — `.commands` 체이닝: Window 메뉴에 사용량 리포트(⌘1)/앱 트래픽(⌘2)/알림(⌘3)/정보(⌘4) 열기, View 메뉴에 팝오버 토글(⌘⇧P)/DebugPanel 토글(⌘⇧D, DEBUG만). 팝오버 토글은 `MenuBarManager`의 `"togglePopover"` observer(`handleTogglePopover`) 경유
+- **Cmd-K 커맨드 팔레트 (T-166)** — `CommandPaletteView`(420×320, `.regularMaterial` 라운드 카드 + 시스템 팔레트) + `Window(id: "commandPalette")` scene(hiddenTitleBar + contentSize). `@Environment(\.openWindow)`/`openSettings`으로 직접 창 열기. 검색 필터 + `↑↓`/Enter/Esc(`onKeyPress`) + 행 선택 accent 배경. 액션: 리포트/트래픽/알림/설정/정보/팝오버 토글/업데이트 확인/종료 + (DEBUG) DebugPanel
+- **`Localized` 키** — `popoverToggle`/`commandPalette`/`palettePlaceholder` 신설, `debugPanel` 이모지(🐛) 제거
+
+### Changed
+- **CommandPalette 설계 변경** — 초기 NSPanel(`CommandPaletteController`) 계획 → SwiftUI Window scene. NSHostingController는 `openWindow`/`openSettings` 환경값을 쓸 수 없어 팔레트가 직접 창을 열 수 없기 때문. 팝오버 시트 액션(프로필/DNS/절약모드/IP히스토리)은 팔레트에서 제외
+
 ## [0.29.0] — 2026-08-18 — 맥 앱 전면 리디자인 Phase 1~5 (구조 + 디자인 시스템 + 화면별 정제 + DebugPanel + 모션)
 
 > 사용자 요청: 3개 스킬(macos-app-design / ios-the-final-5-percent / apple-design) 기반으로 "아, 맥 앱이구나" 느낌의 전체 UI 리디자인. 확정 사항: 시트→별도 윈도우 전환 / 메뉴바 아이콘+숫자 병행 / Phase 1~2 먼저. 계획: docs/plans/PLAN_v0.29.0_macos.md

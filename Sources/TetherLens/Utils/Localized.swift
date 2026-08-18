@@ -139,7 +139,10 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
     static var lowPowerModeOff: String { value(kr: "절전 모드 꺼짐", en: "Low Power Mode Off") }
   static var checkUpdates: String { value(kr: "업데이트 확인", en: "Check for Updates") }
   static var about: String { value(kr: "정보", en: "About") }
-  static var debugPanel: String { value(kr: "🐛 디버그 패널", en: "🐛 Debug Panel") }
+  static var debugPanel: String { value(kr: "디버그 패널", en: "Debug Panel") }
+  static var popoverToggle: String { value(kr: "팝오버 열기/닫기", en: "Toggle Popover") }
+  static var commandPalette: String { value(kr: "커맨드 팔레트", en: "Command Palette") }
+  static var palettePlaceholder: String { value(kr: "명령 입력…", en: "Type a command…") }
 
   // MARK: - Settings
   static var showTotalInMenuBar: String { value(kr: "메뉴바에 사용량 표시", en: "Show Usage in Menu Bar") }

@@ -97,6 +97,15 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             self, selector: #selector(handleBlockedAppsChanged),
             name: .init("blockedAppsChanged"), object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleTogglePopover),
+            name: .init("togglePopover"), object: nil
+        )
+    }
+
+    /// ⌘⇧P 메뉴/단축키에서 팝오버를 연다 (v0.30).
+    @objc private func handleTogglePopover() {
+        togglePopover()
     }
 
     /// 시스템 슬립 진입 — 모든 폴링을 일시중지한다 (배터리/CPU 절감).

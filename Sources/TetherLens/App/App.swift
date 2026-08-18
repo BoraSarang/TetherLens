@@ -9,6 +9,40 @@ struct TetherLensApp: App {
         Settings {
             SettingsWindow()
         }
+        .commands {
+            CommandGroup(after: .windowArrangement) {
+                Divider()
+                Button(Localized.usageReport) { openWindow(id: "usageReport") }
+                    .keyboardShortcut("1", modifiers: .command)
+                Button(Localized.appTrafficButton) { openWindow(id: "appTraffic") }
+                    .keyboardShortcut("2", modifiers: .command)
+                Button(Localized.notificationList) { openWindow(id: "notifications") }
+                    .keyboardShortcut("3", modifiers: .command)
+                Button(Localized.about) { openWindow(id: "about") }
+                    .keyboardShortcut("4", modifiers: .command)
+            }
+            CommandGroup(after: .sidebar) {
+                Divider()
+                Button(Localized.popoverToggle) {
+                    NotificationCenter.default.post(name: .init("togglePopover"), object: nil)
+                }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+                #if DEBUG
+                Button(Localized.debugPanel) { DebugPanelController.shared.toggle() }
+                    .keyboardShortcut("d", modifiers: [.command, .shift])
+                #endif
+                Divider()
+                Button(Localized.commandPalette) { openWindow(id: "commandPalette") }
+                    .keyboardShortcut("k", modifiers: .command)
+            }
+        }
+
+        Window(Localized.commandPalette, id: "commandPalette") {
+            CommandPaletteView()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultSize(width: 420, height: 320)
 
         Window(Localized.string("사용량 리포트", "Usage Report"), id: "usageReport") {
             UsageReportWindow()
