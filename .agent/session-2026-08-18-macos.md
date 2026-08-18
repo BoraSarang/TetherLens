@@ -1,5 +1,52 @@
 # 세션 로그 — 2026-08-18 (macOS)
 
+## v0.30.0 — 메뉴바 강화 + Cmd-K 커맨드 팔레트
+
+### 1. 무엇을 (T-번호)
+- T-165 메뉴바 강화: `.commands` — Window 메뉴(리포트 ⌘1/트래픽 ⌘2/알림 ⌘3/정보 ⌘4) + View 메뉴(팝오버 ⌘⇧P, DebugPanel ⌘⇧D) ✅
+  - `MenuBarManager`에 `"togglePopover"` observer(`handleTogglePopover`) 추가, App.swift `@Environment(\.openWindow)`로 창 열기
+- T-166 Cmd-K 커맨드 팔레트 ✅
+  - `CommandPaletteView`(420×320, `.regularMaterial` 라운드 카드 + 시스템 팔레트) + `Window(id: "commandPalette")` scene(hiddenTitleBar + contentSize)
+  - `⌘K`는 `.commands`의 Button(openWindow) — NSPanel 전역 모니터 대신 표준 앱 메뉴 단축키
+  - 액션: 리포트/트래픽/알림/설정/정보/팝오버 토글/업데이트 확인/종료 + (DEBUG) DebugPanel — `@Environment(\.openWindow)`/`openSettings` 직접 실행
+  - 검색 필터 + `↑↓`/Enter/Esc(`onKeyPress`) + 행 선택 accent 배경, `Localized.palettePlaceholder` 안내 문구
+- T-167 검증/문서/커밋: 빌드·테스트 통과, 커밋 완료 (릴리즈 대기 중) 🔄
+
+### 2. 플랫폼
+- [macOS]
+
+### 3. 빌드 결과 + PERF + CACHE
+- `./scripts/build-macos.sh debug` 성공 (Build complete!)
+- `./scripts/test.sh` 43개 테스트 7 스위트 통과
+- 커밋: feat(macos) v0.30.0 (7 files, +303) — 설계 변경: NSPanel(CommandPaletteController) 계획 → SwiftUI Window scene (openWindow/openSettings 환경값 필요)
+- **사용자 이슈 미확인**: "왜 설정 화면의 타이틀이 메뉴바 니?" — macOS 표준 동작일 가능성 높으나, 사용자 답변 대기 중. 스크린샷 확인 필요
+
+### 4. 남은 TODO
+- T-167: 사용자 수동 확인(메뉴바 단축키 ⌘1~4/⌘⇧P/⌘⇧D + Cmd-K 팔레트 검색·↑↓·Esc) 후 릴리즈 (태그 v0.30.0 + main push + release 빌드)
+- 사용자 질문("설정 타이틀이 메뉴바?") 답변 확정 필요
+- (차기 후보) 온보딩 정제, 팝오버 시트 액션(프로필/DNS/절약모드/IP히스토리) 팔레트 연동
+
+### 5. 다음 에이전트 전달 로그
+- App.swift: `.commands`(Settings scene 체이닝) — CommandGroup(.windowArrangement) 창 4종(⌘1~4), CommandGroup(.sidebar) 팝오버 토글(⌘⇧P, NotificationCenter "togglePopover") + DebugPanel(⌘⇧D, DEBUG) + ⌘K 팔레트. `Window(id:"commandPalette")` scene 추가
+- MenuBarManager: init의 observer 블록에 `handleTogglePopover`(#selector, "togglePopover") 추가 — `togglePopover()` 재사용
+- CommandPaletteView: `TextField`에 `onKeyPress(.upArrow/.downArrow/.return/.escape)` — **TextField에서 onKeyPress가 실제로 동작하는지 사용자 확인 필요** (안 되면 NSEvent 모니터 전환)
+- 배열 리터럴 내 `#if DEBUG`는 trailing closure와 충돌 → `var items = [...]` 후 `items.append()` 패턴 사용
+- `.windowLevel(.floating)`은 macOS 15+ API라 사용 불가 (타겟 macOS 14) — 제거함
+- openSettings은 App.swift에서 미사용 → CommandPaletteView에서만 `@Environment(\.openSettings)` 사용
+
+### 6. 문서 업데이트 목록
+- docs/plans/PLAN_v0.30.0_macos.md (신규 + 설계 변경 반영)
+- docs/TODO.md T-165~166 ✅ / T-167 🔄
+- docs/CHANGELOG.md v0.30.0 반영
+
+### 7. 오프라인 큐 상태
+- 해당 없음 (macOS 앱, 서버 미사용)
+
+### 8. E2E/k6
+- 해당 없음 (macOS). 수동 체크리스트는 docs/tests/v0.21.0_macos.md
+
+---
+
 ## v0.29.0 — 맥 앱 전면 리디자인 Phase 1~5
 
 ### 1. 무엇을 (T-번호)
