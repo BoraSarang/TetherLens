@@ -11,6 +11,7 @@
   - 액션: 리포트/트래픽/알림/설정/정보/팝오버 토글/업데이트 확인/종료 + (DEBUG) DebugPanel — `@Environment(\.openWindow)`/`openSettings` 직접 실행
   - 검색 필터 + `↑↓`/Enter/Esc(`onKeyPress`) + 행 선택 accent 배경, `Localized.palettePlaceholder` 안내 문구
 - T-167 검증/문서/커밋: 빌드·테스트 통과, 커밋 완료 (릴리즈 대기 중) 🔄
+- **설정 창 제목 버그 수정** — Settings scene은 TabView 선택 탭 label이 창 제목에 반영되는 문제(첫 탭 "메뉴바") → `NSWindow.didUpdateNotification` 구독 + `onChange(selectedTab)`로 "설정" 고정. 커밋 82f0111, 창 닫기/재오픈 검증 완료
 
 ### 2. 플랫폼
 - [macOS]
@@ -22,8 +23,7 @@
 - **사용자 이슈 미확인**: "왜 설정 화면의 타이틀이 메뉴바 니?" — macOS 표준 동작일 가능성 높으나, 사용자 답변 대기 중. 스크린샷 확인 필요
 
 ### 4. 남은 TODO
-- T-167: 사용자 수동 확인(메뉴바 단축키 ⌘1~4/⌘⇧P/⌘⇧D + Cmd-K 팔레트 검색·↑↓·Esc) 후 릴리즈 (태그 v0.30.0 + main push + release 빌드)
-- 사용자 질문("설정 타이틀이 메뉴바?") 답변 확정 필요
+- T-167: 릴리즈 진행 (태그 v0.30.0 + main push + release 빌드)
 - (차기 후보) 온보딩 정제, 팝오버 시트 액션(프로필/DNS/절약모드/IP히스토리) 팔레트 연동
 
 ### 5. 다음 에이전트 전달 로그
