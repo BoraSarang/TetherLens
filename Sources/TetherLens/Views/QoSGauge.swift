@@ -13,11 +13,11 @@ struct QoSGauge: View {
         let greenBoundary = SavingModeManager.shared.greenThreshold
         let orangeBoundary = SavingModeManager.shared.orangeThreshold
         if ratio < greenBoundary {
-            return .green
+            return TLPalette.success
         } else if ratio < orangeBoundary {
-            return .orange
+            return TLPalette.upload
         } else {
-            return .red
+            return TLPalette.danger
         }
     }
 
@@ -29,11 +29,11 @@ struct QoSGauge: View {
         VStack(alignment: .leading, spacing: 2) {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: TLRound.small)
                         .fill(Color.gray.opacity(0.2))
                         .frame(height: 12)
 
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: TLRound.small)
                         .fill(gaugeColor)
                         .frame(width: geometry.size.width * ratio, height: 12)
                 }
@@ -44,14 +44,14 @@ struct QoSGauge: View {
                 let pct = Int(ratio * 100)
                 Text(Localized.usagePercent(formatGB(used), formatGB(total), pct))
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(TLPalette.textSecondary)
                 Spacer()
                 Text(Localized.remaining(formatGB(remaining)))
                     .font(.caption2)
                     .foregroundColor(gaugeColor)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .font(TLFont.badge)
+                    .foregroundColor(TLPalette.textSecondary)
             }
         }
     }

@@ -27,7 +27,7 @@ struct AppTrafficView: View {
                 .padding(.bottom, TLSpace.md)
         }
         .padding(TLSpace.inset)
-        .frame(width: TLSize.sheetTraffic, height: 380)
+        .frame(width: TLSize.trafficWindow.w, height: TLSize.trafficWindow.h)
         .onAppear {
             // 시트가 열려 있는 동안에만 nettop 기반 앱 트래픽을 수집 (에너지 최적화)
             TrafficMonitor.shared.acquire(reason: .sheet)

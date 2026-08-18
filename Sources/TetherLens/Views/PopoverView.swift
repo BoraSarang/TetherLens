@@ -15,11 +15,6 @@ struct PopoverView: View {
         let type: AppNotification.NotificationType
     }
 
-    private struct UsageReportConfig: Identifiable {
-        let id = UUID()
-        let preselectedProfileId: UUID?
-    }
-
     @State private var tick = Date()
     @State private var showDNSPicker = false
     @State private var dnsStatusMessage: String?
@@ -29,23 +24,20 @@ struct PopoverView: View {
     @State private var profiles: [Profile] = []
     @State private var showProfileManager = false
     @State private var editingProfile: Profile?
-    @State private var showSettings = false
     @State private var showSavingMode = false
     @State private var savingModeActive = SavingModeManager.shared.isEnabled
-    @State private var usageReportConfig: UsageReportConfig?
-    @State private var showTraffic = false
-    @State private var showAbout = false
     @State private var showIPHistory = false
     @ObservedObject private var trafficMonitor = TrafficMonitor.shared
     @State private var sessionStartTime: Date?
     @State private var quotaAlertMessage: String?
     @State private var pingAlert: PingAlert?
-    @State private var showNotifications = false
     @State private var copiedIPMessage: String?
     @AppStorage("popover_expanded_connection_info") private var expandedConnectionInfo = false
     @AppStorage("popover_expanded_address_info") private var expandedAddressInfo = false
     @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
     @AppStorage("popover_summary_mode") private var summaryMode = true
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     // publisher 정체성 고정 (body 재평가마다 새 Timer가 만들어지는 것을 방지)
     // 자동 시작(autoconnect) 대신 onAppear에서 connect, 닫힘(onDisappear)에서 cancel해 배터리 절감
@@ -74,23 +66,8 @@ struct PopoverView: View {
                     onProfilesChanged: { profiles = ProfileManager.shared.getAllProfiles() }
                 )
             }
-            .sheet(isPresented: $showSettings) {
-                SettingsView(onClose: { showSettings = false })
-            }
             .sheet(isPresented: $showSavingMode) {
                 SavingModeSheet(onClose: { showSavingMode = false })
-            }
-            .sheet(item: $usageReportConfig) { config in
-                UsageReportView(onClose: { usageReportConfig = nil }, preselectedProfileId: config.preselectedProfileId)
-            }
-            .sheet(isPresented: $showTraffic) {
-                AppTrafficView(onClose: { showTraffic = false })
-            }
-            .sheet(isPresented: $showAbout) {
-                AboutView(onClose: { showAbout = false })
-            }
-            .sheet(isPresented: $showNotifications) {
-                NotificationListView(onClose: { showNotifications = false })
             }
             .sheet(isPresented: $showIPHistory) {
                 if let pid = currentProfileId {
@@ -132,14 +109,14 @@ struct PopoverView: View {
         .onReceive(NotificationCenter.default.publisher(for: .init("moreAction"))) { notification in
             guard let action = notification.userInfo?["action"] as? String else { return }
             switch action {
-            case "usageReport": openStatistics()
-            case "appTraffic": showTraffic = true
-            case "notifications": showNotifications = true
+            case "usageReport": openWindow(id: "usageReport")
+            case "appTraffic": openWindow(id: "appTraffic")
+            case "notifications": openWindow(id: "notifications")
             case "profileManager": showProfileManager = true
             case "dnsPreset": showDNSPicker = true
             case "savingMode": openSavingMode()
-            case "settings": showSettings = true
-            case "about": showAbout = true
+            case "settings": openSettings()
+            case "about": openWindow(id: "about")
             default: break
             }
         }
@@ -202,17 +179,17 @@ struct PopoverView: View {
         HStack(spacing: TLSpace.sm) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(TLFont.caption)
-                .foregroundColor(.white)
+                .foregroundColor(TLPalette.onUpload)
             Text(msg)
                 .font(TLFont.caption)
-                .foregroundColor(.white)
+                .foregroundColor(TLPalette.onUpload)
             Spacer()
             Button {
                 quotaAlertMessage = nil
             } label: {
                 Image(systemName: "xmark")
                     .font(TLFont.caption2)
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(TLPalette.onUpload.opacity(0.7))
             }
             .buttonStyle(.plain)
         }
@@ -226,17 +203,17 @@ struct PopoverView: View {
         HStack(spacing: TLSpace.sm) {
             Image(systemName: pingAlertIcon(for: alert.type))
                 .font(TLFont.caption)
-                .foregroundColor(.white)
+                .foregroundColor(pingOnColor(for: alert.type))
             Text(alert.message)
                 .font(TLFont.caption)
-                .foregroundColor(.white)
+                .foregroundColor(pingOnColor(for: alert.type))
             Spacer()
             Button {
                 pingAlert = nil
             } label: {
                 Image(systemName: "xmark")
                     .font(TLFont.caption2)
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(pingOnColor(for: alert.type).opacity(0.7))
             }
             .buttonStyle(.plain)
         }
@@ -250,10 +227,10 @@ struct PopoverView: View {
         HStack(spacing: TLSpace.sm) {
             Image(systemName: "checkmark.circle.fill")
                 .font(TLFont.caption)
-                .foregroundColor(.white)
+                .foregroundColor(TLPalette.onSuccess)
             Text(msg)
                 .font(TLFont.caption)
-                .foregroundColor(.white)
+                .foregroundColor(TLPalette.onSuccess)
             Spacer()
         }
         .padding(.horizontal, TLSpace.lg)
@@ -299,7 +276,7 @@ struct PopoverView: View {
                 .help(pinned ? Localized.unpin : Localized.pinPopover)
             }
             Button {
-                showNotifications = true
+                openWindow(id: "notifications")
             } label: {
                 HStack(spacing: 2) {
                     Image(systemName: "bell")
@@ -582,9 +559,7 @@ struct PopoverView: View {
             QoSGauge(used: totalUsedGB, total: quotaGB)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    if let profile = profile {
-                        usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
-                    }
+                    openWindow(id: "usageReport")
                 }
         } else {
             HStack(spacing: TLSpace.sm) {
@@ -622,7 +597,7 @@ struct PopoverView: View {
             Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
         }
         .contentShape(Rectangle())
-        .onTapGesture { showTraffic = true }
+        .onTapGesture { openWindow(id: "appTraffic") }
         .onHover { inside in
             if inside { NSCursor.pointingHand.push() }
             else { NSCursor.pop() }
@@ -663,14 +638,14 @@ struct PopoverView: View {
                         .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
                 }
             }
-            Button(Localized.showMore) { showTraffic = true }
+            Button(Localized.showMore) { openWindow(id: "appTraffic") }
                 .buttonStyle(.plain)
                 .font(TLFont.caption)
                 .foregroundColor(TLPalette.download)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .contentShape(Rectangle())
-        .onTapGesture { showTraffic = true }
+        .onTapGesture { openWindow(id: "appTraffic") }
     }
 
     private var profileSection: some View {
@@ -692,7 +667,7 @@ struct PopoverView: View {
                     Spacer()
                     VStack(spacing: TLSpace.xs) {
                         Button(Localized.statistics) {
-                            usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
+                            openWindow(id: "usageReport")
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -779,7 +754,7 @@ struct PopoverView: View {
                             Spacer()
                             Button(Localized.statistics) {
                                 showProfileManager = false
-                                usageReportConfig = UsageReportConfig(preselectedProfileId: profile.id)
+                                openWindow(id: "usageReport")
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -848,9 +823,9 @@ struct PopoverView: View {
             .help(summaryMode ? Localized.detailView : Localized.summaryView)
 
             Menu {
-                Button(Localized.usageReport) { openStatistics() }
-                Button(Localized.appTrafficButton) { showTraffic = true }
-                Button(Localized.notificationList) { showNotifications = true }
+                Button(Localized.usageReport) { openWindow(id: "usageReport") }
+                Button(Localized.appTrafficButton) { openWindow(id: "appTraffic") }
+                Button(Localized.notificationList) { openWindow(id: "notifications") }
                 Button(Localized.manageProfiles) { showProfileManager = true }
                 Divider()
                 Button(Localized.dnsPresetApply) { showDNSPicker = true }
@@ -860,9 +835,9 @@ struct PopoverView: View {
                     NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.battery")!)
                 }
                 Divider()
-                Button(Localized.settings) { showSettings = true }
+                Button(Localized.settings) { openSettings() }
                 Button(Localized.checkUpdates) { UpdaterManager.shared.openDownloadPage() }
-                Button(Localized.about) { showAbout = true }
+                Button(Localized.about) { openWindow(id: "about") }
                 #if DEBUG
                 Divider()
                 Button(Localized.debugPanel) { DebugPanelController.shared.toggle() }
@@ -1063,6 +1038,16 @@ struct PopoverView: View {
         }
     }
 
+    private func pingOnColor(for type: AppNotification.NotificationType) -> Color {
+        switch type {
+        case .pingWarning: return TLPalette.onUpload
+        case .pingCritical: return TLPalette.onDanger
+        case .pingRecovery, .connectionRestored: return TLPalette.onSuccess
+        case .connectionLost: return TLPalette.onDownload
+        default: return TLPalette.onUpload
+        }
+    }
+
     private func relativeTimeString(_ date: Date) -> String {
         let interval = -date.timeIntervalSinceNow
         if interval < 60 { return Localized.justNow }
@@ -1072,16 +1057,6 @@ struct PopoverView: View {
         let f = DateFormatter()
         f.dateFormat = "MM/dd"
         return f.string(from: date)
-    }
-
-    private func openSettings() {
-        if #available(macOS 14.0, *) {
-            NSApplication.shared.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        }
-    }
-
-    private func openStatistics() {
-        usageReportConfig = UsageReportConfig(preselectedProfileId: nil)
     }
 
     private func openSavingMode() {
@@ -1098,13 +1073,8 @@ struct PopoverView: View {
         applyingPresetID = nil
         showProfileManager = false
         editingProfile = nil
-        showSettings = false
         showSavingMode = false
-        usageReportConfig = nil
-        showTraffic = false
-        showAbout = false
         showIPHistory = false
-        showNotifications = false
     }
 
     private func flag(from countryCode: String) -> String {

@@ -32,7 +32,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.center()
-        window.title = "TetherLens"
+        window.title = Localized.string("TetherLens", "TetherLens")
         window.isReleasedWhenClosed = false
         window.contentViewController = NSHostingController(rootView: OnboardingView {
             UserDefaults.standard.set(true, forKey: "hasShownOnboarding")

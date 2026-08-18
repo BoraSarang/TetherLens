@@ -68,7 +68,7 @@ struct AboutView: View {
         }
         .padding(24)
         .padding(.bottom, TLSpace.xl)
-        .frame(width: TLSize.aboutSheet, height: 380)
+        .frame(width: TLSize.aboutWindow.w, height: TLSize.aboutWindow.h)
     }
 
     private func detailRow(label: String, value: String) -> some View {

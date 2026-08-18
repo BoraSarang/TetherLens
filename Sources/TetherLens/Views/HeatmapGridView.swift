@@ -92,10 +92,10 @@ struct HeatmapGridView: View {
             .frame(width: 28, alignment: .leading)
           ForEach(0..<24, id: \.self) { hour in
             let data = gridData[day][hour]
-            RoundedRectangle(cornerRadius: 3)
+            RoundedRectangle(cornerRadius: 4)
               .fill(colorForMinutes(data.totalMinutes))
               .frame(width: 18, height: 18)
-              .overlay(selectedDay == day && selectedHour == hour ? RoundedRectangle(cornerRadius: 3).stroke(colorScheme == .dark ? Color.white : Color.black, lineWidth: 1) : nil)
+              .overlay(selectedDay == day && selectedHour == hour ? RoundedRectangle(cornerRadius: 4).stroke(colorScheme == .dark ? Color.white : Color.black, lineWidth: 1) : nil)
               .onHover { hovering in
                 if hovering {
                   select(day: day, hour: hour)
@@ -146,7 +146,7 @@ struct HeatmapGridView: View {
   }
 
   private func legendSwatch(_ color: Color) -> some View {
-    RoundedRectangle(cornerRadius: 2)
+    RoundedRectangle(cornerRadius: 4)
       .fill(color)
       .frame(width: 12, height: 12)
   }

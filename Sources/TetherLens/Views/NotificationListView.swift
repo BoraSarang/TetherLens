@@ -55,7 +55,7 @@ struct NotificationListView: View {
                 .controlSize(.small)
                 .padding(.bottom, TLSpace.xl)
         }
-        .frame(width: TLSize.sheetCompact, height: 320)
+        .frame(width: TLSize.notificationsWindow.w, height: TLSize.notificationsWindow.h)
     }
 
     private func notificationIcon(for type: AppNotification.NotificationType) -> String {

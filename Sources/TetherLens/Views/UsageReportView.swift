@@ -129,7 +129,7 @@ struct UsageReportView: View {
                 rightPanel
             }
         }
-        .frame(width: TLSize.sheetWide, height: 600)
+        .frame(width: TLSize.reportWindow.w, height: TLSize.reportWindow.h)
         .onAppear {
             profiles = ProfileManager.shared.getAllProfiles()
             selectedProfileId = preselectedProfileId ?? allProfilesId

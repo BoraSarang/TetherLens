@@ -328,4 +328,18 @@
 | 151 | AboutView: GitHub(github.com/BoraSarang/TetherLens) + GitHub Pages(borasarang.github.io/TetherLens) 링크 버튼 추가 | P1 | ✅ |
 | 152 | 랜딩 페이지 docs/index.html ui-ux-pro-max 리디자인 (Real-Time/Operations 패턴 + OLED 네온 HUD 스타일, SVG 아이콘, reduced-motion, 반응형) | P1 | ✅ |
 | 153 | 스크린샷 검증: 데스크톱/모바일 렌더링 + docs/screenshots 저장 + 다운로드 링크 302 확인 | P2 | ✅ |
-| 154 | 검증: test.sh + build-macos.sh debug + 문서/커밋/릴리즈 | P1 | 🔄 |
+| 154 | 검증: test.sh + build-macos.sh debug + 문서/커밋/릴리즈 | P1 | ✅ |
+
+## 🔄 v0.29.0 — 맥 앱 전면 리디자인 Phase 1~2 (구조 + 디자인 시스템) (2026-08-15)
+
+> 사용자 요청: 3개 스킬(macos-app-design / ios-the-final-5-percent / apple-design) 기반 전체 UI/UX 변경. 목표 "아.. 맥 앱이구나". 확정: 별도 윈도우 전환 / 메뉴바 아이콘+숫자 병행 / Phase 1~2 먼저. 계획: docs/plans/PLAN_v0.29.0_macos.md
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 155 | Theme.swift: TLPalette Display P3 브랜드 4색 + on-color 토큰 추가 | P1 | 🔄 |
+| 156 | MenuBarManager: 메뉴바 SF Symbol 아이콘+숫자 병행 (템플릿 착색, 폭 계산 안정화) | P1 | 🔄 |
+| 157 | App.swift: Settings scene 교체 + Window scene(리포트/앱트래픽/알림/정보) 추가 + openWindow | P1 | 🔄 |
+| 158 | PopoverView: 320pt 슬림화 + 시트 제거 + More→openWindow | P1 | 🔄 |
+| 159 | AppDelegate: 온보딩 window.title Localized | P2 | 🔄 |
+| 160 | material/radius/폰트 토큰 일원화 (팝오버 material, QoSGauge radius 등) | P2 | 🔄 |
+| 161 | 검증: test.sh/build + 6화면 스크린샷 + 다크/라이트 + 문서/커밋/릴리즈 | P1 | 🔄 |

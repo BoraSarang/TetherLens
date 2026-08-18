@@ -409,7 +409,7 @@ struct SettingsView: View {
             .padding(.horizontal, TLSpace.xxxl)
             .padding(.vertical, TLSpace.xl)
         }
-        .frame(width: TLSize.sheetStandard, height: 480)
+        .frame(width: TLSize.settingsWindow.w, height: TLSize.settingsWindow.h)
         .onAppear {
             refreshPermissions()
         }

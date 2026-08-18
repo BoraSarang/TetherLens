@@ -1,18 +1,26 @@
 import SwiftUI
 
-// MARK: - TetherLens Design System (v0.23.0)
+// MARK: - TetherLens Design System (v0.29.0)
 //
 // 전역 UI 토큰. 하드코딩 값(폰트 크기/색상/간격/모서리/폭)을 여기로 모은다.
 // - 폰트: semantic(동적 타입 대응) + 고정 스케일(밀집 UI용)
-// - 색상: 시스템 색 래핑 (다크 모드 자동 대응), 의미론적 이름 사용
+// - 색상: Display P3 브랜드 팔레트 (OKLCH 설계 → P3 렌더, sRGB 자동 폴백)
+//         + on-color 토큰 (배경 위 텍스트/아이콘용)
 
 enum TLPalette {
-    // 시맨틱 색상 (업로드/다운로드/상태)
-    static let upload   = Color.orange                    // 업로드/핫스팟/경고
-    static let download = Color.blue                      // 다운로드
-    static let success  = Color.green                     // 복사 성공/핑 회복
-    static let danger   = Color.red                       // 핑 임계/종료
-    static let accent   = Color.accentColor               // 강조/링크
+    // ── 브랜드 시맨틱 색상 (Display P3, OKLCH로 균형 설계) ──
+    // L≈0.55 수준에서 C/H를 달리해 서로 "형제"처럼 보이게 함
+    static let upload   = Color(.displayP3, red: 0.902, green: 0.514, blue: 0.227) // 업로드/핫스팟/경고 (oklch 0.65 0.15 55)
+    static let download = Color(.displayP3, red: 0.184, green: 0.490, blue: 0.871) // 다운로드 (oklch 0.55 0.18 250)
+    static let success  = Color(.displayP3, red: 0.149, green: 0.651, blue: 0.318) // 복사 성공/핑 회복 (oklch 0.62 0.17 145)
+    static let danger   = Color(.displayP3, red: 0.937, green: 0.255, blue: 0.263) // 핑 임계/종료 (oklch 0.58 0.22 25)
+    static let accent   = Color.accentColor                                        // 강조/링크 (시스템 액센트 존중)
+
+    // ── on-color (배경 위에 올라가는 텍스트/아이콘 — 다크/라이트 무관 고정) ──
+    static let onUpload   = Color.white
+    static let onDownload = Color.white
+    static let onSuccess  = Color.white
+    static let onDanger   = Color.white
 
     // 텍스트/구분
     static let textPrimary   = Color.primary
@@ -21,6 +29,10 @@ enum TLPalette {
     static let separator     = Color(nsColor: .separatorColor)
     static let textBackground = Color(nsColor: .textBackgroundColor) // 요약 행 배경
     static let windowBackground = Color(nsColor: .windowBackgroundColor) // 확인 다이얼로그 배경
+    static let rowHover      = Color.primary.opacity(0.06)  // 리스트 행 hover (Mac 컨벤션)
+
+    // 물질 (material) — macOS 표면. macOS 26(Tahoe)은 .glassEffect로 자동 승격
+    static let popoverSurface = Color(nsColor: .underPageBackgroundColor)
 }
 
 enum TLFont {
@@ -51,7 +63,7 @@ enum TLSpace {
     static let xl:  CGFloat = 12
     static let xxl: CGFloat = 16
     static let xxxl: CGFloat = 20
-    static let inset: CGFloat = 16    // 팝오버 인셋
+    static let inset: CGFloat = 20    // 팝오버 인셋
 }
 
 enum TLRound {
@@ -60,8 +72,15 @@ enum TLRound {
 }
 
 enum TLSize {
+    // Window scene 크기 (v0.29 — 시트 → 별도 윈도우 전환)
+    static let settingsWindow:   (w: CGFloat, h: CGFloat) = (580, 480)  // 설정 (Settings scene, Cmd-,)
+    static let reportWindow:     (w: CGFloat, h: CGFloat) = (640, 600)  // 사용량 리포트
+    static let trafficWindow:    (w: CGFloat, h: CGFloat) = (520, 560)  // 앱 트래픽
+    static let notificationsWindow: (w: CGFloat, h: CGFloat) = (400, 440) // 알림 목록
+    static let aboutWindow:      (w: CGFloat, h: CGFloat) = (380, 420)  // 정보
+
     // 시트/표준 폭 (현행 값 유지 — 값 변경은 회귀 위험으로 이번 버전에서 보류)
-    static let popoverWidth:   CGFloat = 280
+    static let popoverWidth:   CGFloat = 320
     static let sheetCompact:   CGFloat = 280   // 팝오버/프로필/DNS/IP히스토리/알림
     static let sheetSaving:    CGFloat = 300   // 절약 모드
     static let sheetStandard:  CGFloat = 320   // 설정

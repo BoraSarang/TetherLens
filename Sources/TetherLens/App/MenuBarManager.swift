@@ -867,14 +867,16 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
 }
 
 class MenuBarView: NSView {
-    private let upArrow = NSTextField(labelWithString: "▲")
-    private let downArrow = NSTextField(labelWithString: "▼")
+    // SF Symbol 템플릿 아이콘 (다크/라이트/접근성에서 OS가 자동 착색)
+    private let upIcon = NSImageView()
+    private let downIcon = NSImageView()
     private let upSpeed = NSTextField(labelWithString: "")
     private let downSpeed = NSTextField(labelWithString: "")
     private let upTotal = NSTextField(labelWithString: "")
     private let downTotal = NSTextField(labelWithString: "")
 
     private var currentFontSize: Double = 9
+    private var cachedIconW: CGFloat = 11
 
     private var cachedBoldFont: NSFont?
     private var cachedRegFont: NSFont?
@@ -884,6 +886,14 @@ class MenuBarView: NSView {
     private var cachedSpeedAttr: [NSAttributedString.Key: Any]?
     private var cachedCol2W: CGFloat = 0
     private var cachedCol3W: CGFloat = 0
+
+    private func makeSymbol(_ name: String) -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: currentFontSize + 1, weight: .semibold)
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: name)?
+            .withSymbolConfiguration(config)
+        image?.isTemplate = true
+        return image
+    }
 
     private func cacheAttributesIfNeeded(fontSize: Double) -> Bool {
         guard cachedBoldFont == nil || fontSize != currentFontSize else { return false }
@@ -901,6 +911,10 @@ class MenuBarView: NSView {
         cachedDownAttr = [.font: boldFont, .foregroundColor: NSColor.systemBlue]
         cachedSpeedAttr = [.font: regFont, .foregroundColor: NSColor.labelColor, .paragraphStyle: rightStyle]
 
+        upIcon.image = makeSymbol("arrow.up")
+        downIcon.image = makeSymbol("arrow.down")
+        cachedIconW = ceil(max(upIcon.image?.size.width ?? 0, downIcon.image?.size.width ?? 0)) + 2
+
         let col2Sample = NSString(string: "999.0 MB/s").size(withAttributes: [.font: regFont]).width
         cachedCol2W = ceil(col2Sample) + 2
         let col3Sample = Localized.string("잔여 999.9 GB", "Remaining 999.9 GB")
@@ -913,7 +927,11 @@ class MenuBarView: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        [upArrow, downArrow, upSpeed, downSpeed, upTotal, downTotal].forEach { field in
+        [upIcon, downIcon].forEach { icon in
+            icon.imageScaling = .scaleProportionallyDown
+            addSubview(icon)
+        }
+        [upSpeed, downSpeed, upTotal, downTotal].forEach { field in
             field.isEditable = false
             field.isSelectable = false
             field.isBordered = false
@@ -942,14 +960,9 @@ class MenuBarView: NSView {
         let totalColor = totalRatio < 0 ? NSColor.clear : colorForRatio(totalRatio)
         let totalAttr: [NSAttributedString.Key: Any] = totalRatio < 0 ? [:] : [.font: boldFont, .foregroundColor: totalColor, .paragraphStyle: rightStyle]
 
-        if attributesRefreshed || upArrow.attributedStringValue.string != "▲" {
-            upArrow.attributedStringValue = NSAttributedString(string: "▲", attributes: upAttr)
-            upArrow.sizeToFit()
-        }
-        if attributesRefreshed || downArrow.attributedStringValue.string != "▼" {
-            downArrow.attributedStringValue = NSAttributedString(string: "▼", attributes: downAttr)
-            downArrow.sizeToFit()
-        }
+        _ = upAttr
+        _ = downAttr
+        _ = attributesRefreshed
         setText(upSpeed, value: s1, attrs: speedAttr)
         setText(downSpeed, value: s2, attrs: speedAttr)
         setText(upTotal, value: t1, attrs: totalAttr)
@@ -957,17 +970,18 @@ class MenuBarView: NSView {
 
         let col3W = totalRatio < 0 ? 0 : cachedCol3W
         let col1X: CGFloat = 1
-        let col2X = col1X + upArrow.frame.width + 2
+        let col2X = col1X + cachedIconW + 2
         let col3X = col2X + cachedCol2W + 3
         let w = col3X + col3W + 1
 
         let h = NSStatusBar.system.thickness
-        let lineHeight = max(upArrow.frame.height, upSpeed.frame.height)
+        let lineHeight = max(upIcon.image?.size.height ?? fontSize + 3, upSpeed.frame.height)
         let totalH = lineHeight * 2
         let baseY = (h - totalH) / 2
+        let iconH = lineHeight
 
-        upArrow.setFrameOrigin(NSPoint(x: col1X, y: baseY + lineHeight))
-        downArrow.setFrameOrigin(NSPoint(x: col1X, y: baseY))
+        upIcon.frame = NSRect(x: col1X, y: baseY + lineHeight, width: cachedIconW, height: iconH)
+        downIcon.frame = NSRect(x: col1X, y: baseY, width: cachedIconW, height: iconH)
         upSpeed.frame = NSRect(x: col2X, y: baseY + lineHeight, width: cachedCol2W, height: lineHeight)
         downSpeed.frame = NSRect(x: col2X, y: baseY, width: cachedCol2W, height: lineHeight)
         upTotal.frame = NSRect(x: col3X, y: baseY + lineHeight, width: col3W, height: lineHeight)

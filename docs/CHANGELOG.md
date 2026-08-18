@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.29.0] — 2026-08-18 — 맥 앱 전면 리디자인 Phase 1~2 (구조 + 디자인 시스템)
+
+> 사용자 요청: 3개 스킬(macos-app-design / ios-the-final-5-percent / apple-design) 기반으로 "아, 맥 앱이구나" 느낌의 전체 UI 리디자인. 확정 사항: 시트→별도 윈도우 전환 / 메뉴바 아이콘+숫자 병행 / Phase 1~2 먼저. 계획: docs/plans/PLAN_v0.29.0_macos.md
+
+### Added
+- **메뉴바 SF Symbol 템플릿 아이콘 + 숫자 병행 (T-156)** — 유니코드 ▲▼ → `arrow.up`/`arrow.down` SF Symbol(`isTemplate=true`, 다크/라이트 자동 착색) + 속도 숫자 색(orange/blue) 병행. 아이콘 폭을 폰트 크기 기반으로 캐시해 레이아웃 안정화
+- **별도 Window scene 5종 (T-157)** — 설정(`Settings` scene + `Cmd-,`), 사용량 리포트(640×600), 앱 트래픽(520×560), 알림 목록(400×440), 정보(380×420). 팝오버 내 시트 9종 중 5종을 `openWindow(id:)`로 전환, 닫기는 `@Environment(\.dismiss)`
+- **TLSize Window 크기 토큰** — `settingsWindow`/`reportWindow`/`trafficWindow`/`notificationsWindow`/`aboutWindow` (w,h) 튜플 추가
+
+### Changed
+- **TLPalette Display P3 브랜드 팔레트 (T-155)** — upload/download/success/danger를 OKLCH 균형의 Display P3 고정색으로 교체 + `onUpload/onDownload/onSuccess/onDanger` on-color 토큰 신설. `rowHover`(행 hover 배경) 토큰 추가
+- **배너 on-color 교체** — 팝오버 quota/ping/copied 배너의 하드코딩 `.white` → on-color 토큰 (`pingOnColor` 매핑 함수 신설)
+- **QoSGauge 토큰화 (T-160)** — radius 4→`TLRound.small`(6), gaugeColor 시스템 색 → TLPalette, chevron 8pt → `TLFont.badge`
+- **radius 일원화 (T-160)** — HeatmapGrid 셀 3→4·레전드 2→4, Diagnostics 카드 8→`TLRound.medium`(10)
+- **팝오버 슬림화 (T-158)** — 폭 280→320, 인셋 16→20. DNS/프로필/절약모드/IP히스토리는 팝오버 내 시트로 유지
+- **SettingsView 프레임** — 320×480 → `TLSize.settingsWindow`(580×480)
+
+### Fixed
+- **`Settings { EmptyView() }` 제거 (T-157)** — 실제 SettingsView로 교체, 설정 창이 별도 윈도우로 열림
+
 ## [0.28.3] — 2026-08-15 — GitHub 링크 + 랜딩 페이지 리디자인
 
 > 사용자 요청: AboutView에 GitHub 저장소/페이지 링크가 없음 → 링크 2개 추가. 동시에 GitHub Pages 랜딩 페이지(`docs/index.html`)를 ui-ux-pro-max 스킬 기반으로 전면 리디자인.

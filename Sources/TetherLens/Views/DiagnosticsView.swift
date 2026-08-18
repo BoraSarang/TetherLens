@@ -54,7 +54,7 @@ struct DiagnosticsView: View {
                                 .textSelection(.enabled)
                         }
                         .padding(10)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.gray.opacity(0.1)))
+                        .background(RoundedRectangle(cornerRadius: TLRound.medium).fill(Color.gray.opacity(0.1)))
                     }
                 }
             }
