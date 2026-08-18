@@ -36,15 +36,13 @@ struct UsageReportView: View {
         case system
     }
 
-    let onClose: () -> Void
     let preselectedProfileId: UUID?
 
     enum ExportFormat {
         case csv, json, markdown
     }
 
-    init(onClose: @escaping () -> Void, preselectedProfileId: UUID? = nil) {
-        self.onClose = onClose
+    init(preselectedProfileId: UUID? = nil) {
         self.preselectedProfileId = preselectedProfileId
     }
 
@@ -100,33 +98,22 @@ struct UsageReportView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(Localized.usageReportTitle)
-                    .font(TLFont.headline)
-                    .padding(.leading, TLSpace.xxl)
-                Spacer()
+        // 맥 사이드바 패턴 (macos-app-design §2): NavigationSplitView + .listStyle(.sidebar)
+        NavigationSplitView {
+            sidebar
+                .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 240)
+        } detail: {
+            rightPanel
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
                 Menu {
                     Button(Localized.exportCSV) { exportData(format: .csv) }
                     Button(Localized.exportJSON) { exportData(format: .json) }
                     Button(Localized.exportMarkdown) { exportData(format: .markdown) }
                 } label: {
                     Label(Localized.export, systemImage: "square.and.arrow.up")
-                        .font(TLFont.caption)
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .padding(.trailing, TLSpace.xxl)
-            }
-            .padding(.top, TLSpace.xxl)
-            .padding(.bottom, TLSpace.md)
-
-            Divider()
-
-            HStack(spacing: 0) {
-                sidebar
-                Divider()
-                rightPanel
             }
         }
         .frame(width: TLSize.reportWindow.w, height: TLSize.reportWindow.h)
@@ -143,26 +130,25 @@ struct UsageReportView: View {
     // MARK: - Sidebar
 
     private var sidebar: some View {
-        VStack(spacing: 0) {
+        List(selection: $viewMode) {
             ForEach(ViewMode.allCases, id: \.self) { mode in
-                Button {
-                    viewMode = mode
-                } label: {
-                    Text(mode.localized)
-                        .font(TLFont.subheadline)
-                        .foregroundColor(viewMode == mode ? TLPalette.accent : TLPalette.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, TLSpace.xl)
-                        .padding(.vertical, TLSpace.lg)
-                        .background(viewMode == mode ? TLPalette.accent.opacity(0.1) : Color.clear)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                Label(mode.localized, systemImage: viewModeIcon(mode))
+                    .tag(mode)
             }
-            Spacer()
         }
-        .frame(width: TLSize.sidebarWidth)
-        .padding(.vertical, TLSpace.md)
+        .listStyle(.sidebar)
+        .padding(.vertical, TLSpace.sm)
+    }
+
+    private func viewModeIcon(_ mode: ViewMode) -> String {
+        switch mode {
+        case .chart: return "chart.bar.fill"
+        case .detail: return "list.bullet"
+        case .session: return "clock.fill"
+        case .heatmap: return "square.grid.3x3.fill"
+        case .appTraffic: return "arrow.up.arrow.down"
+        case .report: return "doc.text.fill"
+        }
     }
 
     // MARK: - Right Panel
@@ -214,9 +200,6 @@ struct UsageReportView: View {
                         .foregroundColor(TLPalette.download)
                 }
                 Spacer()
-                Button(Localized.close, action: onClose)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
             }
             .padding(.horizontal, TLSpace.xl)
             .padding(.bottom, TLSpace.xl)

@@ -32,38 +32,33 @@ struct TetherLensApp: App {
     }
 }
 
-// 시트 → 별도 Window 전환 (v0.29): 닫기 버튼은 @Environment(\.dismiss)로 처리
+// 시트 → 별도 Window 전환 (v0.29): 닫기 버튼은 시스템 창 닫기로 처리
 private struct SettingsWindow: View {
-    @Environment(\.dismiss) private var dismiss
     var body: some View {
-        SettingsView(onClose: { dismiss() })
+        SettingsView()
     }
 }
 
 private struct UsageReportWindow: View {
-    @Environment(\.dismiss) private var dismiss
     var body: some View {
-        UsageReportView(onClose: { dismiss() })
+        UsageReportView()
     }
 }
 
 private struct AppTrafficWindow: View {
-    @Environment(\.dismiss) private var dismiss
     var body: some View {
-        AppTrafficView(onClose: { dismiss() })
+        AppTrafficView()
     }
 }
 
 private struct NotificationsWindow: View {
-    @Environment(\.dismiss) private var dismiss
     var body: some View {
-        NotificationListView(onClose: { dismiss() })
+        NotificationListView()
     }
 }
 
 private struct AboutWindow: View {
-    @Environment(\.dismiss) private var dismiss
     var body: some View {
-        AboutView(onClose: { dismiss() })
+        AboutView()
     }
 }

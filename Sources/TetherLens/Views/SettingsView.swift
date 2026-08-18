@@ -31,10 +31,7 @@ struct SettingsView: View {
     @State private var ruleActionRaw = AutomationRule.ActionType.launchApp.rawValue
     @State private var ruleTarget = ""
 
-    let onClose: () -> Void
-
-    init(onClose: @escaping () -> Void) {
-        self.onClose = onClose
+    init() {
         let s = SettingsManager.shared
         _showTotalColumn = State(initialValue: s.showTotalColumn)
         _launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled)
@@ -59,355 +56,18 @@ struct SettingsView: View {
     private var pingOptions: [(String, Double)] { Localized.pingIntervalOptions }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Text(Localized.settings)
-                .font(TLFont.headline)
-                .padding(.top, TLSpace.xxxl)
-                .padding(.bottom, TLSpace.xl)
-                .frame(maxWidth: .infinity)
-
-            Divider()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: TLSpace.xl) {
-                    Group {
-                        Toggle(Localized.showTotalInMenuBar, isOn: $showTotalColumn)
-                            .onChange(of: showTotalColumn) { _, newValue in
-                                SettingsManager.shared.showTotalColumn = newValue
-                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                            }
-
-                        Picker(Localized.menuBarDisplayMode, selection: $menuBarModeRaw) {
-                            ForEach(SettingsManager.MenuBarMode.allCases, id: \.rawValue) { mode in
-                                Text(modeLabel(mode)).tag(mode.rawValue)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .onChange(of: menuBarModeRaw) { _, newValue in
-                            if let mode = SettingsManager.MenuBarMode(rawValue: newValue) {
-                                SettingsManager.shared.menuBarMode = mode
-                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                            }
-                        }
-
-                        Toggle(Localized.showSSIDInMenuBar, isOn: $showSSIDInMenuBar)
-                            .onChange(of: showSSIDInMenuBar) { _, newValue in
-                                SettingsManager.shared.showSSIDInMenuBar = newValue
-                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                            }
-
-                        Toggle(Localized.showBSSIDInMenuBar, isOn: $showBSSIDInMenuBar)
-                            .onChange(of: showBSSIDInMenuBar) { _, newValue in
-                                SettingsManager.shared.showBSSIDInMenuBar = newValue
-                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                            }
-
-                        Toggle(Localized.showLinkSpeedInMenuBar, isOn: $showLinkSpeedInMenuBar)
-                            .onChange(of: showLinkSpeedInMenuBar) { _, newValue in
-                                SettingsManager.shared.showLinkSpeedInMenuBar = newValue
-                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                            }
-
-                        Toggle(Localized.showDNSInMenuBar, isOn: $showDNSInMenuBar)
-                            .onChange(of: showDNSInMenuBar) { _, newValue in
-                                SettingsManager.shared.showDNSInMenuBar = newValue
-                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                            }
-
-                        Toggle(Localized.launchAtLogin, isOn: $launchAtLogin)
-                            .onChange(of: launchAtLogin) { _, newValue in
-                                do {
-                                    if newValue {
-                                        try SMAppService.mainApp.register()
-                                    } else {
-                                        try SMAppService.mainApp.unregister()
-                                    }
-                                } catch {
-                                    launchAtLogin = SMAppService.mainApp.status == .enabled
-                            }
-                        }
-
-                        Toggle(Localized.autoSwitchProfile, isOn: $autoSwitchProfile)
-                            .onChange(of: autoSwitchProfile) { _, newValue in
-                                SettingsManager.shared.autoSwitchProfile = newValue
-                                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                            }
-                    }
-                    .padding(.horizontal, TLSpace.xxxl)
-
-                    Divider().padding(.horizontal, TLSpace.xl)
-
-                    Group {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(Localized.menuBar)
-                                .font(TLFont.subheadline).bold()
-                            HStack {
-                                Text(Localized.fontSize)
-                                    .font(TLFont.caption)
-                                Text(Localized.defaultParen(Int(SettingsManager.defaultMenuBarFontSize)))
-                                    .font(TLFont.caption2)
-                                    .foregroundColor(TLPalette.textSecondary)
-                                Spacer()
-                                Slider(value: $fontSize, in: 7...14, step: 1,
-                                       onEditingChanged: { editing in
-                                    if !editing {
-                                        SettingsManager.shared.menuBarFontSize = fontSize
-                                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                                    }
-                                })
-                                .frame(width: 80)
-                                Text("\(Int(fontSize))pt")
-                                    .font(TLFont.caption).monospacedDigit()
-                                    .frame(width: 28, alignment: .trailing)
-                            }
-                            .padding(.leading, TLSpace.xl)
-                            HStack {
-                                Text(Localized.showAppTrafficLabel)
-                                    .font(TLFont.caption)
-                                Spacer()
-                                Picker("", selection: $showAppTraffic) {
-                                    Text(Localized.show).tag(true)
-                                    Text(Localized.hide).tag(false)
-                                }
-                                .pickerStyle(.menu)
-                                .fixedSize()
-                            }
-                            .onChange(of: showAppTraffic) { _, newValue in
-                                UserDefaults.standard.set(newValue, forKey: "popover_show_app_traffic")
-                            }
-                            .padding(.leading, TLSpace.xl)
-                        }
-                    }
-                    .padding(.horizontal, TLSpace.xxxl)
-
-                    Divider().padding(.horizontal, TLSpace.xl)
-
-                    Group {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(Localized.permissions)
-                                .font(TLFont.subheadline).bold()
-                            HStack {
-                                Text(Localized.locationPermission)
-                                    .font(TLFont.caption)
-                                Spacer()
-                                if locationStatus == .authorized || locationStatus == .authorizedAlways {
-                                    Text(Localized.notificationAuthorized)
-                                        .font(TLFont.caption)
-                                        .foregroundColor(TLPalette.success)
-                                } else {
-                                    Text(locationStatus == .denied ? Localized.denied : Localized.notDetermined)
-                                        .font(TLFont.caption)
-                                        .foregroundColor(TLPalette.textSecondary)
-                                    Button(Localized.requestPermission) {
-                                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") {
-                                            NSWorkspace.shared.open(url)
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                }
-                            }
-                            .padding(.leading, TLSpace.xl)
-                            if locationStatus == .authorized || locationStatus == .authorizedAlways {
-                                VStack(alignment: .leading, spacing: 1) {
-                                    ForEach(locationDiagnostics, id: \.self) { line in
-                                        Text(line)
-                                            .font(TLFont.badge)
-                                            .foregroundColor(TLPalette.textSecondary)
-                                    }
-                                }
-                                .padding(.leading, TLSpace.xl)
-                                .padding(.bottom, TLSpace.xs)
-                            }
-                            HStack {
-                                Text(Localized.notifications)
-                                    .font(TLFont.caption)
-                                Spacer()
-                                if notiAuthorized {
-                                    Text(Localized.notificationAuthorized)
-                                        .font(TLFont.caption)
-                                        .foregroundColor(TLPalette.success)
-                                } else {
-                                    Text(Localized.denied)
-                                        .font(TLFont.caption)
-                                        .foregroundColor(TLPalette.textSecondary)
-                                    Button(Localized.requestPermission) {
-                                        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
-                                            DispatchQueue.main.async { notiAuthorized = granted }
-                                        }
-                                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications?com.tetherlens.app") {
-                                            NSWorkspace.shared.open(url)
-                                        }
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                }
-                            }
-                            .padding(.leading, TLSpace.xl)
-                        }
-                    }
-                    .padding(.horizontal, TLSpace.xxxl)
-
-                    Divider().padding(.horizontal, TLSpace.xl)
-
-                    Group {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(Localized.notifications)
-                                .font(TLFont.subheadline).bold()
-                            HStack {
-                                Text(Localized.quotaAlert)
-                                    .font(TLFont.caption)
-                                Spacer()
-                                Text(Localized.string("50%, 80%, 95%, 100% 자동 알림", "50%, 80%, 95%, 100% auto"))
-                                    .font(TLFont.caption2)
-                                    .foregroundColor(TLPalette.textSecondary)
-                            }
-                            .padding(.leading, TLSpace.xl)
-                            Divider()
-                            HStack {
-                                Text(Localized.latencyAlert)
-                                    .font(TLFont.caption)
-                                Text(Localized.defaultShown)
-                                    .font(TLFont.caption2)
-                                    .foregroundColor(TLPalette.textSecondary)
-                                Spacer()
-                                Picker("", selection: Binding(
-                                    get: { SettingsManager.shared.pingLatencyNotificationEnabled },
-                                    set: { SettingsManager.shared.pingLatencyNotificationEnabled = $0 }
-                                )) {
-                                    Text(Localized.show).tag(true)
-                                    Text(Localized.hide).tag(false)
-                                }
-                                .pickerStyle(.menu)
-                                .fixedSize()
-                            }
-                            .padding(.leading, TLSpace.xl)
-                        }
-                    }
-                    .padding(.horizontal, TLSpace.xxxl)
-
-                    Divider().padding(.horizontal, TLSpace.xl)
-
-                    HStack {
-                        Text(Localized.performance)
-                            .font(TLFont.subheadline).bold()
-                        Spacer()
-                        Button(Localized.resetDefaults) {
-                            SettingsManager.shared.resetPollingIntervals()
-                            menuBarInterval = SettingsManager.defaultMenuBarRefreshInterval
-                            cacheInterval = SettingsManager.defaultCacheRefreshInterval
-                            trafficInterval = SettingsManager.defaultTrafficMonitorInterval
-                            pingInterval = SettingsManager.defaultPingInterval
-                            NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                        }
-                        .buttonStyle(.plain)
-                        .font(TLFont.caption)
-                        .foregroundColor(TLPalette.download)
-                        .disabled(SettingsManager.shared.isUsingDefaultPollingIntervals)
-                    }
-                    .padding(.horizontal, TLSpace.xxxl)
-
-                    Group {
-                        pollingRow(label: Localized.menuBarRefresh, defaultValue: SettingsManager.defaultMenuBarRefreshInterval, selection: $menuBarInterval, options: menuBarOptions)
-                        pollingRow(label: Localized.cacheRefresh, defaultValue: SettingsManager.defaultCacheRefreshInterval, selection: $cacheInterval, options: cacheOptions)
-                        pollingRow(label: Localized.trafficRefresh, defaultValue: SettingsManager.defaultTrafficMonitorInterval, selection: $trafficInterval, options: trafficOptions)
-                        pollingRow(label: Localized.pingIntervalLabel, defaultValue: SettingsManager.defaultPingInterval, selection: $pingInterval, options: pingOptions)
-                    }
-                    .padding(.leading, 32)
-                    .padding(.trailing, TLSpace.xxxl)
-                }
-                .padding(.vertical, TLSpace.xl)
-
-                Divider().padding(.horizontal, TLSpace.xl)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(Localized.automationTitle)
-                        .font(TLFont.subheadline).bold()
-
-                    if autoRules.isEmpty {
-                        Text(Localized.automationEmpty)
-                            .font(TLFont.caption2)
-                            .foregroundColor(TLPalette.textSecondary)
-                    }
-
-                    ForEach(autoRules) { rule in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(rule.name)
-                                    .font(TLFont.caption).bold()
-                                Text(rule.summary)
-                                    .font(TLFont.badge)
-                                    .foregroundColor(TLPalette.textSecondary)
-                            }
-                            Spacer()
-                            Toggle("", isOn: Binding(
-                                get: { rule.isEnabled },
-                                set: { newValue in setRule(rule, enabled: newValue) }
-                            ))
-                            .labelsHidden()
-                            .controlSize(.small)
-                            Button(Localized.delete) { removeRule(rule) }
-                                .buttonStyle(.plain)
-                                .font(TLFont.caption)
-                                .foregroundColor(TLPalette.danger)
-                        }
-                        .padding(.leading, TLSpace.xl)
-                    }
-
-                    if showAddRule {
-                        VStack(alignment: .leading, spacing: 6) {
-                            TextField(Localized.automationRuleName, text: $ruleName)
-                                .textFieldStyle(.roundedBorder)
-                            TextField(Localized.automationSSID, text: $ruleSSID)
-                                .textFieldStyle(.roundedBorder)
-                            HStack {
-                                Picker(Localized.automationTrigger, selection: $ruleTriggerRaw) {
-                                    ForEach(AutomationRule.TriggerType.allCases) { t in
-                                        Text(t.label).tag(t.rawValue)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                Picker(Localized.automationAction, selection: $ruleActionRaw) {
-                                    ForEach(AutomationRule.ActionType.allCases) { a in
-                                        Text(a.label).tag(a.rawValue)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                            }
-                            TextField(Localized.automationTarget, text: $ruleTarget)
-                                .textFieldStyle(.roundedBorder)
-                            HStack {
-                                Button(Localized.automationAdd) { addRule() }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                Button(Localized.cancel) { resetRuleForm() }
-                                    .buttonStyle(.plain)
-                                    .controlSize(.small)
-                            }
-                        }
-                        .padding(.leading, TLSpace.xl)
-                    }
-
-                    Button(showAddRule ? Localized.cancel : Localized.automationNewRule) {
-                        if showAddRule { resetRuleForm() } else { showAddRule = true }
-                    }
-                    .buttonStyle(.plain)
-                    .font(TLFont.caption)
-                    .foregroundColor(TLPalette.download)
-                }
-                .padding(.horizontal, TLSpace.xxxl)
-            }
-
-            Divider()
-
-            HStack {
-                Spacer()
-                Button(Localized.close, action: onClose)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-            }
-            .padding(.horizontal, TLSpace.xxxl)
-            .padding(.vertical, TLSpace.xl)
+        // 맥 설정 앱 컨벤션 (macos-app-design §17): 상단 탭 + Form(.grouped) 섹션 카드 + 닫기 버튼 없음
+        TabView {
+            menuBarTab
+                .tabItem { Label(Localized.menuBar, systemImage: "menubar.rectangle") }
+            permissionsTab
+                .tabItem { Label(Localized.permissions, systemImage: "lock.shield") }
+            notificationsTab
+                .tabItem { Label(Localized.notifications, systemImage: "bell") }
+            performanceTab
+                .tabItem { Label(Localized.performance, systemImage: "gauge.with.dots.needle.bottom.50percent") }
+            automationTab
+                .tabItem { Label(Localized.automationTitle, systemImage: "bolt") }
         }
         .frame(width: TLSize.settingsWindow.w, height: TLSize.settingsWindow.h)
         .onAppear {
@@ -421,13 +81,286 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - 메뉴바
+
+    private var menuBarTab: some View {
+        Form {
+            Section(Localized.menuBar) {
+                Toggle(Localized.showTotalInMenuBar, isOn: $showTotalColumn)
+                    .onChange(of: showTotalColumn) { _, newValue in
+                        SettingsManager.shared.showTotalColumn = newValue
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+
+                Picker(Localized.menuBarDisplayMode, selection: $menuBarModeRaw) {
+                    ForEach(SettingsManager.MenuBarMode.allCases, id: \.rawValue) { mode in
+                        Text(modeLabel(mode)).tag(mode.rawValue)
+                    }
+                }
+                .onChange(of: menuBarModeRaw) { _, newValue in
+                    if let mode = SettingsManager.MenuBarMode(rawValue: newValue) {
+                        SettingsManager.shared.menuBarMode = mode
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+                }
+
+                Toggle(Localized.showSSIDInMenuBar, isOn: $showSSIDInMenuBar)
+                    .onChange(of: showSSIDInMenuBar) { _, newValue in
+                        SettingsManager.shared.showSSIDInMenuBar = newValue
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+
+                Toggle(Localized.showBSSIDInMenuBar, isOn: $showBSSIDInMenuBar)
+                    .onChange(of: showBSSIDInMenuBar) { _, newValue in
+                        SettingsManager.shared.showBSSIDInMenuBar = newValue
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+
+                Toggle(Localized.showLinkSpeedInMenuBar, isOn: $showLinkSpeedInMenuBar)
+                    .onChange(of: showLinkSpeedInMenuBar) { _, newValue in
+                        SettingsManager.shared.showLinkSpeedInMenuBar = newValue
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+
+                Toggle(Localized.showDNSInMenuBar, isOn: $showDNSInMenuBar)
+                    .onChange(of: showDNSInMenuBar) { _, newValue in
+                        SettingsManager.shared.showDNSInMenuBar = newValue
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+            }
+
+            Section(Localized.general) {
+                Toggle(Localized.launchAtLogin, isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, newValue in
+                        do {
+                            if newValue {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            launchAtLogin = SMAppService.mainApp.status == .enabled
+                        }
+                    }
+
+                Toggle(Localized.autoSwitchProfile, isOn: $autoSwitchProfile)
+                    .onChange(of: autoSwitchProfile) { _, newValue in
+                        SettingsManager.shared.autoSwitchProfile = newValue
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+            }
+
+            Section(Localized.fontSize) {
+                HStack {
+                    Text(Localized.defaultParen(Int(SettingsManager.defaultMenuBarFontSize)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Slider(value: $fontSize, in: 7...14, step: 1,
+                           onEditingChanged: { editing in
+                        if !editing {
+                            SettingsManager.shared.menuBarFontSize = fontSize
+                            NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                        }
+                    })
+                    Text("\(Int(fontSize))pt")
+                        .font(.caption).monospacedDigit()
+                        .frame(width: 32, alignment: .trailing)
+                }
+
+                Picker(Localized.showAppTrafficLabel, selection: $showAppTraffic) {
+                    Text(Localized.show).tag(true)
+                    Text(Localized.hide).tag(false)
+                }
+                .onChange(of: showAppTraffic) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: "popover_show_app_traffic")
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    // MARK: - 권한
+
+    private var permissionsTab: some View {
+        Form {
+            Section(Localized.locationPermission) {
+                HStack {
+                    if locationStatus == .authorized || locationStatus == .authorizedAlways {
+                        Label(Localized.notificationAuthorized, systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(TLPalette.success)
+                    } else {
+                        Text(locationStatus == .denied ? Localized.denied : Localized.notDetermined)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(Localized.requestPermission) {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    }
+                }
+                if locationStatus == .authorized || locationStatus == .authorizedAlways {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(locationDiagnostics, id: \.self) { line in
+                            Text(line)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
+            Section(Localized.notifications) {
+                HStack {
+                    if notiAuthorized {
+                        Label(Localized.notificationAuthorized, systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(TLPalette.success)
+                    } else {
+                        Text(Localized.denied)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button(Localized.requestPermission) {
+                            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                                DispatchQueue.main.async { notiAuthorized = granted }
+                            }
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications?com.tetherlens.app") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    // MARK: - 알림
+
+    private var notificationsTab: some View {
+        Form {
+            Section(Localized.quotaAlert) {
+                Text(Localized.string("50%, 80%, 95%, 100% 자동 알림", "50%, 80%, 95%, 100% auto"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section(Localized.latencyAlert) {
+                Toggle(Localized.defaultShown, isOn: Binding(
+                    get: { SettingsManager.shared.pingLatencyNotificationEnabled },
+                    set: { SettingsManager.shared.pingLatencyNotificationEnabled = $0 }
+                ))
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    // MARK: - 성능
+
+    private var performanceTab: some View {
+        Form {
+            Section {
+                pollingRow(label: Localized.menuBarRefresh, defaultValue: SettingsManager.defaultMenuBarRefreshInterval, selection: $menuBarInterval, options: menuBarOptions)
+                pollingRow(label: Localized.cacheRefresh, defaultValue: SettingsManager.defaultCacheRefreshInterval, selection: $cacheInterval, options: cacheOptions)
+                pollingRow(label: Localized.trafficRefresh, defaultValue: SettingsManager.defaultTrafficMonitorInterval, selection: $trafficInterval, options: trafficOptions)
+                pollingRow(label: Localized.pingIntervalLabel, defaultValue: SettingsManager.defaultPingInterval, selection: $pingInterval, options: pingOptions)
+            } header: {
+                Text(Localized.performance)
+            } footer: {
+                Button(Localized.resetDefaults) {
+                    SettingsManager.shared.resetPollingIntervals()
+                    menuBarInterval = SettingsManager.defaultMenuBarRefreshInterval
+                    cacheInterval = SettingsManager.defaultCacheRefreshInterval
+                    trafficInterval = SettingsManager.defaultTrafficMonitorInterval
+                    pingInterval = SettingsManager.defaultPingInterval
+                    NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(TLPalette.download)
+                .disabled(SettingsManager.shared.isUsingDefaultPollingIntervals)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    // MARK: - 자동화
+
+    private var automationTab: some View {
+        Form {
+            Section(Localized.automationTitle) {
+                if autoRules.isEmpty {
+                    Text(Localized.automationEmpty)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                ForEach(autoRules) { rule in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(rule.name)
+                                .font(.caption).bold()
+                            Text(rule.summary)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: Binding(
+                            get: { rule.isEnabled },
+                            set: { newValue in setRule(rule, enabled: newValue) }
+                        ))
+                        .labelsHidden()
+                        .controlSize(.small)
+                        Button(Localized.delete) { removeRule(rule) }
+                            .buttonStyle(.plain)
+                            .font(.caption)
+                            .foregroundStyle(TLPalette.danger)
+                    }
+                }
+
+                if showAddRule {
+                    TextField(Localized.automationRuleName, text: $ruleName)
+                        .textFieldStyle(.roundedBorder)
+                    TextField(Localized.automationSSID, text: $ruleSSID)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Picker(Localized.automationTrigger, selection: $ruleTriggerRaw) {
+                            ForEach(AutomationRule.TriggerType.allCases) { t in
+                                Text(t.label).tag(t.rawValue)
+                            }
+                        }
+                        Picker(Localized.automationAction, selection: $ruleActionRaw) {
+                            ForEach(AutomationRule.ActionType.allCases) { a in
+                                Text(a.label).tag(a.rawValue)
+                            }
+                        }
+                    }
+                    TextField(Localized.automationTarget, text: $ruleTarget)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button(Localized.automationAdd) { addRule() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        Button(Localized.cancel) { resetRuleForm() }
+                            .buttonStyle(.plain)
+                            .controlSize(.small)
+                    }
+                }
+
+                Button(showAddRule ? Localized.cancel : Localized.automationNewRule) {
+                    if showAddRule { resetRuleForm() } else { showAddRule = true }
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(TLPalette.download)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
     private func pollingRow(label: String, defaultValue: Double, selection: Binding<Double>, options: [(String, Double)]) -> some View {
         HStack {
             Text(label)
-                .font(TLFont.caption)
-            Text(String(format: Localized.string("(기본: %@)", "(Default: %@)"), formatInterval(defaultValue)))
-                .font(TLFont.caption2)
-                .foregroundColor(TLPalette.textSecondary)
+                .font(.body)
             Spacer()
             Picker("", selection: selection) {
                 ForEach(options, id: \.1) { opt in
@@ -488,10 +421,6 @@ struct SettingsView: View {
             s.pingInterval = pingInterval
             NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
         }
-    }
-
-    private func formatInterval(_ interval: Double) -> String {
-        Localized.intervalSec(Int(interval))
     }
 
     private func modeLabel(_ mode: SettingsManager.MenuBarMode) -> String {

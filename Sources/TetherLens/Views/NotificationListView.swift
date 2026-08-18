@@ -2,7 +2,6 @@ import SwiftUI
 
 struct NotificationListView: View {
     @ObservedObject private var manager = NotificationManager.shared
-    let onClose: () -> Void
 
     var body: some View {
         VStack(spacing: TLSpace.xl) {
@@ -47,13 +46,6 @@ struct NotificationListView: View {
                 }
                 .listStyle(.plain)
             }
-
-            Divider()
-
-            Button(Localized.close) { onClose() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .padding(.bottom, TLSpace.xl)
         }
         .frame(width: TLSize.notificationsWindow.w, height: TLSize.notificationsWindow.h)
     }

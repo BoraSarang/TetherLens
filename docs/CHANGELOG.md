@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.29.0] — 2026-08-18 — 맥 앱 전면 리디자인 Phase 1~2 (구조 + 디자인 시스템)
+## [0.29.0] — 2026-08-18 — 맥 앱 전면 리디자인 Phase 1~3 (구조 + 디자인 시스템 + 화면별 정제)
 
 > 사용자 요청: 3개 스킬(macos-app-design / ios-the-final-5-percent / apple-design) 기반으로 "아, 맥 앱이구나" 느낌의 전체 UI 리디자인. 확정 사항: 시트→별도 윈도우 전환 / 메뉴바 아이콘+숫자 병행 / Phase 1~2 먼저. 계획: docs/plans/PLAN_v0.29.0_macos.md
 
@@ -16,6 +16,11 @@
 - **radius 일원화 (T-160)** — HeatmapGrid 셀 3→4·레전드 2→4, Diagnostics 카드 8→`TLRound.medium`(10)
 - **팝오버 슬림화 (T-158)** — 폭 280→320, 인셋 16→20. DNS/프로필/절약모드/IP히스토리는 팝오버 내 시트로 유지
 - **SettingsView 프레임** — 320×480 → `TLSize.settingsWindow`(580×480)
+
+### Changed (Phase 3 — 화면별 정제, T-162)
+- **SettingsView 맥 설정 앱 스타일로 재구성** — `TabView` 5탭(메뉴바/권한/알림/성능/자동화, 각각 `Label` + SF Symbol) + `Form` + `.formStyle(.grouped)` 섹션 카드. `onClose` 파라미터·닫기 버튼 제거, `formatInterval` 미사용 정리, `Localized.general` 신설
+- **UsageReportView NavigationSplitView 전환** — 버튼 기반 사이드바(88pt) → `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`(180~240pt) + viewMode별 SF Symbol 아이콘. 제목 헤더/내보내기 메뉴 → `.toolbar(.primaryAction)`. `onClose`·`TLSize.sidebarWidth` 제거
+- **Window 뷰 닫기 버튼 제거** — AppTraffic/Notifications/About의 하단 `닫기` 버튼 + `onClose` + 래퍼의 `@Environment(\.dismiss)` 제거 (시스템 창 닫기로 통일)
 
 ### Fixed
 - **`Settings { EmptyView() }` 제거 (T-157)** — 실제 SettingsView로 교체, 설정 창이 별도 윈도우로 열림

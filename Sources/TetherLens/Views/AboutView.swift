@@ -1,8 +1,6 @@
 import SwiftUI
 
 struct AboutView: View {
-    let onClose: () -> Void
-
     private var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
     }
@@ -61,13 +59,8 @@ struct AboutView: View {
             }
 
             Spacer()
-
-            Button(Localized.close) { onClose() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
         }
         .padding(24)
-        .padding(.bottom, TLSpace.xl)
         .frame(width: TLSize.aboutWindow.w, height: TLSize.aboutWindow.h)
     }
 

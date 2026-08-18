@@ -163,6 +163,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var automationNewRule: String { value(kr: "+ 새 규칙 추가", en: "+ New Rule") }
   static var launchAtLogin: String { value(kr: "로그인 시 자동 실행", en: "Launch at Login") }
   static var menuBar: String { value(kr: "메뉴바", en: "Menu Bar") }
+  static var general: String { value(kr: "일반", en: "General") }
   static var fontSize: String { value(kr: "폰트 크기", en: "Font Size") }
   static var defaultParen: String { value(kr: "(기본: %dpt)", en: "(Default: %dpt)") }
   static func defaultParen(_ val: Int) -> String { String(format: defaultParen, val) }

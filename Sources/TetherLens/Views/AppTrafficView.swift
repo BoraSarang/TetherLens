@@ -3,7 +3,6 @@ import SwiftUI
 struct AppTrafficView: View {
     @ObservedObject private var monitor = TrafficMonitor.shared
     @ObservedObject private var blockManager = AppBlockManager.shared
-    let onClose: () -> Void
     @AppStorage("appTraffic_show_system") private var showSystemProcesses = false
     @State private var confirmReset = false
 
@@ -21,10 +20,6 @@ struct AppTrafficView: View {
             } else {
                 trafficList
             }
-            Button(Localized.close) { onClose() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .padding(.bottom, TLSpace.md)
         }
         .padding(TLSpace.inset)
         .frame(width: TLSize.trafficWindow.w, height: TLSize.trafficWindow.h)
