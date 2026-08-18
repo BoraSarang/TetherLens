@@ -9,63 +9,14 @@ struct DebugPanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("🐛 [MAC] \(Localized.string("디버그 로그", "Debug Logs")) [\(logger.logs.count)]")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white)
-                Spacer()
-                Button(selectedIDs.isEmpty
-                    ? Localized.string("선택 복사", "Copy Selected")
-                    : String(format: Localized.string("선택 복사 (%d줄)", "Copy Selected (%d lines)"), selectedIDs.count)) {
-                    copySelection()
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 10))
-                .foregroundColor(selectedIDs.isEmpty ? .white.opacity(0.4) : .white.opacity(0.7))
-                .disabled(selectedIDs.isEmpty)
-                Button(Localized.string("선택 해제", "Deselect")) {
-                    selectedIDs.removeAll()
-                    lastSelectedID = nil
-                }
-                .buttonStyle(.plain)
-                .font(.system(size: 10))
-                .foregroundColor(selectedIDs.isEmpty ? .white.opacity(0.4) : .white.opacity(0.7))
-                .disabled(selectedIDs.isEmpty)
-                Button("📌") { autoScroll.toggle() }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 11))
-                    .foregroundColor(autoScroll ? .green : .white.opacity(0.3))
-                    .help(autoScroll
-                        ? Localized.string("자동 스크롤 켜짐 (클릭시 끔)", "Auto-scroll on (click to turn off)")
-                        : Localized.string("자동 스크롤 꺼짐 (클릭시 켬)", "Auto-scroll off (click to turn on)"))
-                Button(Localized.string("전체 복사", "Copy All")) { copyAll() }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.7))
-                Button(Localized.string("클리어", "Clear")) {
-                    logger.clear()
-                    selectedIDs.removeAll()
-                    lastSelectedID = nil
-                }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.7))
-                Button("X") { DebugPanelController.shared.hide() }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.white.opacity(0.5))
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.black.opacity(0.85))
-
+            header
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 1) {
                         ForEach(logger.logs) { entry in
                             Text("[\(entry.timestamp)] [\(entry.level.rawValue)] [\(entry.platform)] [\(entry.category)] \(entry.message)\(entry.meta.map { " | meta=\($0)" } ?? "")")
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundColor(selectedIDs.contains(entry.id) ? .white : textColor(for: entry.level))
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(selectedIDs.contains(entry.id) ? Color.white : textColor(for: entry.level))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 1)
@@ -78,7 +29,7 @@ struct DebugPanelView: View {
                         }
                     }
                 }
-                .background(Color.black.opacity(0.92))
+                .background(Color(.textBackgroundColor))
                 .simultaneousGesture(
                     DragGesture().onChanged { _ in
                         pauseAutoScroll()
@@ -91,6 +42,83 @@ struct DebugPanelView: View {
                     }
                 }
             }
+        }
+        .background(Color(.windowBackgroundColor))
+    }
+
+    private var header: some View {
+        HStack(spacing: TLSpace.sm) {
+            Image(systemName: "ladybug")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Color.secondary)
+            Text("[MAC] \(Localized.string("디버그 로그", "Debug Logs")) [\(logger.logs.count)]")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Color.primary)
+            Spacer()
+
+            Button(selectedIDs.isEmpty
+                ? Localized.string("선택 복사", "Copy Selected")
+                : String(format: Localized.string("선택 복사 (%d줄)", "Copy Selected (%d lines)"), selectedIDs.count)) {
+                copySelection()
+            }
+            .buttonStyle(.borderless)
+            .font(.system(size: 11))
+            .foregroundColor(selectedIDs.isEmpty ? Color.secondary : Color.accentColor)
+            .disabled(selectedIDs.isEmpty)
+
+            Button(Localized.string("선택 해제", "Deselect")) {
+                selectedIDs.removeAll()
+                lastSelectedID = nil
+            }
+            .buttonStyle(.borderless)
+            .font(.system(size: 11))
+            .foregroundColor(selectedIDs.isEmpty ? Color.secondary : Color.accentColor)
+            .disabled(selectedIDs.isEmpty)
+
+            Button {
+                autoScroll.toggle()
+            } label: {
+                Image(systemName: "arrow.down.to.line")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(autoScroll ? Color.accentColor : Color.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help(autoScroll
+                ? Localized.string("자동 스크롤 켜짐 (클릭시 끔)", "Auto-scroll on (click to turn off)")
+                : Localized.string("자동 스크롤 꺼짐 (클릭시 켬)", "Auto-scroll off (click to turn on)"))
+
+            Button(Localized.string("전체 복사", "Copy All")) { copyAll() }
+                .buttonStyle(.borderless)
+                .font(.system(size: 11))
+                .foregroundColor(Color.secondary)
+
+            Button(Localized.string("클리어", "Clear")) {
+                logger.clear()
+                selectedIDs.removeAll()
+                lastSelectedID = nil
+            }
+            .buttonStyle(.borderless)
+            .font(.system(size: 11))
+            .foregroundColor(Color.secondary)
+
+            Divider()
+                .frame(height: 12)
+
+            Button {
+                DebugPanelController.shared.hide()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(Color.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help(Localized.string("닫기", "Close"))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color(.windowBackgroundColor))
+        .overlay(alignment: .bottom) {
+            Divider()
         }
     }
 
@@ -137,13 +165,13 @@ struct DebugPanelView: View {
 
     private func textColor(for level: DebugLogLevel) -> Color {
         switch level {
-        case .error: return Color(red: 1, green: 0.42, blue: 0.42)
-        case .warn: return Color(red: 1, green: 0.84, blue: 0.3)
-        case .apiReq: return Color(red: 0.45, green: 0.75, blue: 0.99)
-        case .apiRes: return Color(red: 0.55, green: 0.92, blue: 0.6)
-        case .action: return .white
-        case .system: return Color(red: 0.7, green: 0.5, blue: 0.95)
-        case .info: return Color(white: 0.7)
+        case .error: return .red
+        case .warn: return .yellow
+        case .apiReq: return .blue
+        case .apiRes: return .green
+        case .action: return .primary
+        case .system: return .purple
+        case .info: return .secondary
         }
     }
 }

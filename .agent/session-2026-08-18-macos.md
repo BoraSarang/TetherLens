@@ -1,6 +1,6 @@
 # 세션 로그 — 2026-08-18 (macOS)
 
-## v0.29.0 — 맥 앱 전면 리디자인 Phase 1~3
+## v0.29.0 — 맥 앱 전면 리디자인 Phase 1~4
 
 ### 1. 무엇을 (T-번호)
 - T-155 Theme.swift Display P3 브랜드 팔레트 + on-color 토큰 ✅
@@ -10,7 +10,8 @@
 - T-159 AppDelegate 온보딩 타이틀 Localized ✅
 - T-160 QoSGauge/HeatmapGrid/Diagnostics radius 토큰화 + 배너 on-color ✅
 - T-161 검증 (진행 중)
-- T-162 Phase 3 화면별 정제: SettingsView TabView+Form(.grouped), UsageReportView NavigationSplitView, Window 뷰 닫기 버튼 제거
+- T-162 Phase 3 화면별 정제: SettingsView TabView+Form(.grouped), UsageReportView NavigationSplitView, Window 뷰 닫기 버튼 제거 ✅
+- T-163 Phase 4 DebugPanel: 시스템 팔레트 + SF Symbol 정제 ✅
 
 ### 2. 플랫폼
 - [macOS]
@@ -21,6 +22,7 @@
 - 앱 실행 중 (PID 44162), DebugPanel ON
 - 메뉴바 스크린샷 docs/screenshots/macos/v0.29_menubar.png (90KB) — **이미지 검증은 사용자 확인 필요 (텍스트 전용 모델)**
 - Phase 3 (T-162): SettingsView 재구성 + UsageReportView NavigationSplitView + 닫기 버튼 제거 — 빌드/테스트 통과, 사용자 육안 확인 필요
+- Phase 4 (T-163): DebugPanel 시스템 팔레트(다크/라이트 대응) + SF Symbol(ladybug/arrow.down.to.line/xmark) — 빌드/테스트 통과, 사용자 육안 확인 필요
 
 ### 4. 남은 TODO
 - T-161/T-162 검증 마무리: 윈도우 5종 열림 + Settings 탭 + 리포트 사이드바 + 다크/라이트 확인 → 커밋/릴리즈
@@ -38,8 +40,8 @@
 
 ### 6. 문서 업데이트 목록
 - docs/plans/PLAN_v0.29.0_macos.md (신규)
-- docs/TODO.md T-155~162 등록
-- docs/CHANGELOG.md v0.29.0 반영 (Phase 1~3)
+- docs/TODO.md T-155~163 등록
+- docs/CHANGELOG.md v0.29.0 반영 (Phase 1~4)
 
 ### 7. 오프라인 큐 상태
 - 해당 없음 (macOS 앱, 서버 미사용)

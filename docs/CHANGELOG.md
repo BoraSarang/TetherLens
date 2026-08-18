@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.29.0] — 2026-08-18 — 맥 앱 전면 리디자인 Phase 1~3 (구조 + 디자인 시스템 + 화면별 정제)
+## [0.29.0] — 2026-08-18 — 맥 앱 전면 리디자인 Phase 1~4 (구조 + 디자인 시스템 + 화면별 정제 + DebugPanel)
 
 > 사용자 요청: 3개 스킬(macos-app-design / ios-the-final-5-percent / apple-design) 기반으로 "아, 맥 앱이구나" 느낌의 전체 UI 리디자인. 확정 사항: 시트→별도 윈도우 전환 / 메뉴바 아이콘+숫자 병행 / Phase 1~2 먼저. 계획: docs/plans/PLAN_v0.29.0_macos.md
 
@@ -21,6 +21,8 @@
 - **SettingsView 맥 설정 앱 스타일로 재구성** — `TabView` 5탭(메뉴바/권한/알림/성능/자동화, 각각 `Label` + SF Symbol) + `Form` + `.formStyle(.grouped)` 섹션 카드. `onClose` 파라미터·닫기 버튼 제거, `formatInterval` 미사용 정리, `Localized.general` 신설
 - **UsageReportView NavigationSplitView 전환** — 버튼 기반 사이드바(88pt) → `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`(180~240pt) + viewMode별 SF Symbol 아이콘. 제목 헤더/내보내기 메뉴 → `.toolbar(.primaryAction)`. `onClose`·`TLSize.sidebarWidth` 제거
 - **Window 뷰 닫기 버튼 제거** — AppTraffic/Notifications/About의 하단 `닫기` 버튼 + `onClose` + 래퍼의 `@Environment(\.dismiss)` 제거 (시스템 창 닫기로 통일)
+- **Window 뷰 툴바 통일** — AppTraffic(차단 ON 배지/시스템 토글/초기화)와 Notifications(전체 지우기) 헤더 제거 → `.toolbar(.primaryAction)`로 이동
+- **DebugPanel 시스템 팔레트 정제** — 하드코딩 검정 배경/흰 텍스트 → `Color(.windowBackgroundColor)`+`Color(.textBackgroundColor)` 다크/라이트 자동 대응. 이모지(🐛📌X) → SF Symbol(`ladybug`/`arrow.down.to.line`/`xmark`). 로그 레벨 색 하드코딩 RGB → 시스템 색상(`red`/`yellow`/`blue`/`green`/`purple`/`secondary`), 폰트 10pt→11pt SF Mono
 
 ### Fixed
 - **`Settings { EmptyView() }` 제거 (T-157)** — 실제 SettingsView로 교체, 설정 창이 별도 윈도우로 열림
