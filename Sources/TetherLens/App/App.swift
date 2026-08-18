@@ -14,6 +14,7 @@ struct TetherLensApp: App {
             UsageReportWindow()
         }
         .defaultSize(width: TLSize.reportWindow.w, height: TLSize.reportWindow.h)
+        .windowResizability(.contentMinSize)
 
         Window(Localized.string("앱 트래픽", "App Traffic"), id: "appTraffic") {
             AppTrafficWindow()

@@ -20,6 +20,7 @@
 ### Changed (Phase 3 — 화면별 정제, T-162)
 - **SettingsView 맥 설정 앱 스타일로 재구성** — `TabView` 5탭(메뉴바/권한/알림/성능/자동화, 각각 `Label` + SF Symbol) + `Form` + `.formStyle(.grouped)` 섹션 카드. `onClose` 파라미터·닫기 버튼 제거, `formatInterval` 미사용 정리, `Localized.general` 신설
 - **UsageReportView NavigationSplitView 전환** — 버튼 기반 사이드바(88pt) → `NavigationSplitView` + `List(selection:)` + `.listStyle(.sidebar)`(180~240pt) + viewMode별 SF Symbol 아이콘. 제목 헤더/내보내기 메뉴 → `.toolbar(.primaryAction)`. `onClose`·`TLSize.sidebarWidth` 제거
+  - **리포트 창 잘림 수정** — 사이드바 공간 확보 위해 `reportWindow` 640×600 → 720×660, `.frame(width:height:)` 고정 → `.frame(minWidth:minHeight:)` + `windowResizability(.contentMinSize)` (창 크기 조절 시 콘텐츠가 잘리지 않음)
 - **Window 뷰 닫기 버튼 제거** — AppTraffic/Notifications/About의 하단 `닫기` 버튼 + `onClose` + 래퍼의 `@Environment(\.dismiss)` 제거 (시스템 창 닫기로 통일)
 - **Window 뷰 툴바 통일** — AppTraffic(차단 ON 배지/시스템 토글/초기화)와 Notifications(전체 지우기) 헤더 제거 → `.toolbar(.primaryAction)`로 이동
 - **DebugPanel 시스템 팔레트 정제** — 하드코딩 검정 배경/흰 텍스트 → `Color(.windowBackgroundColor)`+`Color(.textBackgroundColor)` 다크/라이트 자동 대응. 이모지(🐛📌X) → SF Symbol(`ladybug`/`arrow.down.to.line`/`xmark`). 로그 레벨 색 하드코딩 RGB → 시스템 색상(`red`/`yellow`/`blue`/`green`/`purple`/`secondary`), 폰트 10pt→11pt SF Mono

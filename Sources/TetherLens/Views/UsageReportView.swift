@@ -116,7 +116,7 @@ struct UsageReportView: View {
                 }
             }
         }
-        .frame(width: TLSize.reportWindow.w, height: TLSize.reportWindow.h)
+        .frame(minWidth: TLSize.reportWindow.w, minHeight: TLSize.reportWindow.h)
         .onAppear {
             profiles = ProfileManager.shared.getAllProfiles()
             selectedProfileId = preselectedProfileId ?? allProfilesId

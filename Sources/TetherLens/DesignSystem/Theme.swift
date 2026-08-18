@@ -74,7 +74,7 @@ enum TLRound {
 enum TLSize {
     // Window scene 크기 (v0.29 — 시트 → 별도 윈도우 전환)
     static let settingsWindow:   (w: CGFloat, h: CGFloat) = (580, 480)  // 설정 (Settings scene, Cmd-,)
-    static let reportWindow:     (w: CGFloat, h: CGFloat) = (640, 600)  // 사용량 리포트
+    static let reportWindow:     (w: CGFloat, h: CGFloat) = (720, 660)  // 사용량 리포트 (NavigationSplitView 사이드바 포함)
     static let trafficWindow:    (w: CGFloat, h: CGFloat) = (520, 560)  // 앱 트래픽
     static let notificationsWindow: (w: CGFloat, h: CGFloat) = (400, 440) // 알림 목록
     static let aboutWindow:      (w: CGFloat, h: CGFloat) = (380, 420)  // 정보
