@@ -5,3 +5,6 @@ TetherLens.app/
 *.xcworkspace
 xcuserdata/
 tetherlens.db
+
+# 스크린샷 (로컬 산출물 — 커밋 제외)
+docs/screenshots/
