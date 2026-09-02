@@ -154,8 +154,15 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var showBSSIDInMenuBar: String { value(kr: "메뉴바에 BSSID 표시", en: "Show BSSID in Menu Bar") }
   static var showLinkSpeedInMenuBar: String { value(kr: "메뉴바에 링크 속도 표시", en: "Show Link Speed in Menu Bar") }
   static var showDNSInMenuBar: String { value(kr: "메뉴바에 DNS 표시", en: "Show DNS in Menu Bar") }
+  static var floatingWindow: String { value(kr: "플로팅 창", en: "Floating Window") }
+  static var floatingWindowShow: String { value(kr: "플로팅 창 표시", en: "Show Floating Window") }
+  static var floatingWindowHide: String { value(kr: "플로팅 창 숨기기", en: "Hide Floating Window") }
+  static var floatingOpacity: String { value(kr: "투명도", en: "Opacity") }
+  static var floatingShowTraffic: String { value(kr: "프로세스 트래픽 상위 3개 표시", en: "Show Top 3 App Traffic") }
+  static var floatingShowUsage: String { value(kr: "네트워크 사용량 표시", en: "Show Network Usage") }
+  static var floatingAtLaunch: String { value(kr: "앱 시작 시 표시", en: "Show at Launch") }
   static var autoSwitchProfile: String { value(kr: "새 네트워크에 프로필 자동 등록", en: "Auto-Register Profile on New Network") }
-  static var automationTitle: String { value(kr: "자동화 (SSID 트리거)", en: "Automation (SSID Trigger)") }
+  static var automationTitle: String { value(kr: "자동화", en: "Automation") }
   static var automationEmpty: String { value(kr: "등록된 규칙이 없습니다. 아래 버튼으로 추가해 보세요.", en: "No rules yet. Add one below.") }
   static var automationRuleName: String { value(kr: "규칙 이름", en: "Rule Name") }
   static var automationSSID: String { value(kr: "SSID/네트워크 이름", en: "SSID / Network Name") }

@@ -360,3 +360,18 @@
 | 167 | 검증: test.sh/build + 메뉴바/팔레트 수동 확인 + 문서/커밋/릴리즈 | P1 | ✅ |
 
 > 릴리즈 완료: v0.30.0 태그 + main push + release 빌드 (DebugPanel OFF). 커밋: 3ac7fbe (feat 메뉴바+팔레트), 82f0111 (fix 설정 제목), 1abf6c9 (세션 로그)
+> 후속: e9669e4 (스크린샷 분리 + Info.plist 0.30.0/30) — T-167 릴리즈 완료 마감
+
+## 🔄 v0.31.0 — 플로팅 창 (메뉴바 축소판 + 프로세스 트래픽) (2026-09-02)
+
+> 사용자 요청: 메뉴바 표시 내용을 바탕화면 플로팅 창으로 별도 구성. 계획: docs/plans/PLAN_v0.31.0_macos.md (bd: TetherLens-9a5)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 168 | PLAN 작성 + bd 등록 | P0 | ✅ |
+| 169 | TrafficMonitor `Usage.floating` + MenuBarManager `floatingContentChanged` 발행 | P1 | ⬜ |
+| 170 | FloatingWindowController: borderless NSPanel + 위치 저장/복원 + 트래픽 acquire/release | P1 | ⬜ |
+| 171 | FloatingWindowView: 메뉴바 축소판(폰트 반영) + 트래픽 top3 + 투명도/닫기 + 행 클릭→앱트래픽 | P1 | ⬜ |
+| 172 | 진입점: 우클릭 더보기 토글 + ⌘⇧F + ⌘K 팔레트 액션 | P1 | ⬜ |
+| 173 | SettingsView 플로팅 창 섹션(시작 시 표시/투명도/트래픽) + SettingsManager 3키 + Localized | P1 | ⬜ |
+| 174 | 검증: test.sh + build + DebugPanel(ERROR 0) + Info.plist v0.31.0/31 + 문서(CHANGELOG/TODO/세션) | P1 | ⬜ |

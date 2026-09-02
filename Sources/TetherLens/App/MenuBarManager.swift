@@ -61,6 +61,9 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
 
         UNUserNotificationCenter.current().delegate = notiDelegate
 
+        // PingMonitor가 OS 레벨 연결 상태(NWPathMonitor)와 교차 검증하도록 주입 (v0.31)
+        pingMonitor.hotspotDetector = hotspotDetector
+
         setupMenuBar()
         setupPopover()
         setupLocationCallback()
@@ -251,6 +254,10 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
         })
         menu.addItem(moreMenuItem(Localized.notificationList) { [weak self] in
             self?.openPopoverAndTrigger("notifications")
+        })
+        let floatingLabel = FloatingWindowController.shared.isVisible ? Localized.floatingWindowHide : Localized.floatingWindowShow
+        menu.addItem(moreMenuItem(floatingLabel) {
+            FloatingWindowController.shared.toggle()
         })
         menu.addItem(.separator())
         menu.addItem(moreMenuItem(Localized.networkDiagnostics) {
@@ -669,6 +676,7 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
         let showDNS = SettingsManager.shared.showDNSInMenuBar
         var col3Top = totalStr
         var col3Bottom = remainingStr
+        var col3Overridden = false
 
         if let conn = hotspotDetector.currentConnection {
             let dnsText = showDNS ? conn.dnsServers.first : nil
@@ -681,6 +689,7 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
                 customTop = "\(Int(speed / 1_000_000)) Mbps"
             }
             if let customTop {
+                col3Overridden = true
                 col3Top = customTop
                 col3Bottom = dnsText ?? ""
             } else if showDNS {
@@ -688,6 +697,7 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             }
         }
         if mode == .speedOnly {
+            col3Overridden = true
             col3Top = ""
             col3Bottom = ""
         }
@@ -698,6 +708,16 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             totalRatio: mode == .speedOnly ? -1 : quotaRatio
         )
         statusItem.length = menuBarView.frame.width
+        // 플로팅 창에 메뉴바와 동일한 표시 내용을 공급 (v0.31) — 설정·tick 경로에서 항상 발행되어 동기화
+        NotificationCenter.default.post(
+            name: .init("floatingContentChanged"), object: nil,
+            userInfo: [
+                "up": uploadStr, "down": downloadStr,
+                "col3Top": col3Top, "col3Bottom": col3Bottom,
+                "ratio": mode == .speedOnly ? -1 : quotaRatio,
+                "col3IsUsage": !col3Overridden && !col3Top.isEmpty
+            ]
+        )
     }
 
     private nonisolated func authorizeNotifications() {

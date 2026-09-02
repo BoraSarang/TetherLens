@@ -6,7 +6,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
 
     /// TrafficMonitor를 활성 상태로 끌어올리는 소비자 구분 (에너지 최적화 — 지연 시작).
     enum Usage {
-        case popover, sheet, appBlock
+        case popover, sheet, appBlock, floating
     }
 
     struct AppTraffic: Identifiable {

@@ -23,6 +23,8 @@ struct TetherLensApp: App {
             }
             CommandGroup(after: .sidebar) {
                 Divider()
+                Button(Localized.floatingWindowShow) { FloatingWindowController.shared.toggle() }
+                    .keyboardShortcut("f", modifiers: [.command, .shift])
                 Button(Localized.popoverToggle) {
                     NotificationCenter.default.post(name: .init("togglePopover"), object: nil)
                 }

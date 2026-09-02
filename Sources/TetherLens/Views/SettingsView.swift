@@ -20,6 +20,10 @@ struct SettingsView: View {
     @State private var pingInterval: Double
     @State private var fontSize: Double
     @State private var showAppTraffic: Bool
+    @State private var floatingShowAtLaunch: Bool
+    @State private var floatingOpacity: Double
+    @State private var floatingShowTraffic: Bool
+    @State private var floatingShowUsage: Bool
     @State private var notiAuthorized = false
     @State private var locationStatus: CLAuthorizationStatus = .notDetermined
     @State private var locationDiagnostics: [String] = []
@@ -48,6 +52,10 @@ struct SettingsView: View {
         _pingInterval = State(initialValue: s.pingInterval)
         _fontSize = State(initialValue: s.menuBarFontSize)
         _showAppTraffic = State(initialValue: UserDefaults.standard.object(forKey: "popover_show_app_traffic") as? Bool ?? true)
+        _floatingShowAtLaunch = State(initialValue: s.floatingShowAtLaunch)
+        _floatingOpacity = State(initialValue: s.floatingOpacity)
+        _floatingShowTraffic = State(initialValue: s.floatingShowTraffic)
+        _floatingShowUsage = State(initialValue: s.floatingShowUsage)
         _autoRules = State(initialValue: AutomationManager.shared.rules)
     }
 
@@ -195,6 +203,38 @@ struct SettingsView: View {
                 }
                 .onChange(of: showAppTraffic) { _, newValue in
                     UserDefaults.standard.set(newValue, forKey: "popover_show_app_traffic")
+                }
+            }
+
+            Section(Localized.floatingWindow) {
+                Toggle(Localized.floatingAtLaunch, isOn: $floatingShowAtLaunch)
+                    .onChange(of: floatingShowAtLaunch) { _, newValue in
+                        SettingsManager.shared.floatingShowAtLaunch = newValue
+                    }
+
+                Toggle(Localized.floatingShowTraffic, isOn: $floatingShowTraffic)
+                    .onChange(of: floatingShowTraffic) { _, newValue in
+                        SettingsManager.shared.floatingShowTraffic = newValue
+                        NotificationCenter.default.post(name: .init("floatingSettingsChanged"), object: nil)
+                    }
+
+                Toggle(Localized.floatingShowUsage, isOn: $floatingShowUsage)
+                    .onChange(of: floatingShowUsage) { _, newValue in
+                        SettingsManager.shared.floatingShowUsage = newValue
+                    }
+
+                HStack {
+                    Text(Localized.floatingOpacity)
+                        .font(.body)
+                    Spacer()
+                    Slider(value: $floatingOpacity, in: 0.35...1.0)
+                        .frame(width: 160)
+                        .onChange(of: floatingOpacity) { _, newValue in
+                            SettingsManager.shared.floatingOpacity = newValue
+                        }
+                    Text("\(Int(floatingOpacity * 100))%")
+                        .font(.caption).monospacedDigit()
+                        .frame(width: 40, alignment: .trailing)
                 }
             }
         }

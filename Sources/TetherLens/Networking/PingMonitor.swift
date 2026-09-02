@@ -13,12 +13,16 @@ class PingMonitor {
     private(set) var gatewayAddress: String?
 
     var isHotspot: Bool = false
+    /// OS 레벨(NWPathMonitor) 연결 상태를 공급받아 ping 단발 실패로 인한 거짓 끊김을 걸러낸다.
+    weak var hotspotDetector: HotspotDetector?
 
     private var lastReachable: Bool = true
     private var lastAlertTime: Date?
     private var lastAlertLevel: Int = 0
     private var lastNotifiedLevel: Int = 0
     private var lastConnectionAlertDate: Date = .distantPast
+    /// 연속 ping 실패 횟수 (OS가 정상인 동안의 드랍 내성용)
+    private var unreachableStrikes = 0
 
     private var dnsHistory: [TimeInterval?] = []
     private var gatewayHistory: [TimeInterval?] = []
@@ -36,7 +40,7 @@ class PingMonitor {
     private let recoveryDuration: TimeInterval = 10.0
     private let consecutiveCount = 5
     private let packetLossThreshold = 0.1
-    private let pingProcessTimeout: TimeInterval = 5.0
+    private let pingProcessTimeout: TimeInterval = 8.0
 
     private let notiCenter = UNUserNotificationCenter.current()
 
@@ -83,12 +87,26 @@ class PingMonitor {
             } else {
                 gatewayRTT = rtt
             }
-            isReachable = (dnsRTT ?? .infinity) < 2.0 || (gatewayRTT ?? .infinity) < 2.0
+            applyReachability()
             // 상태 전환 감지는 매 루프에서 수행 (useDNS일 때만 하면 끊김/복구 알림이 누락될 수 있음)
             await checkAndNotify()
             useDNS.toggle()
             try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
         }
+    }
+
+    /// ping(probe) 결과 + OS 연결 상태(NWPathMonitor)를 교차 검증해 isReachable을 결정한다.
+    /// 단발 드랍(OS 정상)은 끊김으로 보지 않고, 연속 실패가 임계(strikeLimit)에 도달하거나
+    /// OS가 unsatisfied일 때만 끊김으로 전환한다.
+    private func applyReachability() {
+        let pingAlive = (dnsRTT ?? .infinity) < 2.0 || (gatewayRTT ?? .infinity) < 2.0
+        let osAvailable = hotspotDetector?.isNetworkAvailable ?? true
+        let result = ReachabilityPolicy.evaluate(pingAlive: pingAlive, osAvailable: osAvailable, strikes: unreachableStrikes)
+        unreachableStrikes = result.newStrikes
+        if isReachable != result.reachable {
+            DebugLogger.shared.action("Network", "연결 판정 변화 → \(result.reachable ? "복구" : "끊김") (ping=\(pingAlive) os=\(osAvailable) strikes=\(unreachableStrikes)")
+        }
+        isReachable = result.reachable
     }
 
     /// 저전력 모드이면 ping 주기를 최소 15초로 확대해 에너지를 절약한다.
@@ -242,8 +260,9 @@ class PingMonitor {
     private nonisolated func performPing(host: String) async -> TimeInterval? {
         await withCheckedContinuation { continuation in
             let task = Process()
+            // 패킷 3개로 간헐 드랍에 내성을 갖고, 1개 이상 성공하면 응답으로 본다 (v0.31)
             task.launchPath = "/sbin/ping"
-            task.arguments = ["-c", "1", "-W", "2000", host]
+            task.arguments = ["-c", "3", "-W", "2000", host]
 
             let pipe = Pipe()
             task.standardOutput = pipe
@@ -263,14 +282,20 @@ class PingMonitor {
             task.terminationHandler = { _ in
                 let data = (try? pipe.fileHandleForReading.readDataToEndOfFile()) ?? Data()
                 let output = String(data: data, encoding: .utf8) ?? ""
-                if task.terminationStatus == 0,
-                   let line = output.components(separatedBy: "\n").first(where: { $0.contains("time=") }),
-                   let msPart = line.components(separatedBy: "time=").last?.components(separatedBy: " ").first,
-                   let ms = Double(msPart) {
-                    gate.resume { continuation.resume(returning: ms / 1000.0) }
-                } else {
-                    gate.resume { continuation.resume(returning: nil) }
+                if task.terminationStatus == 0 {
+                    var rtts: [Double] = []
+                    for line in output.components(separatedBy: "\n") where line.contains("time=") {
+                        guard let msPart = line.components(separatedBy: "time=").last?.components(separatedBy: " ").first,
+                              let ms = Double(msPart) else { continue }
+                        rtts.append(ms)
+                    }
+                    if !rtts.isEmpty {
+                        let avg = rtts.reduce(0, +) / Double(rtts.count)
+                        gate.resume { continuation.resume(returning: avg / 1000.0) }
+                        return
+                    }
                 }
+                gate.resume { continuation.resume(returning: nil) }
             }
 
             DispatchQueue.global().asyncAfter(deadline: .now() + pingProcessTimeout, execute: watchdog)

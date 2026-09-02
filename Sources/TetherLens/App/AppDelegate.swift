@@ -18,6 +18,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             self.menuBarManager?.startMonitoring()
+            if SettingsManager.shared.floatingShowAtLaunch {
+                FloatingWindowController.shared.show()
+            }
         }
 
         showOnboardingIfNeeded()

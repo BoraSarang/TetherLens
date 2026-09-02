@@ -92,6 +92,9 @@ enum TLSize {
     static let detailLabelWidth:  CGFloat = 96   // detailRow 라벨
     static let trafficUploadCol:  CGFloat = 62
     static let trafficDownloadCol: CGFloat = 68
+    static let trafficFloatingUploadCol: CGFloat = 76
+    static let trafficFloatingDownloadCol: CGFloat = 82
+    static let trafficFloatingProcessCol: CGFloat = 110
     static let rowColNarrow:      CGFloat = 44   // 세션 수/짧은 값
     static let rowColTime:        CGFloat = 64   // 시간/기간 컬럼
     static let rowColWide:        CGFloat = 72   // 날짜/라벨 컬럼

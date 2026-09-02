@@ -36,6 +36,9 @@ struct CommandPaletteView: View {
             PaletteItem(title: Localized.popoverToggle, icon: "rectangle.inset.filled.and.person.filled") {
                 NotificationCenter.default.post(name: .init("togglePopover"), object: nil)
             },
+            PaletteItem(title: Localized.floatingWindow, icon: "rectangle.on.rectangle") {
+                FloatingWindowController.shared.toggle()
+            },
             PaletteItem(title: Localized.checkUpdates, icon: "arrow.down.circle") {
                 UpdaterManager.shared.openDownloadPage()
             },

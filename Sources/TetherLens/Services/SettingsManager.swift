@@ -19,7 +19,11 @@ final class SettingsManager: @unchecked Sendable {
             "trafficMonitorInterval": Self.defaultTrafficMonitorInterval,
             "pingInterval": Self.defaultPingInterval,
             "pingLatencyNotificationEnabled": true,
-            "autoSwitchProfile": true
+            "autoSwitchProfile": true,
+            "floatingShowAtLaunch": false,
+            "floatingOpacity": 0.9,
+            "floatingShowTraffic": true,
+            "floatingShowUsage": true
         ])
     }
 
@@ -108,6 +112,26 @@ final class SettingsManager: @unchecked Sendable {
     var autoSwitchProfile: Bool {
         get { defaults.object(forKey: "autoSwitchProfile") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "autoSwitchProfile") }
+    }
+
+    var floatingShowAtLaunch: Bool {
+        get { defaults.bool(forKey: "floatingShowAtLaunch") }
+        set { defaults.set(newValue, forKey: "floatingShowAtLaunch") }
+    }
+
+    var floatingOpacity: Double {
+        get { defaults.object(forKey: "floatingOpacity") as? Double ?? 0.9 }
+        set { defaults.set(newValue, forKey: "floatingOpacity") }
+    }
+
+    var floatingShowTraffic: Bool {
+        get { defaults.bool(forKey: "floatingShowTraffic") }
+        set { defaults.set(newValue, forKey: "floatingShowTraffic") }
+    }
+
+    var floatingShowUsage: Bool {
+        get { defaults.bool(forKey: "floatingShowUsage") }
+        set { defaults.set(newValue, forKey: "floatingShowUsage") }
     }
 
     func resetPollingIntervals() {
