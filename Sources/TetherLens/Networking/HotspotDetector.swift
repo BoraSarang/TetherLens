@@ -159,14 +159,22 @@ class HotspotDetector: @unchecked Sendable {
             let detectedType: ConnectionType
 
             if isAndroidHotspotGateway(gatewayIP) {
+                // 신뢰 대역(192.168.43 등)은 단독으로도 확정
                 detectedType = .androidHotspot(ssid: wifi.ssid)
             } else if gatewayIP?.hasPrefix("172.20.10.") == true {
                 detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
-            } else if isAndroidSSID(wifi.ssid) {
+            } else if androidHotspotScore(gatewayIP: gatewayIP, ssid: wifi.ssid, isExpensive: isExpensive, bssid: wifi.bssid) {
+                // 게이트웨이 대역이 애매할 때(10.x 등)는 SSID/BSSID/isExpensive 종합 득점으로 판별
+                debugLogDetect("안드로이드 핫스팟 판별 성공",
+                               gateway: gatewayIP, ssid: wifi.ssid,
+                               expensive: isExpensive, bssid: wifi.bssid)
                 detectedType = .androidHotspot(ssid: wifi.ssid)
             } else if isExpensive {
                 detectedType = .iOSPersonalHotspot(ssid: wifi.ssid)
             } else {
+                debugLogDetect("일반 Wi-Fi로 판별 (안드로이드 아님)",
+                               gateway: gatewayIP, ssid: wifi.ssid,
+                               expensive: isExpensive, bssid: wifi.bssid)
                 detectedType = .normalWiFi(ssid: wifi.ssid, bssid: wifi.bssid)
             }
 
@@ -270,25 +278,91 @@ class HotspotDetector: @unchecked Sendable {
     }
 
     func isAndroidHotspotGateway(_ ip: String?) -> Bool {
-        guard let ip = ip else { return false }
-        let prefixes = [
+        androidGatewayTier(ip) == .high
+    }
+
+    /// 게이트웨이 대역의 안드로이드 핫스팟 신뢰도를 3단계로 나눈다.
+    /// - high: 거의 확실한 안드로이드 테더링 대역 (단독으로도 확정 가능)
+    /// - low: 이례적/모호한 대역 (일반 공유기와 충돌 소지 — 종합 점수에서만 기여)
+    enum AndroidGatewayTier {
+        case high, low, none
+    }
+
+    func androidGatewayTier(_ ip: String?) -> AndroidGatewayTier {
+        guard let ip = ip else { return .none }
+        let high = [
             "192.168.43.",  // Samsung
-            "192.168.42.",  // LG 등
+            "192.168.42.",  // LG 등 (USB 테더링)
             "192.168.44.",  // 기타
-            "192.168.49.",  // Xiaomi / Pixel
+            "192.168.49.",  // Xiaomi / Pixel / One UI 6+
             "192.168.80.",  // 기타
             "192.168.81.",  // Android 14+ 일부
             "192.168.111."  // Pixel 일부
         ]
-        return prefixes.contains { ip.hasPrefix($0) }
+        if high.contains(where: { ip.hasPrefix($0) }) { return .high }
+        // 낮은 신뢰 대역 — 통신사 CGNAT(10.x)일 수 있어 단독 매칭 금지, 종합 득점에서만 사용
+        let low = ["10.113.", "10.154."]
+        if low.contains(where: { ip.hasPrefix($0) }) { return .low }
+        return .none
     }
 
     func isAndroidSSID(_ ssid: String?) -> Bool {
-        guard let ssid = ssid?.lowercased() else { return false }
-        let keywords = ["galaxy", "android", "sm-", "samsung", "oneplus", "xiaomi",
-                        "redmi", "huawei", "pixel", "motog", "asus", "tplink", "tp-link",
-                        "okstart", "oppo", "vivo", "realme", "infinix", "tecno"]
-        return keywords.contains { ssid.contains($0) }
+        androidSSIDScore(ssid) > 0
+    }
+
+    /// 안드로이드 테더링 SSID 득점 (게이트웨이와 무관하게 SSID만으로 판별 근거를 계산).
+    func androidSSIDScore(_ ssid: String?) -> Int {
+        guard let raw = ssid?.lowercased(), !raw.isEmpty else { return 0 }
+        var score = 0
+        let keywords = ["hotspot", "tether"]
+        if keywords.contains(where: { raw.contains($0) }) { score += 2 }
+        // 갤럭시/안드로이드 모델명: s(22|23...), note(10|20...), galaxy, zflip/zfold 등
+        let modelPattern = #"^(galaxy|s[0-9]{1,2}|note[0-9]{1,2}|a[0-9]{2}|z[ ]?flip|z[ ]?fold|android)"#
+        if raw.range(of: modelPattern, options: .regularExpression) != nil { score += 2 }
+        if ["galaxy", "android", "sm-", "samsung", "oneplus", "xiaomi", "redmi",
+            "huawei", "pixel", "motog", "asus", "tplink", "tp-link", "okstart",
+            "oppo", "vivo", "realme", "infinix", "tecno"].contains(where: { raw.contains($0) }) {
+            score += 2
+        }
+        return score
+    }
+
+    /// 게이트웨이/SSID/isExpensive/BSSID를 종합 득점해 안드로이드 핫스팟 여부를 판별한다.
+    /// 임계(기본 4) 이상이면 안드로이드로 확정 — 일반 공유기 오판(예: only "ap" 이름) 방지.
+    func androidHotspotScore(gatewayIP: String?, ssid: String?, isExpensive: Bool, bssid: String? = nil, threshold: Int = 4) -> Bool {
+        var score = 0
+        switch androidGatewayTier(gatewayIP) {
+        case .high: score += 3
+        case .low: score += 1
+        case .none: break
+        }
+        score += androidSSIDScore(ssid)
+        if isExpensive { score += 1 }
+        if let bssid, isAndroidManufacturerOUI(bssid) { score += 1 }
+        return score >= threshold
+    }
+
+    private func isAndroidManufacturerOUI(_ bssid: String) -> Bool {
+        let oui = bssid.uppercased().split(separator: ":").prefix(3).joined(separator: ":")
+        return Self.androidOUIs.contains(oui)
+    }
+
+    private static let androidOUIs: Set<String> = [
+        // Samsung
+        "00:0C:E7", "90:B6:86", "FC:F5:28", "58:FD:B1", "A4:77:33", "D8:24:BD",
+        // Xiaomi
+        "64:09:80", "D4:6E:5C", "78:11:DC", "C0:EE:FB", "8C:BC:A5",
+        // Huawei
+        "BC:93:4B", "50:7B:9D", "E8:AB:FA",
+        // LG
+        "00:08:95", "78:C1:05"
+    ]
+
+    private func debugLogDetect(_ label: String, gateway: String?, ssid: String?, expensive: Bool, bssid: String?) {
+        let msg = "[HOTSPOT] \(label) | gateway=\(gateway ?? "-") ssid=\(ssid ?? "-") expensive=\(expensive) bssid=\(bssid ?? "-")"
+        Task { @MainActor in
+            DebugLogger.shared.info("Network", msg)
+        }
     }
 
     private func getDNSServers() -> [String] {

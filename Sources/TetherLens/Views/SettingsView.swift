@@ -7,11 +7,8 @@ import CoreWLAN
 struct SettingsView: View {
     @State private var showTotalColumn: Bool
     @State private var launchAtLogin: Bool
-    @State private var menuBarModeRaw: String
-    @State private var showSSIDInMenuBar: Bool
-    @State private var showBSSIDInMenuBar: Bool
-    @State private var showLinkSpeedInMenuBar: Bool
-    @State private var showDNSInMenuBar: Bool
+    @State private var showLatencyInMenuBar: Bool
+    @State private var showRSSIInMenuBar: Bool
     @State private var autoSwitchProfile: Bool
 
     @State private var menuBarInterval: Double
@@ -40,11 +37,8 @@ struct SettingsView: View {
         let s = SettingsManager.shared
         _showTotalColumn = State(initialValue: s.showTotalColumn)
         _launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled)
-        _menuBarModeRaw = State(initialValue: s.menuBarMode.rawValue)
-        _showSSIDInMenuBar = State(initialValue: s.showSSIDInMenuBar)
-        _showBSSIDInMenuBar = State(initialValue: s.showBSSIDInMenuBar)
-        _showLinkSpeedInMenuBar = State(initialValue: s.showLinkSpeedInMenuBar)
-        _showDNSInMenuBar = State(initialValue: s.showDNSInMenuBar)
+        _showLatencyInMenuBar = State(initialValue: s.showLatency)
+        _showRSSIInMenuBar = State(initialValue: s.showRSSI)
         _autoSwitchProfile = State(initialValue: s.autoSwitchProfile)
         _menuBarInterval = State(initialValue: s.menuBarRefreshInterval)
         _cacheInterval = State(initialValue: s.cacheRefreshInterval)
@@ -121,40 +115,19 @@ struct SettingsView: View {
                         SettingsManager.shared.showTotalColumn = newValue
                         NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                     }
+                Text(Localized.showTotalInMenuBarFootnote)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
 
-                Picker(Localized.menuBarDisplayMode, selection: $menuBarModeRaw) {
-                    ForEach(SettingsManager.MenuBarMode.allCases, id: \.rawValue) { mode in
-                        Text(modeLabel(mode)).tag(mode.rawValue)
-                    }
-                }
-                .onChange(of: menuBarModeRaw) { _, newValue in
-                    if let mode = SettingsManager.MenuBarMode(rawValue: newValue) {
-                        SettingsManager.shared.menuBarMode = mode
-                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                    }
-                }
-
-                Toggle(Localized.showSSIDInMenuBar, isOn: $showSSIDInMenuBar)
-                    .onChange(of: showSSIDInMenuBar) { _, newValue in
-                        SettingsManager.shared.showSSIDInMenuBar = newValue
+                Toggle(Localized.showLatencyInMenuBar, isOn: $showLatencyInMenuBar)
+                    .onChange(of: showLatencyInMenuBar) { _, newValue in
+                        SettingsManager.shared.showLatency = newValue
                         NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                     }
 
-                Toggle(Localized.showBSSIDInMenuBar, isOn: $showBSSIDInMenuBar)
-                    .onChange(of: showBSSIDInMenuBar) { _, newValue in
-                        SettingsManager.shared.showBSSIDInMenuBar = newValue
-                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                    }
-
-                Toggle(Localized.showLinkSpeedInMenuBar, isOn: $showLinkSpeedInMenuBar)
-                    .onChange(of: showLinkSpeedInMenuBar) { _, newValue in
-                        SettingsManager.shared.showLinkSpeedInMenuBar = newValue
-                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-                    }
-
-                Toggle(Localized.showDNSInMenuBar, isOn: $showDNSInMenuBar)
-                    .onChange(of: showDNSInMenuBar) { _, newValue in
-                        SettingsManager.shared.showDNSInMenuBar = newValue
+                Toggle(Localized.showRSSIInMenuBar, isOn: $showRSSIInMenuBar)
+                    .onChange(of: showRSSIInMenuBar) { _, newValue in
+                        SettingsManager.shared.showRSSI = newValue
                         NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
                     }
             }
@@ -482,14 +455,6 @@ struct SettingsView: View {
             s.trafficMonitorInterval = trafficInterval
             s.pingInterval = pingInterval
             NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
-        }
-    }
-
-    private func modeLabel(_ mode: SettingsManager.MenuBarMode) -> String {
-        switch mode {
-        case .speedOnly: return Localized.menuBarModeSpeedOnly
-        case .speedAndTotal: return Localized.menuBarModeSpeedTotal
-        case .speedAndSSID: return Localized.menuBarModeSpeedSSID
         }
     }
 

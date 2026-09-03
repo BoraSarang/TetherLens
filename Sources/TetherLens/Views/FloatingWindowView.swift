@@ -33,7 +33,6 @@ struct FloatingWindowView: View {
 
     /// 프로세스 리스트 ON — 닫기 버튼 + 속도 2줄 + 사용량 중앙 + 트래픽 목록 (세로 120)
     private var fullLayout: some View {
-        let fontSize = SettingsManager.shared.menuBarFontSize
         return VStack(spacing: 0) {
             HStack {
                 Spacer()
@@ -121,11 +120,21 @@ struct FloatingWindowView: View {
         .frame(minWidth: 70, alignment: alignment)
     }
 
-    /// 사용량/잔여 — "네트워크 사용량"이면 중앙 정렬 + 토글로 제어, SSID·BSSID·링크속도면 항상 표시.
+    /// col3 중앙 표시 — 할당량 설정 시 사용량/잔여(비율 색), 그 외 RSSI(top) + 지연시간(bottom).
     @ViewBuilder
     private func usageColumn(fontSize: Double) -> some View {
-        let show = model.totalRatio >= 0 && (!model.col3IsUsage || showUsage)
-        if show {
+        if model.col3IsLatency {
+            VStack(spacing: 2) {
+                Text(model.col3Top)
+                    .font(.system(size: fontSize, weight: .bold))
+                    .foregroundColor(MenuBarManager.rssiColor(model.rssi >= -1000 ? model.rssi : nil))
+                Text(model.col3Bottom)
+                    .font(.system(size: fontSize, weight: .bold))
+                    .foregroundColor(MenuBarManager.latencyColor(model.latencyMS >= 0 ? Double(model.latencyMS) / 1000.0 : nil))
+            }
+            .fixedSize()
+            .frame(maxWidth: .infinity, alignment: .center)
+        } else if model.totalRatio >= 0 && (!model.col3IsUsage || showUsage) {
             VStack(spacing: 2) {
                 Text(model.col3Top)
                     .font(.system(size: fontSize, weight: .bold))

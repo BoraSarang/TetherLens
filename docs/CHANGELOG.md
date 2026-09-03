@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.31.0] — 2026-09-03 — 메뉴바 col3 재설계 + 안드로이드 핫스팟 판별 개선 + UI 정비
+
+> 할당량 유무에 따라 메뉴바 col3(지연/RSSI ↔ 사용량/잔여) 자동 전환, 안드로이드 테더링 SSID 기반 감지 강화, 프로필 편집 창 크기·프로세스 툴바 정리. 계획: docs/plans/PLAN_v0.31.0_macos.md
+
+### Added
+- **메뉴바 col3 자동 전환 (할당량 유무)** — 할당량 설정 + 사용량 열 ON 시 사용량(top)/잔여(bottom), 할당량 미설정 시 RSSI(top)/지연시간(bottom). 기존 3모드(`speedOnly`/`speedAndTotal`/`speedAndSSID`)와 SSID/BSSID/링크속도/DNS 표시는 폐지
+- **설정 키** — `showLatency`/`showRSSI`(기본 true) 신설. 폐기: `menuBarMode`/`showSSIDInMenuBar`/`showBSSIDInMenuBar`/`showLinkSpeedInMenuBar`/`showDNSInMenuBar`
+- **RSSI/지연 색상** — RSSI: ≥-50 초록 / -67~-50 주황 / <-67 빨강, 없으면 `--`. 지연: <50ms 초록 / <150ms 주황 / ≥150ms 빨강. 지연은 게이트웨이 우선(없으면 외부 대체). RSSI·지연 둘 다 끄면 col3 숨김
+- **`MenuBarSignalTests`** — RSSI/지연 형식·색상 테스트
+
+### Changed
+- **MenuBar col3 렌더링 개선** — `totalRatio<0`을 "col3 숨김" 신호로 쓰던 구조를 분리(`col3Hidden`+`col3TopColor`/`col3BottomColor`). col3 폭을 두 줄 실제 텍스트 중 최대 폭으로 동적 계산(오른쪽 정렬 유지) → 지연/RSSI가 메뉴바에 정상 표시
+- **플로팅 창 동기화** — 메뉴바와 동일 col3 형식(지연+RSSI/사용량+잔여). `floatingContentChanged` userInfo에 `rssi`/`latencyMS`/`col3IsLatency` 추가
+- **거짓 "연결 끊김" 알림 수정** — `ReachabilityPolicy` 순수 상태 머신 + `PingMonitor` 3패킷(1성공=RTT) + OS 교차 검증(OS unsatisfied만 즉시 끊김, 기본 스트라이크 3)
+- **안드로이드 핫스팟 판별 강화** — SSID 득점(`hotspot`/`tether`/갤럭시 모델명 `s\d+`·`galaxy`·`note`) + 게이트웨이 대역(high/low 등급) + `isExpensive` + 안드로이드 제조사 BSSID OUI를 **종합 득점(임계 ≥4)**. `10.x`(통신사 CGNAT 가능성) 대역은 low 등급으로 단독 매칭 배제 → 일반 공유기 오판 방지. 판별 근거 `[HOTSPOT]` DebugLogger 기록
+- **프로필 편집 창 크기** — 고정 높이 220 → 할당량 ON 시 `286`으로 자동 확대(입력/에러 줄 겹침 해소)
+- **프로세스 툴바 아이콘화** — [차단 라벨/체크박스/bordered 버튼] → SF Symbol 아이콘 버튼(`hand.raised.fill` 차단 배지, `gearshape` 시스템 포함 토글, `arrow.counterclockwise` 초기화) + `.help()` 툴팁
+- **사용량 토글 라벨** — "메뉴바에 사용량 표시" → "할당량 설정 시 사용량 표시" + 부연 설명 추가
+
 ## [0.30.0] — 2026-08-18 — 메뉴바 강화 + Cmd-K 커맨드 팔레트
 
 > macos-app-design 스킬 §4~§6 미충족 항목(메뉴바/단축키/Cmd-K) 보완. 계획: docs/plans/PLAN_v0.30.0_macos.md

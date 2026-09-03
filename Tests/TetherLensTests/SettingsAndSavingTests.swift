@@ -14,8 +14,8 @@ import Foundation
     @Test func 기본_설정값() {
         let s = makeManager()
         #expect(s.showTotalColumn == true)
-        #expect(s.menuBarMode == .speedAndTotal)
-        #expect(s.showSSIDInMenuBar == false)
+        #expect(s.showLatency == true)
+        #expect(s.showRSSI == true)
         #expect(s.menuBarFontSize == SettingsManager.defaultMenuBarFontSize)
         #expect(s.menuBarRefreshInterval == SettingsManager.defaultMenuBarRefreshInterval)
         #expect(s.cacheRefreshInterval == SettingsManager.defaultCacheRefreshInterval)
@@ -28,20 +28,24 @@ import Foundation
     @Test func 값_저장_조회() {
         let s = makeManager()
         s.showTotalColumn = false
-        s.menuBarMode = .speedOnly
+        s.showLatency = false
+        s.showRSSI = false
         s.menuBarFontSize = 12
         #expect(s.showTotalColumn == false)
-        #expect(s.menuBarMode == .speedOnly)
+        #expect(s.showLatency == false)
+        #expect(s.showRSSI == false)
         #expect(s.menuBarFontSize == 12)
     }
 
-    @Test func 잘못된_메뉴바_모드_기본_폴백() {
+    @Test func 지연_RSSI_기본_폴백() {
         let suite = "test-settings-\(UUID().uuidString)"
         let d = UserDefaults(suiteName: suite)!
         d.removePersistentDomain(forName: suite)
-        d.set("invalid_mode", forKey: "menuBarMode")
+        d.set(false, forKey: "showLatency")
+        d.set(false, forKey: "showRSSI")
         let s = SettingsManager(defaults: d)
-        #expect(s.menuBarMode == .speedAndTotal)
+        #expect(s.showLatency == false)
+        #expect(s.showRSSI == false)
     }
 
     @Test func resetPollingIntervals_기본값_복원() {
@@ -58,13 +62,6 @@ import Foundation
         #expect(s.trafficMonitorInterval == SettingsManager.defaultTrafficMonitorInterval)
         #expect(s.pingInterval == SettingsManager.defaultPingInterval)
         #expect(s.isUsingDefaultPollingIntervals)
-    }
-
-    @Test func MenuBarMode_모든_케이스() {
-        #expect(SettingsManager.MenuBarMode.allCases.count == 3)
-        #expect(SettingsManager.MenuBarMode(rawValue: "speed") == .speedOnly)
-        #expect(SettingsManager.MenuBarMode(rawValue: "speed_total") == .speedAndTotal)
-        #expect(SettingsManager.MenuBarMode(rawValue: "speed_ssid") == .speedAndSSID)
     }
 }
 

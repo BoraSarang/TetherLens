@@ -12,6 +12,11 @@ class PingMonitor {
     private(set) var isReachable: Bool = true
     private(set) var gatewayAddress: String?
 
+    /// 핫스팟 품질 판단에 쓰이는 대표 지연 — 게이트웨이(폰) 우선, 없으면 외부(DNS)로 대체.
+    var primaryLatency: TimeInterval? {
+        gatewayRTT ?? dnsRTT
+    }
+
     var isHotspot: Bool = false
     /// OS 레벨(NWPathMonitor) 연결 상태를 공급받아 ping 단발 실패로 인한 거짓 끊김을 걸러낸다.
     weak var hotspotDetector: HotspotDetector?

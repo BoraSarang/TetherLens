@@ -9,11 +9,8 @@ final class SettingsManager: @unchecked Sendable {
         self.defaults = defaults
         defaults.register(defaults: [
             "showTotalColumn": true,
-            "menuBarMode": MenuBarMode.speedAndTotal.rawValue,
-            "showSSIDInMenuBar": false,
-            "showBSSIDInMenuBar": false,
-            "showLinkSpeedInMenuBar": false,
-            "showDNSInMenuBar": false,
+            "showLatency": true,
+            "showRSSI": true,
             "menuBarRefreshInterval": Self.defaultMenuBarRefreshInterval,
             "cacheRefreshInterval": Self.defaultCacheRefreshInterval,
             "trafficMonitorInterval": Self.defaultTrafficMonitorInterval,
@@ -39,39 +36,14 @@ final class SettingsManager: @unchecked Sendable {
         set { defaults.set(newValue, forKey: "showTotalColumn") }
     }
 
-    enum MenuBarMode: String, CaseIterable {
-        case speedOnly = "speed"
-        case speedAndTotal = "speed_total"
-        case speedAndSSID = "speed_ssid"
+    var showLatency: Bool {
+        get { defaults.object(forKey: "showLatency") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "showLatency") }
     }
 
-    var menuBarMode: MenuBarMode {
-        get {
-            if let raw = defaults.string(forKey: "menuBarMode"),
-               let mode = MenuBarMode(rawValue: raw) { return mode }
-            return .speedAndTotal
-        }
-        set { defaults.set(newValue.rawValue, forKey: "menuBarMode") }
-    }
-
-    var showSSIDInMenuBar: Bool {
-        get { defaults.bool(forKey: "showSSIDInMenuBar") }
-        set { defaults.set(newValue, forKey: "showSSIDInMenuBar") }
-    }
-
-    var showBSSIDInMenuBar: Bool {
-        get { defaults.bool(forKey: "showBSSIDInMenuBar") }
-        set { defaults.set(newValue, forKey: "showBSSIDInMenuBar") }
-    }
-
-    var showLinkSpeedInMenuBar: Bool {
-        get { defaults.bool(forKey: "showLinkSpeedInMenuBar") }
-        set { defaults.set(newValue, forKey: "showLinkSpeedInMenuBar") }
-    }
-
-    var showDNSInMenuBar: Bool {
-        get { defaults.bool(forKey: "showDNSInMenuBar") }
-        set { defaults.set(newValue, forKey: "showDNSInMenuBar") }
+    var showRSSI: Bool {
+        get { defaults.object(forKey: "showRSSI") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "showRSSI") }
     }
 
     var menuBarFontSize: Double {

@@ -204,6 +204,6 @@ struct ProfileEditorView: View {
                 .shadow(radius: 10)
             }
         }
-        .frame(width: TLSize.sheetCompact, height: 220)
+        .frame(width: TLSize.sheetCompact, height: editQuotaEnabled ? 286 : 220)
     }
 }

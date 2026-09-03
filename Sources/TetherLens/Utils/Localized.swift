@@ -145,15 +145,10 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var palettePlaceholder: String { value(kr: "명령 입력…", en: "Type a command…") }
 
   // MARK: - Settings
-  static var showTotalInMenuBar: String { value(kr: "메뉴바에 사용량 표시", en: "Show Usage in Menu Bar") }
-  static var menuBarDisplayMode: String { value(kr: "메뉴바 표시 항목", en: "Menu Bar Display") }
-  static var menuBarModeSpeedOnly: String { value(kr: "속도만", en: "Speed Only") }
-  static var menuBarModeSpeedTotal: String { value(kr: "속도 + 사용량", en: "Speed + Usage") }
-  static var menuBarModeSpeedSSID: String { value(kr: "속도 + SSID", en: "Speed + SSID") }
-  static var showSSIDInMenuBar: String { value(kr: "메뉴바에 SSID 표시", en: "Show SSID in Menu Bar") }
-  static var showBSSIDInMenuBar: String { value(kr: "메뉴바에 BSSID 표시", en: "Show BSSID in Menu Bar") }
-  static var showLinkSpeedInMenuBar: String { value(kr: "메뉴바에 링크 속도 표시", en: "Show Link Speed in Menu Bar") }
-  static var showDNSInMenuBar: String { value(kr: "메뉴바에 DNS 표시", en: "Show DNS in Menu Bar") }
+  static var showTotalInMenuBar: String { value(kr: "할당량 설정 시 사용량 표시", en: "Show Usage When Quota is Set") }
+  static var showTotalInMenuBarFootnote: String { value(kr: "할당량이 설정된 프로필에서만 사용량/잔여가 표시됩니다. 미설정 시에는 신호 세기·지연시간이 표시됩니다.", en: "Usage/remaining show only for profiles with a quota set. Otherwise signal and latency show instead.") }
+  static var showLatencyInMenuBar: String { value(kr: "메뉴바에 지연시간 표시", en: "Show Latency in Menu Bar") }
+  static var showRSSIInMenuBar: String { value(kr: "메뉴바에 신호 세기 표시", en: "Show Signal in Menu Bar") }
   static var floatingWindow: String { value(kr: "플로팅 창", en: "Floating Window") }
   static var floatingWindowShow: String { value(kr: "플로팅 창 표시", en: "Show Floating Window") }
   static var floatingWindowHide: String { value(kr: "플로팅 창 숨기기", en: "Hide Floating Window") }
@@ -325,6 +320,9 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var trafficResetConfirm: String { value(kr: "누적된 프로세스별 트래픽이 모두 초기화됩니다.", en: "All accumulated per-app traffic will be reset.") }
   static var block: String { value(kr: "차단", en: "Block") }
   static var blockingOn: String { value(kr: "차단 중", en: "Blocking") }
+  static var includeSystemTooltip: String { value(kr: "시스템 프로세스 포함 전환", en: "Toggle system processes") }
+  static var resetTrafficTooltip: String { value(kr: "누적 트래픽 초기화", en: "Reset accumulated traffic") }
+  static var activeBlockingTooltip: String { value(kr: "차단 활성", en: "Blocking active") }
   static var blockedAppNotificationTitle: String { value(kr: "앱 트래픽 차단 감지", en: "App Traffic Blocked") }
   static var blockedAppNotificationBody: String { value(kr: "%@가 데이터를 사용하려고 합니다. 차단 목록에 있습니다.", en: "%@ is trying to use data but is on the block list.") }
 

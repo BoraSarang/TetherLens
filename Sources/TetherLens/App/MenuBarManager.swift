@@ -669,43 +669,50 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             quotaRatio = -1
         }
 
-        let mode = SettingsManager.shared.menuBarMode
-        let showSSID = SettingsManager.shared.showSSIDInMenuBar
-        let showBSSID = SettingsManager.shared.showBSSIDInMenuBar
-        let showLinkSpeed = SettingsManager.shared.showLinkSpeedInMenuBar
-        let showDNS = SettingsManager.shared.showDNSInMenuBar
-        var col3Top = totalStr
-        var col3Bottom = remainingStr
-        var col3Overridden = false
+        // col3은 할당량 설정 여부에 따라 자동 전환한다 (v0.31):
+        // - 할당량 설정 + 사용량 열 ON  → 사용량(top) / 잔여(bottom)  [현행 유지]
+        // - 그 외(할당량 미설정 등)     → RSSI(top) / 지연시간(bottom)
+        let quotaConfigured = (totalQuotaGB ?? 0) > 0
+        let rssi = hotspotDetector.currentConnection?.rssi
+        let latency = pingMonitor.primaryLatency
 
-        if let conn = hotspotDetector.currentConnection {
-            let dnsText = showDNS ? conn.dnsServers.first : nil
-            var customTop: String?
-            if showSSID, let ssid = ssid, !ssid.isEmpty {
-                customTop = ssid
-            } else if showBSSID, let bssid = bssidFromType(conn.type), !bssid.isEmpty {
-                customTop = bssid
-            } else if showLinkSpeed, let speed = conn.linkSpeed {
-                customTop = "\(Int(speed / 1_000_000)) Mbps"
-            }
-            if let customTop {
-                col3Overridden = true
-                col3Top = customTop
-                col3Bottom = dnsText ?? ""
-            } else if showDNS {
-                col3Bottom = dnsText ?? remainingStr
-            }
-        }
-        if mode == .speedOnly {
-            col3Overridden = true
-            col3Top = ""
-            col3Bottom = ""
+        var col3Top: String
+        var col3Bottom: String
+        var col3IsUsage: Bool
+        var col3Ratio: Double
+        var col3IsLatency: Bool
+        var col3Hidden: Bool
+        var col3TopColor: NSColor?
+        var col3BottomColor: NSColor?
+
+        if quotaConfigured, SettingsManager.shared.showTotalColumn {
+            col3Top = totalStr
+            col3Bottom = remainingStr
+            col3IsUsage = true
+            col3Ratio = quotaRatio
+            col3IsLatency = false
+            let usageColor = Self.usageRatioNSColor(quotaRatio)
+            col3TopColor = usageColor
+            col3BottomColor = usageColor
+            col3Hidden = false
+        } else {
+            let showRSSI = SettingsManager.shared.showRSSI
+            let showLatency = SettingsManager.shared.showLatency
+            col3Top = showRSSI ? Self.rssiString(rssi) : ""
+            col3Bottom = showLatency ? Self.latencyString(latency) : ""
+            col3IsUsage = false
+            col3Ratio = -1
+            col3IsLatency = showRSSI || showLatency
+            col3TopColor = showRSSI ? Self.rssiNSColor(rssi) : nil
+            col3BottomColor = showLatency ? Self.latencyNSColor(latency) : nil
+            col3Hidden = !(showRSSI || showLatency)
         }
 
         menuBarView.update(
             upSpeed: uploadStr, downSpeed: downloadStr,
             col3Top: col3Top, col3Bottom: col3Bottom,
-            totalRatio: mode == .speedOnly ? -1 : quotaRatio
+            col3Hidden: col3Hidden,
+            col3TopColor: col3TopColor, col3BottomColor: col3BottomColor
         )
         statusItem.length = menuBarView.frame.width
         // 플로팅 창에 메뉴바와 동일한 표시 내용을 공급 (v0.31) — 설정·tick 경로에서 항상 발행되어 동기화
@@ -714,10 +721,65 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             userInfo: [
                 "up": uploadStr, "down": downloadStr,
                 "col3Top": col3Top, "col3Bottom": col3Bottom,
-                "ratio": mode == .speedOnly ? -1 : quotaRatio,
-                "col3IsUsage": !col3Overridden && !col3Top.isEmpty
+                "ratio": col3Ratio,
+                "col3IsUsage": col3IsUsage,
+                // RSSI/지연 표시 시 뷰가 색상을 그릴 수 있도록 원시값을 함께 전달
+                "rssi": rssi.map(String.init) ?? "",
+                "latencyMS": latency.map { String(Int($0 * 1000)) } ?? "",
+                "col3IsLatency": col3IsLatency
             ]
         )
+    }
+
+    // MARK: - RSSI / 지연시간 형식·색상 (할당량 미설정 시 col3)
+
+    nonisolated static func rssiString(_ rssi: Int?) -> String {
+        guard let rssi else { return "--" }
+        return "\(rssi) dBm"
+    }
+
+    nonisolated static func latencyString(_ rtt: TimeInterval?) -> String {
+        guard let rtt else { return "--" }
+        return "\(Int(rtt * 1000)) ms"
+    }
+
+    /// RSSI 신호 색상: ≥-50 양호(초록) / -67~-50 보통(주황) / <-67 약함(빨강)
+    nonisolated static func rssiColor(_ rssi: Int?) -> Color {
+        guard let rssi else { return TLPalette.textSecondary }
+        if rssi >= -50 { return TLPalette.success }
+        if rssi >= -67 { return TLPalette.upload }
+        return TLPalette.danger
+    }
+
+    /// 지연 색상: <50ms 양호(초록) / <150ms 보통(주황) / ≥150ms 불량(빨강)
+    nonisolated static func latencyColor(_ rtt: TimeInterval?) -> Color {
+        guard let rtt else { return TLPalette.textSecondary }
+        if rtt < 0.05 { return TLPalette.success }
+        if rtt < 0.15 { return TLPalette.upload }
+        return TLPalette.danger
+    }
+
+    // NSView(메뉴바)용 NSColor 변환 — TLPalette 시맨틱 색과 동일한 P3 값 사용
+    nonisolated static func rssiNSColor(_ rssi: Int?) -> NSColor {
+        guard let rssi else { return .secondaryLabelColor }
+        if rssi >= -50 { return NSColor(red: 0.149, green: 0.651, blue: 0.318, alpha: 1) }
+        if rssi >= -67 { return NSColor(red: 0.902, green: 0.514, blue: 0.227, alpha: 1) }
+        return NSColor(red: 0.937, green: 0.255, blue: 0.263, alpha: 1)
+    }
+
+    nonisolated static func latencyNSColor(_ rtt: TimeInterval?) -> NSColor {
+        guard let rtt else { return .secondaryLabelColor }
+        if rtt < 0.05 { return NSColor(red: 0.149, green: 0.651, blue: 0.318, alpha: 1) }
+        if rtt < 0.15 { return NSColor(red: 0.902, green: 0.514, blue: 0.227, alpha: 1) }
+        return NSColor(red: 0.937, green: 0.255, blue: 0.263, alpha: 1)
+    }
+
+    nonisolated static func usageRatioNSColor(_ ratio: Double) -> NSColor {
+        let green = SavingModeManager.shared.greenThreshold
+        let orange = SavingModeManager.shared.orangeThreshold
+        if ratio < green { return NSColor(red: 0.149, green: 0.651, blue: 0.318, alpha: 1) }
+        if ratio < orange { return NSColor(red: 0.902, green: 0.514, blue: 0.227, alpha: 1) }
+        return NSColor(red: 0.937, green: 0.255, blue: 0.263, alpha: 1)
     }
 
     private nonisolated func authorizeNotifications() {
@@ -787,11 +849,6 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
     private func togglePin() {
         popoverPinned.toggle()
         popover.behavior = popoverPinned ? .applicationDefined : .transient
-    }
-
-    private func bssidFromType(_ type: ConnectionType) -> String? {
-        if case .normalWiFi(_, let bssid) = type { return bssid }
-        return nil
     }
 
     private func formatSpeed(_ bps: Double) -> String {
@@ -975,7 +1032,8 @@ class MenuBarView: NSView {
 
     required init?(coder: NSCoder) { nil }
 
-    func update(upSpeed s1: String, downSpeed s2: String, col3Top t1: String, col3Bottom t2: String, totalRatio: Double = 0) {
+    func update(upSpeed s1: String, downSpeed s2: String, col3Top t1: String, col3Bottom t2: String,
+                col3Hidden: Bool = false, col3TopColor: NSColor? = nil, col3BottomColor: NSColor? = nil) {
         let fontSize = SettingsManager.shared.menuBarFontSize
         let attributesRefreshed = cacheAttributesIfNeeded(fontSize: fontSize)
 
@@ -986,18 +1044,28 @@ class MenuBarView: NSView {
               let downAttr = cachedDownAttr,
               let speedAttr = cachedSpeedAttr else { return }
 
-        let totalColor = totalRatio < 0 ? NSColor.clear : colorForRatio(totalRatio)
-        let totalAttr: [NSAttributedString.Key: Any] = totalRatio < 0 ? [:] : [.font: boldFont, .foregroundColor: totalColor, .paragraphStyle: rightStyle]
+        // col3 두 줄에 각각 색상을 적용. 색상이 nil이면 기본(라벨색).
+        let topAttr: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: col3TopColor ?? .labelColor, .paragraphStyle: rightStyle]
+        let bottomAttr: [NSAttributedString.Key: Any] = [.font: boldFont, .foregroundColor: col3BottomColor ?? .labelColor, .paragraphStyle: rightStyle]
 
         _ = upAttr
         _ = downAttr
         _ = attributesRefreshed
         setText(upSpeed, value: s1, attrs: speedAttr)
         setText(downSpeed, value: s2, attrs: speedAttr)
-        setText(upTotal, value: t1, attrs: totalAttr)
-        setText(downTotal, value: t2, attrs: totalAttr)
+        setText(upTotal, value: t1, attrs: topAttr)
+        setText(downTotal, value: t2, attrs: bottomAttr)
 
-        let col3W = totalRatio < 0 ? 0 : cachedCol3W
+        // col3 폭: 실제 두 줄 텍스트 중 최대 폭으로 동적 계산 (오른쪽 정렬 유지).
+        // 숨김(col3Hidden)이거나 두 줄 다 비어 있으면 0.
+        let col3W: CGFloat
+        if col3Hidden {
+            col3W = 0
+        } else {
+            let topW = NSString(string: t1).size(withAttributes: topAttr).width
+            let bottomW = NSString(string: t2).size(withAttributes: bottomAttr).width
+            col3W = ceil(max(topW, bottomW)) + 2
+        }
         let col1X: CGFloat = 1
         let col2X = col1X + cachedIconW + 2
         let col3X = col2X + cachedCol2W + 3
@@ -1032,18 +1100,6 @@ class MenuBarView: NSView {
 
     override func rightMouseDown(with event: NSEvent) {
         onRightClick?()
-    }
-
-    private func colorForRatio(_ ratio: Double) -> NSColor {
-        let greenBoundary = SavingModeManager.shared.greenThreshold
-        let orangeBoundary = SavingModeManager.shared.orangeThreshold
-        if ratio < greenBoundary {
-            return .systemGreen
-        } else if ratio < orangeBoundary {
-            return .systemOrange
-        } else {
-            return .systemRed
-        }
     }
 
 }

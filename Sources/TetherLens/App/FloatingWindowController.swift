@@ -37,11 +37,16 @@ final class FloatingWindowController {
               let col3Top = info["col3Top"] as? String,
               let col3Bottom = info["col3Bottom"] as? String,
               let ratio = info["ratio"] as? Double else { return }
+        let rssi = Int(info["rssi"] as? String ?? "") ?? -1000
+        let latencyMS = Int(info["latencyMS"] as? String ?? "") ?? -1
         viewModel.update(
             upSpeed: up, downSpeed: down,
             col3Top: col3Top, col3Bottom: col3Bottom,
             totalRatio: ratio,
-            col3IsUsage: info["col3IsUsage"] as? Bool ?? false
+            col3IsUsage: info["col3IsUsage"] as? Bool ?? false,
+            col3IsLatency: info["col3IsLatency"] as? Bool ?? false,
+            rssi: rssi,
+            latencyMS: latencyMS
         )
         // 폭은 사용자가 리사이즈 가능, 세로는 설정 토글 변경 시 applyFixedHeight()가 유지한다
     }
@@ -170,13 +175,19 @@ final class FloatingWindowViewModel: ObservableObject {
     @Published var col3Bottom = ""
     @Published var totalRatio: Double = -1
     @Published var col3IsUsage = false
+    @Published var col3IsLatency = false
+    @Published var rssi = -1000
+    @Published var latencyMS = -1
 
-    func update(upSpeed: String, downSpeed: String, col3Top: String, col3Bottom: String, totalRatio: Double, col3IsUsage: Bool) {
+    func update(upSpeed: String, downSpeed: String, col3Top: String, col3Bottom: String, totalRatio: Double, col3IsUsage: Bool, col3IsLatency: Bool = false, rssi: Int = -1000, latencyMS: Int = -1) {
         self.upSpeed = upSpeed
         self.downSpeed = downSpeed
         self.col3Top = col3Top
         self.col3Bottom = col3Bottom
         self.totalRatio = totalRatio
         self.col3IsUsage = col3IsUsage
+        self.col3IsLatency = col3IsLatency
+        self.rssi = rssi
+        self.latencyMS = latencyMS
     }
 }

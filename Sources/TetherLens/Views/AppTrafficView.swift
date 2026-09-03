@@ -25,17 +25,27 @@ struct AppTrafficView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 if isBlockingActive {
-                    Label(Localized.blockingOn, systemImage: "hand.raised.fill")
-                        .font(TLFont.caption.bold())
+                    Image(systemName: "hand.raised.fill")
                         .foregroundColor(TLPalette.danger)
+                        .help(Localized.activeBlockingTooltip)
                 }
-                Toggle(Localized.excludeSystem, isOn: $showSystemProcesses)
-                    .toggleStyle(.checkbox)
-                    .controlSize(.small)
-                    .font(TLFont.caption)
-                Button(Localized.resetTraffic) { confirmReset = true }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                Button {
+                    showSystemProcesses.toggle()
+                } label: {
+                    Image(systemName: showSystemProcesses ? "gearshape.fill" : "gearshape")
+                        .foregroundColor(showSystemProcesses ? TLPalette.danger : TLPalette.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help(Localized.includeSystemTooltip)
+
+                Button {
+                    confirmReset = true
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .foregroundColor(TLPalette.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help(Localized.resetTrafficTooltip)
             }
         }
         .onAppear {
