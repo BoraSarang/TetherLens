@@ -24,6 +24,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         showOnboardingIfNeeded()
+        closeAutoRestoredSettings()
+    }
+
+    // Settings scene이 앱 시작 시 마지막 열림 상태를 자동 복원하는 것을 방지 (메뉴바 앱)
+    private func closeAutoRestoredSettings() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            for window in NSApp.windows
+            where window.title == Localized.settings && window.isVisible {
+                window.close()
+            }
+        }
     }
 
     private func showOnboardingIfNeeded() {

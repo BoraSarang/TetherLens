@@ -56,6 +56,7 @@ struct TetherLensApp: App {
             AppTrafficWindow()
         }
         .defaultSize(width: TLSize.trafficWindow.w, height: TLSize.trafficWindow.h)
+        .windowStyle(.hiddenTitleBar)
 
         Window(Localized.string("알림 목록", "Notifications"), id: "notifications") {
             NotificationsWindow()

@@ -31,6 +31,7 @@ struct SettingsView: View {
     @State private var ruleTriggerRaw = AutomationRule.TriggerType.onConnect.rawValue
     @State private var ruleActionRaw = AutomationRule.ActionType.launchApp.rawValue
     @State private var ruleTarget = ""
+    @State private var settingsWindow: NSWindow?
     @State private var selectedTab = 0
 
     init() {
@@ -78,6 +79,7 @@ struct SettingsView: View {
                 .tag(4)
         }
         .frame(width: TLSize.settingsWindow.w, height: TLSize.settingsWindow.h)
+        .background(WindowCapture { window in settingsWindow = window })
         .onAppear {
             refreshPermissions()
             pinWindowTitle()
@@ -86,7 +88,9 @@ struct SettingsView: View {
             pinWindowTitle()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didUpdateNotification)) { note in
-            guard let win = note.object as? NSWindow, win.isVisible, win.title != Localized.settings else { return }
+            guard let win = note.object as? NSWindow,
+                  win === settingsWindow,
+                  win.isVisible, win.title != Localized.settings else { return }
             win.title = Localized.settings
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -98,9 +102,10 @@ struct SettingsView: View {
     }
 
     // Settings scene은 TabView 선택 탭 이름이 창 제목에 반영되므로 "설정"으로 고정 (v0.30)
+    // 다른 창(앱 트래픽 등)은 건드리지 않도록 자기 창(settingsWindow)만 대상 (v0.31.0)
     private func pinWindowTitle() {
         DispatchQueue.main.async {
-            guard let win = NSApp.keyWindow, win.title != Localized.settings else { return }
+            guard let win = settingsWindow, win.title != Localized.settings else { return }
             win.title = Localized.settings
         }
     }
@@ -475,5 +480,20 @@ struct SettingsView: View {
             diag.append("Cached: None")
         }
         locationDiagnostics = diag
+    }
+}
+
+// SwiftUI 뷰가 속한 NSWindow를 캡처 (설정 창을 다른 창과 구분하기 위함 — v0.31.0)
+private struct WindowCapture: NSViewRepresentable {
+    var onCapture: (NSWindow?) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { onCapture(view.window) }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        onCapture(nsView.window)
     }
 }

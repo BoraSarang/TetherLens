@@ -27,6 +27,8 @@ struct AppTrafficView: View {
                 if isBlockingActive {
                     Image(systemName: "hand.raised.fill")
                         .foregroundColor(TLPalette.danger)
+                        .frame(minWidth: 30, minHeight: 24)
+                        .contentShape(Rectangle())
                         .help(Localized.activeBlockingTooltip)
                 }
                 Button {
@@ -34,6 +36,8 @@ struct AppTrafficView: View {
                 } label: {
                     Image(systemName: showSystemProcesses ? "gearshape.fill" : "gearshape")
                         .foregroundColor(showSystemProcesses ? TLPalette.danger : TLPalette.textSecondary)
+                        .frame(minWidth: 30, minHeight: 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help(Localized.includeSystemTooltip)
@@ -43,6 +47,8 @@ struct AppTrafficView: View {
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
                         .foregroundColor(TLPalette.textSecondary)
+                        .frame(minWidth: 30, minHeight: 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help(Localized.resetTrafficTooltip)
@@ -103,6 +109,7 @@ struct AppTrafficView: View {
             }
         }
         .listStyle(.plain)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var filteredApps: [TrafficMonitor.AppTraffic] {

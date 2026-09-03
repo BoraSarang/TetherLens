@@ -19,6 +19,11 @@
 - **프로세스 툴바 아이콘화** — [차단 라벨/체크박스/bordered 버튼] → SF Symbol 아이콘 버튼(`hand.raised.fill` 차단 배지, `gearshape` 시스템 포함 토글, `arrow.counterclockwise` 초기화) + `.help()` 툴팁
 - **사용량 토글 라벨** — "메뉴바에 사용량 표시" → "할당량 설정 시 사용량 표시" + 부연 설명 추가
 
+### Fixed
+- **앱 트래픽 창 제목이 "설정"으로 바뀌는 버그** — 설정 창의 제목 고정 `onReceive(NSWindow.didUpdateNotification)`이 다른 창(앱 트래픽 등) 제목까지 "설정"으로 덮어씀. `WindowCapture`(NSViewRepresentable)로 설정 뷰가 속한 자기 `NSWindow`만 캡처하여 대상 제한
+- **앱 시작 시 설정 창 자동 복원** — `Settings` scene이 마지막 열림 상태를 복원. `AppDelegate` 시작 직후 자동 복원된 설정 창 닫기(`closeAutoRestoredSettings`)
+- **앱 트래픽 툴바 배치** — 창을 `.windowStyle(.hiddenTitleBar)`로 바꾸고 아이콘 3개(차단/시스템/초기화)를 하나의 `ToolbarItemGroup(.primaryAction)`으로 묶어 우측 정렬·일정 간격 확보
+
 ## [0.30.0] — 2026-08-18 — 메뉴바 강화 + Cmd-K 커맨드 팔레트
 
 > macos-app-design 스킬 §4~§6 미충족 항목(메뉴바/단축키/Cmd-K) 보완. 계획: docs/plans/PLAN_v0.30.0_macos.md
