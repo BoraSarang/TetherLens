@@ -27,6 +27,8 @@
   <a href="https://github.com/BoraSarang/TetherLens/releases/latest">릴리스 보기</a>
   ·
   <a href="docs/CHANGELOG.md">변경 이력</a>
+  ·
+  <a href="README_EN.md">English</a>
 </p>
 
 ---
