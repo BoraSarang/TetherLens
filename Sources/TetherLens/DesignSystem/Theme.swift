@@ -28,6 +28,7 @@ enum TLPalette {
     static let copyHint      = Color.secondary.opacity(0.4) // 복사 아이콘 단서
     static let separator     = Color(nsColor: .separatorColor)
     static let textBackground = Color(nsColor: .textBackgroundColor) // 요약 행 배경
+    static let cardBackground = Color(nsColor: .controlBackgroundColor) // 카드 표면 (리포트 스탯·차트)
     static let windowBackground = Color(nsColor: .windowBackgroundColor) // 확인 다이얼로그 배경
     static let rowHover      = Color.primary.opacity(0.06)  // 리스트 행 hover (Mac 컨벤션)
 

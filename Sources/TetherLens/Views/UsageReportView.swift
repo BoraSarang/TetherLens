@@ -131,9 +131,17 @@ struct UsageReportView: View {
 
     private var sidebar: some View {
         List(selection: $viewMode) {
-            ForEach(ViewMode.allCases, id: \.self) { mode in
-                Label(mode.localized, systemImage: viewModeIcon(mode))
-                    .tag(mode)
+            Section(Localized.sidebarViewSection) {
+                ForEach([ViewMode.chart, .detail, .session], id: \.self) { mode in
+                    Label(mode.localized, systemImage: viewModeIcon(mode))
+                        .tag(mode)
+                }
+            }
+            Section(Localized.sidebarAnalyzeSection) {
+                ForEach([ViewMode.heatmap, .appTraffic, .report], id: \.self) { mode in
+                    Label(mode.localized, systemImage: viewModeIcon(mode))
+                        .tag(mode)
+                }
             }
         }
         .listStyle(.sidebar)
@@ -208,29 +216,16 @@ struct UsageReportView: View {
 
     // MARK: - Insight Cards
 
-    // MARK: - Hero (합산 > QoS > Top 위계 — 인사이트 카드 그리드 대체)
+    // MARK: - Hero (스탯 카드 4 + QoS + Top 행)
 
     private var insightCards: some View {
         VStack(alignment: .leading, spacing: TLSpace.md) {
-            // 히어로: 합산 + 증감 (탭→그래프)
-            Button { viewMode = .chart } label: {
-                HStack(alignment: .firstTextBaseline, spacing: TLSpace.sm) {
-                    Text(totalBytes.formattedBytes)
-                        .font(.system(size: 28, weight: .bold, design: .monospaced))
-                        .monospacedDigit()
-                        .foregroundColor(TLPalette.textPrimary)
-                    Text("↑\(totalUploadBytes.formattedBytes) ↓\(totalDownloadBytes.formattedBytes)")
-                        .font(TLFont.caption)
-                        .foregroundColor(TLPalette.textSecondary)
-                    Spacer()
-                    Text(previousPeriodText)
-                        .font(TLFont.callout.monospacedDigit().bold())
-                        .foregroundColor(previousPeriodColor)
-                }
-                .contentShape(Rectangle())
+            HStack(spacing: TLSpace.md) {
+                statCard(icon: "arrow.up.arrow.down", iconColor: TLPalette.accent, title: Localized.totalUsage, value: totalBytes.formattedBytes)
+                statCard(icon: "arrow.up", iconColor: TLPalette.upload, title: Localized.uploadShort, value: totalUploadBytes.formattedBytes)
+                statCard(icon: "arrow.down", iconColor: TLPalette.download, title: Localized.downloadShort, value: totalDownloadBytes.formattedBytes)
+                statCard(icon: "speedometer", iconColor: TLPalette.success, title: Localized.paceLabel, value: recentPaceBytes.formattedBytes)
             }
-            .buttonStyle(.plain)
-            .help("\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)")
 
             // QoS (할당량 있을 때만)
             if let q = quotaUsagePct {
@@ -244,7 +239,6 @@ struct UsageReportView: View {
                 }
             }
 
-            heroDivider(Localized.topUsageDay)
             heroRow(
                 dot: TLPalette.accent,
                 title: Localized.topUsageDay,
@@ -271,15 +265,27 @@ struct UsageReportView: View {
         .padding(.horizontal, TLSpace.xl)
     }
 
-    private func heroDivider(_ title: String) -> some View {
+    private func statCard(icon: String, iconColor: Color, title: String, value: String) -> some View {
         HStack(spacing: TLSpace.sm) {
-            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
-            Text(title)
-                .font(TLFont.caption2)
-                .foregroundColor(TLPalette.textSecondary)
-                .fixedSize()
-            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(iconColor)
+                .frame(width: 28, alignment: .center)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
+                    .lineLimit(1)
+                Text(value)
+                    .font(TLFont.callout.monospacedDigit().bold())
+                    .foregroundColor(TLPalette.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(TLSpace.md)
+        .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
     }
 
     private func heroRow(dot: Color, title: String, value: String, subtitle: String = "", action: @escaping () -> Void) -> some View {
@@ -366,6 +372,17 @@ struct UsageReportView: View {
                 .foregroundColor(TLPalette.textSecondary)
             Spacer()
         } else {
+            HStack {
+                Text(selectedPeriod.localized)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
+                Spacer()
+                Text(previousPeriodText)
+                    .font(TLFont.caption.monospacedDigit().bold())
+                    .foregroundColor(previousPeriodColor)
+            }
+            .help("\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)")
+            .padding(.horizontal, TLSpace.xl)
             let peakBar = source.map { max($0.upload, $0.download) }.max() ?? 1
             let peakQuota = quotaRuleMarkBytes ?? 0
             let yTop = max(peakBar, peakQuota) * 11 / 10
@@ -466,8 +483,10 @@ struct UsageReportView: View {
                     }
                 }
             }
+            .padding(TLSpace.md)
+            .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
             .padding(.horizontal, TLSpace.xl)
-            .frame(height: 280)
+            .frame(height: 304)
         }
     }
 
@@ -626,6 +645,8 @@ struct UsageReportView: View {
                             }
                         }
                     }
+                    .padding(TLSpace.md)
+                    .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
                     .padding(.horizontal, TLSpace.xl)
                 }
             }
@@ -709,6 +730,8 @@ struct UsageReportView: View {
                             }
                         }
                     }
+                    .padding(TLSpace.md)
+                    .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
                     .padding(.horizontal, TLSpace.xl)
                 }
             }
@@ -758,6 +781,8 @@ struct UsageReportView: View {
                             }
                         }
                     }
+                    .padding(TLSpace.md)
+                    .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
                     .padding(.horizontal, TLSpace.xl)
                 }
             }
@@ -795,6 +820,8 @@ struct UsageReportView: View {
                 }
                 let userApps = sorted.filter { !systemSet.contains($0.processName) }
                 let systemApps = sorted.filter { systemSet.contains($0.processName) }
+                let userMax = userApps.prefix(10).map { $0.uploadBytes + $0.downloadBytes }.max() ?? 1
+                let systemMax = systemApps.prefix(10).map { $0.uploadBytes + $0.downloadBytes }.max() ?? 1
                 let totalUp = appTrafficData.reduce(0) { $0 + $1.uploadBytes }
                 let totalDn = appTrafficData.reduce(0) { $0 + $1.downloadBytes }
                 let userUp = userApps.reduce(0) { $0 + $1.uploadBytes }
@@ -873,7 +900,7 @@ struct UsageReportView: View {
                                 if expandedSection == .user {
                                     ForEach(Array(userApps.prefix(10).enumerated()), id: \.element.processName) { _, item in
                                         Divider()
-                                        appTrafficRow(item)
+                                        appTrafficRow(item, fraction: Double(item.uploadBytes + item.downloadBytes) / Double(userMax))
                                     }
                                 }
 
@@ -900,10 +927,12 @@ struct UsageReportView: View {
                             if expandedSection == .system {
                                 ForEach(Array(systemApps.prefix(10).enumerated()), id: \.element.processName) { _, item in
                                         Divider()
-                                        appTrafficRow(item)
+                                        appTrafficRow(item, fraction: Double(item.uploadBytes + item.downloadBytes) / Double(systemMax))
                                     }
                                 }
                             }
+                            .padding(TLSpace.md)
+                            .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
                             .padding(.horizontal, TLSpace.xl)
                         }
                     }
@@ -929,35 +958,43 @@ struct UsageReportView: View {
         .frame(height: 20)
     }
 
-    private func appTrafficRow(_ item: (processName: String, uploadBytes: Int64, downloadBytes: Int64)) -> some View {
+    private func appTrafficRow(_ item: (processName: String, uploadBytes: Int64, downloadBytes: Int64), fraction: Double = 1) -> some View {
         HoverRow {
-            HStack(spacing: 4) {
-                Group {
-                    if let nsImage = AppIconResolver.icon(forProcess: item.processName) {
-                        Image(nsImage: nsImage)
-                            .resizable()
-                            .scaledToFit()
-                    } else {
-                        Image(systemName: "app")
-                            .foregroundColor(TLPalette.textSecondary)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Group {
+                        if let nsImage = AppIconResolver.icon(forProcess: item.processName) {
+                            Image(nsImage: nsImage)
+                                .resizable()
+                                .scaledToFit()
+                        } else {
+                            Image(systemName: "app")
+                                .foregroundColor(TLPalette.textSecondary)
+                        }
                     }
+                    .frame(width: 16, height: 16)
+                    Text(item.processName)
+                        .font(TLFont.medium)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(formatTotalBytes(item.uploadBytes))
+                        .font(TLFont.mediumMono)
+                        .foregroundColor(TLPalette.upload)
+                        .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
+                    Text(formatTotalBytes(item.downloadBytes))
+                        .font(TLFont.mediumMono)
+                        .foregroundColor(TLPalette.download)
+                        .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
                 }
-                .frame(width: 16, height: 16)
-                Text(item.processName)
-                    .font(TLFont.medium)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text(formatTotalBytes(item.uploadBytes))
-                    .font(TLFont.mediumMono)
-                    .foregroundColor(TLPalette.upload)
-                    .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-                Text(formatTotalBytes(item.downloadBytes))
-                    .font(TLFont.mediumMono)
-                    .foregroundColor(TLPalette.download)
-                    .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
+                GeometryReader { geo in
+                    Capsule()
+                        .fill(TLPalette.upload.opacity(0.45))
+                        .frame(width: geo.size.width * min(max(fraction, 0), 1), height: 2)
+                }
+                .frame(height: 2)
             }
-            .frame(height: 22)
+            .padding(.vertical, 2)
         }
     }
 
