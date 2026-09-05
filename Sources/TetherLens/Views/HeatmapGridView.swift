@@ -42,9 +42,7 @@ struct HeatmapGridView: View {
   var body: some View {
     VStack(spacing: 0) {
       headerView
-      ScrollView(.horizontal, showsIndicators: false) {
-        gridView
-      }
+      gridView
       legendView
     }
     .padding(.horizontal, TLSpace.xl)
@@ -73,6 +71,16 @@ struct HeatmapGridView: View {
   }
 
   private var gridView: some View {
+    GeometryReader { geo in
+        // 가용폭에 맞춰 셀 너비 자동 조정 (최소 12) — 가로 스크롤 불필요
+        let cellWidth = max((geo.size.width - 28 - 23 * 2 - TLSpace.md * 2) / 24, 12)
+        gridContent(cellWidth: cellWidth)
+            .frame(maxWidth: .infinity)
+    }
+    .frame(height: 170)
+  }
+
+  private func gridContent(cellWidth: CGFloat) -> some View {
     VStack(spacing: 2) {
       HStack(spacing: 2) {
         Text("")
@@ -81,7 +89,7 @@ struct HeatmapGridView: View {
           Text("\(hour)")
             .font(TLFont.badge)
             .foregroundColor(TLPalette.textSecondary)
-            .frame(width: 18)
+            .frame(width: cellWidth)
         }
       }
       ForEach(0..<7, id: \.self) { day in
@@ -94,7 +102,7 @@ struct HeatmapGridView: View {
             let data = gridData[day][hour]
             RoundedRectangle(cornerRadius: 4)
               .fill(colorForMinutes(data.totalMinutes))
-              .frame(width: 18, height: 18)
+              .frame(width: cellWidth, height: 18)
               .overlay(selectedDay == day && selectedHour == hour ? RoundedRectangle(cornerRadius: 4).stroke(colorScheme == .dark ? Color.white : Color.black, lineWidth: 1) : nil)
               .onHover { hovering in
                 if hovering {

@@ -208,95 +208,107 @@ struct UsageReportView: View {
 
     // MARK: - Insight Cards
 
+    // MARK: - Hero (합산 > QoS > Top 위계 — 인사이트 카드 그리드 대체)
+
     private var insightCards: some View {
-        let columns = [
-            GridItem(.flexible(), spacing: TLSpace.md),
-            GridItem(.flexible(), spacing: TLSpace.md),
-            GridItem(.flexible(), spacing: TLSpace.md)
-        ]
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: TLSpace.md) {
-            insightCard(
-                title: Localized.totalUsage,
-                value: totalBytes.formattedBytes,
-                subtitle: "↑\(totalUploadBytes.formattedBytes) ↓\(totalDownloadBytes.formattedBytes)",
-                color: TLPalette.textPrimary
-            )
-            insightCard(
-                title: Localized.vsPreviousPeriod,
-                value: previousPeriodText,
-                subtitle: "\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)",
-                color: previousPeriodColor,
-                action: { viewMode = .chart }
-            )
-            insightCard(
+        VStack(alignment: .leading, spacing: TLSpace.md) {
+            // 히어로: 합산 + 증감 (탭→그래프)
+            Button { viewMode = .chart } label: {
+                HStack(alignment: .firstTextBaseline, spacing: TLSpace.sm) {
+                    Text(totalBytes.formattedBytes)
+                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .monospacedDigit()
+                        .foregroundColor(TLPalette.textPrimary)
+                    Text("↑\(totalUploadBytes.formattedBytes) ↓\(totalDownloadBytes.formattedBytes)")
+                        .font(TLFont.caption)
+                        .foregroundColor(TLPalette.textSecondary)
+                    Spacer()
+                    Text(previousPeriodText)
+                        .font(TLFont.callout.monospacedDigit().bold())
+                        .foregroundColor(previousPeriodColor)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)")
+
+            // QoS (할당량 있을 때만)
+            if let q = quotaUsagePct {
+                VStack(alignment: .leading, spacing: 4) {
+                    ProgressView(value: min(max(q, 0), 100), total: 100)
+                        .tint(q >= 90 ? TLPalette.danger : (q >= 60 ? TLPalette.upload : TLPalette.success))
+                    Text("\(Localized.quotaUsage) \(String(format: "%.1f%%", q)) · \(quotaCardSubtitle)")
+                        .font(TLFont.caption2)
+                        .foregroundColor(TLPalette.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+
+            heroDivider(Localized.topUsageDay)
+            heroRow(
+                dot: TLPalette.accent,
                 title: Localized.topUsageDay,
-                value: topUsageDayText,
-                subtitle: topUsageDay?.total.formattedBytes ?? Localized.noUsageData,
-                color: TLPalette.accent,
+                value: "\(topUsageDayText) · \(topUsageDay?.total.formattedBytes ?? Localized.noUsageData)",
                 action: { viewMode = .detail }
             )
-            insightCard(
+            heroRow(
+                dot: TLPalette.upload,
                 title: Localized.topHotspot,
                 value: topHotspot?.name ?? Localized.noConnection,
                 subtitle: topHotspot.map { $0.total.formattedBytes } ?? "",
-                color: TLPalette.upload,
                 action: {
                     if let id = topHotspot?.id { selectedProfileId = id }
                 }
             )
-            if let q = quotaUsagePct {
-                insightCard(
-                    title: Localized.quotaUsage,
-                    value: String(format: "%.1f%%", q),
-                    subtitle: quotaCardSubtitle,
-                    color: q >= 90 ? TLPalette.danger : (q >= 60 ? TLPalette.upload : TLPalette.success)
-                )
-            }
-            insightCard(
+            heroRow(
+                dot: TLPalette.download,
                 title: Localized.topApps,
                 value: topApps.isEmpty ? Localized.noUsageData : topApps.map { $0.name }.joined(separator: " · "),
                 subtitle: topApps.isEmpty ? "" : topApps.map { $0.total.formattedBytes }.joined(separator: " · "),
-                color: TLPalette.download,
                 action: { viewMode = .appTraffic }
             )
         }
         .padding(.horizontal, TLSpace.xl)
     }
 
-    @ViewBuilder
-    private func insightCard(title: String, value: String, subtitle: String, color: Color, action: (() -> Void)? = nil) -> some View {
-        if let action {
-            Button(action: action) {
-                insightCardContent(title: title, value: value, subtitle: subtitle, color: color)
-            }
-            .buttonStyle(.plain)
-        } else {
-            insightCardContent(title: title, value: value, subtitle: subtitle, color: color)
-        }
-    }
-
-    private func insightCardContent(title: String, value: String, subtitle: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+    private func heroDivider(_ title: String) -> some View {
+        HStack(spacing: TLSpace.sm) {
+            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
             Text(title)
                 .font(TLFont.caption2)
                 .foregroundColor(TLPalette.textSecondary)
-                .lineLimit(1)
-            Text(value)
-                .font(TLFont.callout.monospacedDigit().bold())
-                .foregroundColor(color)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Text(subtitle)
-                .font(TLFont.caption2)
-                .foregroundColor(TLPalette.textSecondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+                .fixedSize()
+            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, TLSpace.sm)
-        .padding(.horizontal, TLSpace.md)
-        .background(TLPalette.textBackground.opacity(0.5))
-        .cornerRadius(TLRound.small)
+    }
+
+    private func heroRow(dot: Color, title: String, value: String, subtitle: String = "", action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: TLSpace.sm) {
+                Circle().fill(dot).frame(width: 8, height: 8)
+                Text(title)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(value)
+                        .font(TLFont.callout.monospacedDigit().bold())
+                        .foregroundColor(TLPalette.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(TLFont.caption2)
+                            .foregroundColor(TLPalette.textSecondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(title)
     }
 
     private var previousPeriodText: String {
@@ -359,6 +371,31 @@ struct UsageReportView: View {
             let yTop = max(peakBar, peakQuota) * 11 / 10
             let yDomain: ClosedRange<Int64> = 0 ... max(yTop, 1)
             Chart {
+                // 기준선은 막대 뒤에 그려 겹침을 방지한다
+                if recentPaceBytes > 0 {
+                    RuleMark(
+                        y: .value("Pace", recentPaceBytes)
+                    )
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .foregroundStyle(TLPalette.accent.opacity(0.5))
+                    .annotation(position: .top, alignment: .leading) {
+                        Text(Localized.paceLabel)
+                            .font(TLFont.small)
+                            .foregroundColor(TLPalette.accent.opacity(0.8))
+                    }
+                }
+                if let quotaLine = quotaRuleMarkBytes {
+                    RuleMark(
+                        y: .value("Quota", quotaLine)
+                    )
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .foregroundStyle(TLPalette.danger.opacity(0.6))
+                    .annotation(position: .top, alignment: .trailing) {
+                        Text(Localized.quotaRuleLabel)
+                            .font(TLFont.small)
+                            .foregroundColor(TLPalette.danger)
+                    }
+                }
                 ForEach(Array(source.enumerated()), id: \.element.id) { index, usage in
                     if isDay {
                         BarMark(
@@ -410,30 +447,6 @@ struct UsageReportView: View {
                         .foregroundStyle(TLPalette.download)
                     }
                 }
-                if recentPaceBytes > 0 {
-                    RuleMark(
-                        y: .value("Pace", recentPaceBytes)
-                    )
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .foregroundStyle(TLPalette.accent.opacity(0.5))
-                    .annotation(position: .top, alignment: .leading) {
-                        Text(Localized.paceLabel)
-                            .font(TLFont.small)
-                            .foregroundColor(TLPalette.accent.opacity(0.8))
-                    }
-                }
-                if let quotaLine = quotaRuleMarkBytes {
-                    RuleMark(
-                        y: .value("Quota", quotaLine)
-                    )
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                    .foregroundStyle(TLPalette.danger.opacity(0.6))
-                    .annotation(position: .top, alignment: .trailing) {
-                        Text(Localized.quotaRuleLabel)
-                            .font(TLFont.small)
-                            .foregroundColor(TLPalette.danger)
-                    }
-                }
             }
             .chartForegroundStyleScale([
                 Localized.uploadShort: TLPalette.upload,
@@ -455,7 +468,6 @@ struct UsageReportView: View {
             }
             .padding(.horizontal, TLSpace.xl)
             .frame(height: 280)
-            Spacer()
         }
     }
 
@@ -587,29 +599,31 @@ struct UsageReportView: View {
                         .padding(.vertical, TLSpace.xs)
                         ForEach(items) { item in
                             Divider()
-                            HStack(spacing: 0) {
-                                if item.isMonthly {
-                                    Text(item.date, format: .dateTime.month().year())
-                                        .font(TLFont.caption)
-                                        .frame(width: TLSize.rowColWide, alignment: .leading)
-                                } else {
-                                    Text(item.date, format: .dateTime.day().month())
-                                        .font(TLFont.caption)
-                                        .frame(width: TLSize.rowColWide, alignment: .leading)
+                            HoverRow {
+                                HStack(spacing: 0) {
+                                    if item.isMonthly {
+                                        Text(item.date, format: .dateTime.month().year())
+                                            .font(TLFont.caption)
+                                            .frame(width: TLSize.rowColWide, alignment: .leading)
+                                    } else {
+                                        Text(item.date, format: .dateTime.day().month())
+                                            .font(TLFont.caption)
+                                            .frame(width: TLSize.rowColWide, alignment: .leading)
+                                    }
+                                    Text(item.upload.formattedBytes)
+                                        .font(TLFont.caption.monospacedDigit())
+                                        .foregroundColor(TLPalette.upload)
+                                        .frame(maxWidth: .infinity, alignment: .trailing)
+                                    Text(item.download.formattedBytes)
+                                        .font(TLFont.caption.monospacedDigit())
+                                        .foregroundColor(TLPalette.download)
+                                        .frame(width: TLSize.rowColWide, alignment: .trailing)
+                                    Text(item.total.formattedBytes)
+                                        .font(TLFont.caption.monospacedDigit().bold())
+                                        .frame(width: TLSize.rowColWide, alignment: .trailing)
                                 }
-                                Text(item.upload.formattedBytes)
-                                    .font(TLFont.caption.monospacedDigit())
-                                    .foregroundColor(TLPalette.upload)
-                                    .frame(maxWidth: .infinity, alignment: .trailing)
-                                Text(item.download.formattedBytes)
-                                    .font(TLFont.caption.monospacedDigit())
-                                    .foregroundColor(TLPalette.download)
-                                    .frame(width: TLSize.rowColWide, alignment: .trailing)
-                                Text(item.total.formattedBytes)
-                                    .font(TLFont.caption.monospacedDigit().bold())
-                                    .frame(width: TLSize.rowColWide, alignment: .trailing)
+                                .padding(.vertical, TLSpace.xs)
                             }
-                            .padding(.vertical, TLSpace.xs)
                         }
                     }
                     .padding(.horizontal, TLSpace.xl)
@@ -679,18 +693,20 @@ struct UsageReportView: View {
                         .padding(.vertical, TLSpace.xs)
                         ForEach(dailySessionSummary) { item in
                             Divider()
-                            HStack(spacing: 0) {
-                                Text(item.date, format: .dateTime.day().month())
-                                    .font(TLFont.caption)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Text("\(item.sessionCount)")
-                                    .font(TLFont.caption.monospacedDigit())
-                                    .frame(width: TLSize.rowColNarrow, alignment: .trailing)
-                                Text(formatDuration(item.totalDuration))
-                                    .font(TLFont.caption.monospacedDigit())
-                                    .frame(width: TLSize.rowColTime, alignment: .trailing)
+                            HoverRow {
+                                HStack(spacing: 0) {
+                                    Text(item.date, format: .dateTime.day().month())
+                                        .font(TLFont.caption)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text("\(item.sessionCount)")
+                                        .font(TLFont.caption.monospacedDigit())
+                                        .frame(width: TLSize.rowColNarrow, alignment: .trailing)
+                                    Text(formatDuration(item.totalDuration))
+                                        .font(TLFont.caption.monospacedDigit())
+                                        .frame(width: TLSize.rowColTime, alignment: .trailing)
+                                }
+                                .padding(.vertical, TLSpace.xs)
                             }
-                            .padding(.vertical, TLSpace.xs)
                         }
                     }
                     .padding(.horizontal, TLSpace.xl)
@@ -726,18 +742,20 @@ struct UsageReportView: View {
                         .padding(.vertical, TLSpace.xs)
                         ForEach(monthlySessionSummary) { item in
                             Divider()
-                            HStack(spacing: 0) {
-                                Text(item.date, format: .dateTime.month().year())
-                                    .font(TLFont.caption)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Text("\(item.sessionCount)")
-                                    .font(TLFont.caption.monospacedDigit())
-                                    .frame(width: TLSize.rowColNarrow, alignment: .trailing)
-                                Text(formatDuration(item.totalDuration))
-                                    .font(TLFont.caption.monospacedDigit())
-                                    .frame(width: TLSize.rowColTime, alignment: .trailing)
+                            HoverRow {
+                                HStack(spacing: 0) {
+                                    Text(item.date, format: .dateTime.month().year())
+                                        .font(TLFont.caption)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    Text("\(item.sessionCount)")
+                                        .font(TLFont.caption.monospacedDigit())
+                                        .frame(width: TLSize.rowColNarrow, alignment: .trailing)
+                                    Text(formatDuration(item.totalDuration))
+                                        .font(TLFont.caption.monospacedDigit())
+                                        .frame(width: TLSize.rowColTime, alignment: .trailing)
+                                }
+                                .padding(.vertical, TLSpace.xs)
                             }
-                            .padding(.vertical, TLSpace.xs)
                         }
                     }
                     .padding(.horizontal, TLSpace.xl)
@@ -787,6 +805,7 @@ struct UsageReportView: View {
                 VStack(spacing: 0) {
                     VStack(spacing: 0) {
                         HStack(spacing: 0) {
+                            Color.clear.frame(width: 20)
                             Text(Localized.process)
                                 .font(TLFont.smallBold)
                                 .foregroundColor(TLPalette.textSecondary)
@@ -911,22 +930,49 @@ struct UsageReportView: View {
     }
 
     private func appTrafficRow(_ item: (processName: String, uploadBytes: Int64, downloadBytes: Int64)) -> some View {
-        HStack(spacing: 0) {
-            Text(item.processName)
-                .font(TLFont.medium)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(formatTotalBytes(item.uploadBytes))
-                .font(TLFont.mediumMono)
-                .foregroundColor(TLPalette.upload)
-                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-            Text(formatTotalBytes(item.downloadBytes))
-                .font(TLFont.mediumMono)
-                .foregroundColor(TLPalette.download)
-                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
+        HoverRow {
+            HStack(spacing: 4) {
+                Group {
+                    if let nsImage = AppIconResolver.icon(forProcess: item.processName) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .scaledToFit()
+                    } else {
+                        Image(systemName: "app")
+                            .foregroundColor(TLPalette.textSecondary)
+                    }
+                }
+                .frame(width: 16, height: 16)
+                Text(item.processName)
+                    .font(TLFont.medium)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(formatTotalBytes(item.uploadBytes))
+                    .font(TLFont.mediumMono)
+                    .foregroundColor(TLPalette.upload)
+                    .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
+                Text(formatTotalBytes(item.downloadBytes))
+                    .font(TLFont.mediumMono)
+                    .foregroundColor(TLPalette.download)
+                    .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
+            }
+            .frame(height: 22)
         }
-        .frame(height: 20)
+    }
+
+    /// 테이블 행 호버 하이라이트 (네이티브 느낌)
+    struct HoverRow<Content: View>: View {
+        @State private var hovering = false
+        let content: Content
+        init(@ViewBuilder content: () -> Content) {
+            self.content = content()
+        }
+        var body: some View {
+            content
+                .background(hovering ? TLPalette.textBackground.opacity(0.7) : Color.clear)
+                .onHover { hovering = $0 }
+        }
     }
 
     // MARK: - Helpers
