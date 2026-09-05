@@ -715,6 +715,13 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             col3TopColor: col3TopColor, col3BottomColor: col3BottomColor
         )
         statusItem.length = menuBarView.frame.width
+        // 메뉴바 호버 툴팁 — 클릭 없이 전체 상태 확인 (Osaurus 상태 툴팁 패턴)
+        let tipName = hotspotDetector.currentConnection?.ssid ?? "TetherLens"
+        var tip = "\(tipName) · ▼\(downloadStr) ▲\(uploadStr)"
+        if quotaRatio >= 0 {
+            tip += " · QoS \(Int(quotaRatio * 100))%"
+        }
+        menuBarView.toolTip = tip
         // 플로팅 창에 메뉴바와 동일한 표시 내용을 공급 (v0.31) — 설정·tick 경로에서 항상 발행되어 동기화
         NotificationCenter.default.post(
             name: .init("floatingContentChanged"), object: nil,

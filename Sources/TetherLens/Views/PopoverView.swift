@@ -125,7 +125,7 @@ struct PopoverView: View {
     private var mainContent: some View {
         VStack(spacing: TLSpace.xl) {
             headerView
-            bannerStack
+            statusRow
             speedView
             qosGaugeBody
             if !summaryMode {
@@ -136,6 +136,12 @@ struct PopoverView: View {
         }
         .padding(TLSpace.inset)
         .frame(width: TLSize.popoverWidth)
+        .overlay(alignment: .top) {
+            // 배너는 레이아웃에서 분리해 오버레이로 띄운다 — 높이 점프 방지 (자동 해제 유지)
+            bannerStack
+                .padding(.horizontal, TLSpace.inset)
+                .padding(.top, TLSpace.sm)
+        }
         .onReceive(tickPublisher) { _ in
             tick = Date()
         }
@@ -267,10 +273,17 @@ struct PopoverView: View {
         HStack {
             Image(nsImage: NSApplication.shared.applicationIconImage)
                 .resizable()
-                .frame(width: 20, height: 20)
-            Text(displayName)
-                .font(TLFont.headline)
-                .lineLimit(1)
+                .frame(width: 28, height: 28)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(displayName)
+                    .font(TLFont.headline)
+                    .lineLimit(1)
+                Text(connectionSubtitle)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
+                    .lineLimit(1)
+            }
             Spacer()
             if let onTogglePin {
                 Button {
@@ -299,8 +312,73 @@ struct PopoverView: View {
             .buttonStyle(.plain)
             .foregroundColor(NotificationManager.shared.notifications.isEmpty ? TLPalette.textSecondary : TLPalette.accent)
             .help(Localized.notificationHistory)
-            statusDot
         }
+    }
+
+    /// 헤더 부제 — 프로필명과 SSID가 같으면 유형 표시로 중복 회피 (SSID · RSSI)
+    private var connectionSubtitle: String {
+        let name = displayName
+        if let ssid = ssidString, ssid != name {
+            if let r = hotspotDetector.currentConnection?.rssi {
+                return "\(ssid) · \(r) dBm"
+            }
+            return ssid
+        }
+        if let r = hotspotDetector.currentConnection?.rssi {
+            return "\(connectionTypeString) · \(r) dBm"
+        }
+        return connectionName
+    }
+
+    /// 상태 1행 — 배너 3종을 대체하는 단일 상태 표시 (장식 없이 도트+텍스트)
+    private var statusRow: some View {
+        HStack(spacing: TLSpace.sm) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
+            Text(statusText)
+                .font(TLFont.detail)
+                .foregroundColor(statusColor)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var statusColor: Color {
+        if !pingMonitor.isReachable { return TLPalette.danger }
+        if let quota = currentQuota, quota.ratio >= 0.95 { return TLPalette.danger }
+        if let quota = currentQuota, quota.ratio >= 0.80 { return TLPalette.upload }
+        if let lat = pingMonitor.primaryLatency, lat >= 0.15 { return TLPalette.upload }
+        return TLPalette.success
+    }
+
+    private var statusWord: String {
+        if !pingMonitor.isReachable { return Localized.statusCritical }
+        if let quota = currentQuota, quota.ratio >= 0.95 { return Localized.statusCritical }
+        if let quota = currentQuota, quota.ratio >= 0.80 { return Localized.statusWarning }
+        if let lat = pingMonitor.primaryLatency, lat >= 0.15 { return Localized.statusWarning }
+        if pingMonitor.primaryLatency == nil && currentQuota == nil { return Localized.measuring }
+        return Localized.statusNormal
+    }
+
+    private var statusText: String {
+        var parts = [statusWord]
+        if let lat = pingMonitor.primaryLatency {
+            parts.append("\(Int(lat * 1000)) ms")
+        } else if let quota = currentQuota {
+            parts.append("QoS \(Int(quota.ratio * 100))%")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// 오늘 사용량 기준 (used GB, quota GB, ratio) — qosGaugeBody와 동일 기준
+    private var currentQuota: (used: Double, quota: Double, ratio: Double)? {
+        let ssid = hotspotDetector.currentConnection?.ssid
+        guard let profile = ssid.flatMap({ ProfileManager.shared.getProfile(ssid: $0) }),
+              let quotaGB = profile.quotaGB, quotaGB > 0 else { return nil }
+        let today = ProfileManager.shared.getTodayUsage(profileId: profile.id)
+        let used = Double(today.upload + today.download) / 1_000_000_000
+        return (used, quotaGB, min(used / quotaGB, 1.0))
     }
 
     private var connectionIcon: String {
@@ -339,12 +417,6 @@ struct PopoverView: View {
             return profile.name
         }
         return connectionName
-    }
-
-    private var statusDot: some View {
-        Circle()
-            .fill(pingMonitor.isReachable ? TLPalette.success : TLPalette.danger)
-            .frame(width: 10, height: 10)
     }
 
     private var currentProfileId: UUID? {
@@ -816,7 +888,12 @@ struct PopoverView: View {
     }
 
     private var bottomButtons: some View {
-        HStack(spacing: TLSpace.xl) {
+        HStack(spacing: TLSpace.md) {
+            Button(Localized.usageReport) { openWindow(id: "usageReport") }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .help(Localized.usageReport)
+
             Button {
                 withAnimation(.easeInOut(duration: 0.15)) { summaryMode.toggle() }
             } label: {
@@ -832,7 +909,6 @@ struct PopoverView: View {
             .help(summaryMode ? Localized.detailView : Localized.summaryView)
 
             Menu {
-                Button(Localized.usageReport) { openWindow(id: "usageReport") }
                 Button(Localized.appTrafficButton) { openWindow(id: "appTraffic") }
                 Button(Localized.notificationList) { openWindow(id: "notifications") }
                 Button(Localized.manageProfiles) { showProfileManager = true }
@@ -852,17 +928,22 @@ struct PopoverView: View {
                 Button(Localized.debugPanel) { DebugPanelController.shared.toggle() }
                 #endif
             } label: {
-                Text(Localized.more)
+                Image(systemName: "ellipsis")
                     .font(TLFont.caption)
             }
             .menuIndicator(.hidden)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.bordered)
             .controlSize(.small)
+            .help(Localized.more)
             Spacer()
-            Button(Localized.quit) { NSApplication.shared.terminate(nil) }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(TLPalette.danger)
+            Button { NSApplication.shared.terminate(nil) } label: {
+                Image(systemName: "power")
+                    .font(TLFont.caption)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(TLPalette.danger)
+            .help(Localized.quit)
         }
     }
 

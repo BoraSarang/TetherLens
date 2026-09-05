@@ -34,6 +34,9 @@ enum Localized {
   static var ethernet: String { value(kr: "Ethernet", en: "Ethernet") }
   static var unknown: String { value(kr: "알 수 없음", en: "Unknown") }
   static var measuring: String { value(kr: "측정 중...", en: "Measuring...") }
+  static var statusNormal: String { value(kr: "정상", en: "Normal") }
+  static var statusWarning: String { value(kr: "주의", en: "Caution") }
+  static var statusCritical: String { value(kr: "위험", en: "Critical") }
 
   // MARK: - Section Headers
   static var connectionInfo: String { value(kr: "연결 정보", en: "Connection Info") }
