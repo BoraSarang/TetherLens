@@ -75,6 +75,7 @@ struct FloatingWindowView: View {
                 }
             }
             .frame(height: 14)
+            .padding(.horizontal, 12)
 
             menuBarMini
                 .padding(.horizontal, 14)
@@ -84,15 +85,15 @@ struct FloatingWindowView: View {
                 .frame(height: 1)
                 .foregroundColor(TLPalette.separator)
                 .padding(.horizontal, 12)
-                .padding(.bottom, 4)
+                .padding(.bottom, 2)
 
             trafficSection
                 .padding(.horizontal, 12)
-                .padding(.bottom, 8)
+                .padding(.bottom, 6)
 
             Spacer(minLength: 0)
         }
-        .padding(.top, 4)
+        .padding(.top, 8)
     }
 
     /// 프로세스 리스트 OFF — 속도·사용량 한 줄 컴팩트 (세로 30)
@@ -210,10 +211,6 @@ struct FloatingWindowView: View {
                 .padding(.vertical, 2)
             } else {
                 VStack(spacing: 0) {
-                    Rectangle()
-                        .frame(height: 1)
-                        .foregroundColor(TLPalette.separator)
-                        .padding(.bottom, 4)
                     HStack(spacing: 4) {
                         Text(Localized.process)
                             .font(TLFont.smallBold)
