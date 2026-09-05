@@ -13,6 +13,13 @@
 - **인사이트 카드 드릴다운** — 증감률→그래프, 최다 사용일→상세, 최다 핫스팟→해당 프로필 선택, 상위 앱→앱 트래픽 탭으로 이동. 카드를 `Button(.plain)`으로 전환
 - **총 사용량 카드 부제** — 일평균 → "↑업 ↓다운" 합산 우선 표시 (일평균은 최근 페이스로 대체, `dailyAverage` 키 제거)
 
+### Added (Phase B — 프리미엄 팝오버)
+- **사용 기록 차트** — 초 단위 속도 링버퍼(120샘플) + AreaMark 영역 그래프(다운 파랑/업 주황, 피크 라벨). `NetworkMonitor.speedHistory`
+- **연결성 도트 그리드** — 최근 20회 핑 성공 기록 회색/초록 도트. `PingMonitor.recentPingOutcomes`
+- **인터페이스 섹션** — 총 업/다운, UP/DOWN pill, 레이턴시, Jitter(`PingMonitor.jitter`), `Wi-Fi (en0)` 형식, MAC 주소(`getifaddrs` 조회)
+- **상위 프로세스 Top5** — 앱 아이콘(`AppIconResolver`, NSWorkspace+번들 매칭, 캐시) + 다운/업 속도
+- **팝오버 320→360pt + 중간 ScrollView 고정 420pt** (NSPopover 자동 사이징 찌그러짐은 고정 높이로 해결)
+
 ## [0.31.0] — 2026-09-03 — 메뉴바 col3 재설계 + 안드로이드 핫스팟 판별 개선 + UI 정비
 
 > 할당량 유무에 따라 메뉴바 col3(지연/RSSI ↔ 사용량/잔여) 자동 전환, 안드로이드 테더링 SSID 기반 감지 강화, 프로필 편집 창 크기·프로세스 툴바 정리. 계획: docs/plans/PLAN_v0.31.0_macos.md

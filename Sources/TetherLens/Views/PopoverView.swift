@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import Charts
 
 struct PopoverView: View {
     let networkMonitor: NetworkMonitor
@@ -123,18 +124,35 @@ struct PopoverView: View {
     }
 
     private var mainContent: some View {
-        VStack(spacing: TLSpace.xl) {
-            headerView
-            statusRow
-            speedView
-            qosGaugeBody
-            if !summaryMode {
-                detailSections
+        VStack(spacing: 0) {
+            VStack(spacing: TLSpace.xl) {
+                headerView
+                statusRow
+                speedView
+                qosGaugeBody
             }
+            .padding(TLSpace.inset)
+            ScrollView {
+                VStack(spacing: TLSpace.xl) {
+                    speedHistorySection
+                    connectivitySection
+                    interfaceSection
+                    if summaryMode {
+                        topProcessesSection
+                    } else {
+                        detailSections
+                    }
+                }
+                .padding(.horizontal, TLSpace.inset)
+                .padding(.bottom, TLSpace.sm)
+            }
+            // NSPopover 자동 사이징에서는 maxHeight가 무시되고 찌그러지므로 고정 높이 사용
+            .frame(height: 420)
             Divider()
             bottomButtons
+                .padding(.horizontal, TLSpace.inset)
+                .padding(.vertical, TLSpace.xl)
         }
-        .padding(TLSpace.inset)
         .frame(width: TLSize.popoverWidth)
         .overlay(alignment: .top) {
             // 배너는 레이아웃에서 분리해 오버레이로 띄운다 — 높이 점프 방지 (자동 해제 유지)
@@ -866,25 +884,252 @@ struct PopoverView: View {
     }
 
     private var speedView: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(Localized.upload)
-                    .font(TLFont.caption2)
-                    .foregroundColor(TLPalette.textSecondary)
-                Text(formatSpeed(networkMonitor.currentUploadSpeed))
-                    .font(TLFont.speed)
-                    .foregroundColor(TLPalette.upload)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                let down = splitSpeed(networkMonitor.currentDownloadSpeed)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(down.number)
+                        .font(.system(size: 44, weight: .bold, design: .monospaced))
+                        .monospacedDigit()
+                    Text(down.unit)
+                        .font(TLFont.callout)
+                }
+                .foregroundColor(TLPalette.download)
+                HStack(spacing: 4) {
+                    Circle().fill(TLPalette.download).frame(width: 8, height: 8)
+                    Text(Localized.download)
+                        .font(TLFont.caption)
+                        .foregroundColor(TLPalette.textSecondary)
+                }
             }
             Spacer()
-            VStack(alignment: .trailing) {
-                Text(Localized.download)
-                    .font(TLFont.caption2)
-                    .foregroundColor(TLPalette.textSecondary)
-                Text(formatSpeed(networkMonitor.currentDownloadSpeed))
-                    .font(TLFont.speed)
-                    .foregroundColor(TLPalette.download)
+            VStack(alignment: .trailing, spacing: 2) {
+                let up = splitSpeed(networkMonitor.currentUploadSpeed)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(up.number)
+                        .font(.system(size: 44, weight: .bold, design: .monospaced))
+                        .monospacedDigit()
+                    Text(up.unit)
+                        .font(TLFont.callout)
+                }
+                .foregroundColor(TLPalette.upload)
+                HStack(spacing: 4) {
+                    Text(Localized.upload)
+                        .font(TLFont.caption)
+                        .foregroundColor(TLPalette.textSecondary)
+                    Circle().fill(TLPalette.upload).frame(width: 8, height: 8)
+                }
             }
         }
+    }
+
+    /// 대형 속도 표시용 숫자/단위 분리 ("52" + "KB/s")
+    private func splitSpeed(_ bps: Double) -> (number: String, unit: String) {
+        let Bps = bps / 8
+        if Bps >= 1_000_000_000 {
+            return (String(format: "%.1f", Bps / 1_000_000_000), "GB/s")
+        } else if Bps >= 1_000_000 {
+            return (String(format: "%.1f", Bps / 1_000_000), "MB/s")
+        } else if Bps >= 1_000 {
+            return (String(format: "%.0f", Bps / 1_000), "KB/s")
+        } else {
+            return (String(format: "%.0f", Bps), "B/s")
+        }
+    }
+
+    // MARK: - 프리미엄 섹션 (사용 기록·연결성·인터페이스·상위 프로세스)
+
+    private var speedHistorySection: some View {
+        VStack(alignment: .leading, spacing: TLSpace.sm) {
+            sectionDivider(Localized.usageHistory)
+            let history = networkMonitor.speedHistory
+            if history.count >= 2 {
+                let peak = max(history.map { max($0.downloadBps, $0.uploadBps) }.max() ?? 1, 1) / 8
+                Chart {
+                    ForEach(Array(history.enumerated()), id: \.offset) { idx, sample in
+                        AreaMark(
+                            x: .value("t", idx),
+                            y: .value("down", sample.downloadBps / 8)
+                        )
+                        .foregroundStyle(TLPalette.download.opacity(0.35))
+                        .interpolationMethod(.catmullRom)
+                        AreaMark(
+                            x: .value("t", idx),
+                            y: .value("up", sample.uploadBps / 8)
+                        )
+                        .foregroundStyle(TLPalette.upload.opacity(0.35))
+                        .interpolationMethod(.catmullRom)
+                    }
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .chartYScale(domain: 0...(peak * 1.15))
+                .frame(height: 110)
+                .overlay(alignment: .topLeading) {
+                    Text(formatByteRate(Int64(peak)))
+                        .font(TLFont.caption2)
+                        .foregroundColor(TLPalette.textSecondary)
+                }
+            } else {
+                Text(Localized.measuring)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
+                    .frame(maxWidth: .infinity, minHeight: 110, alignment: .center)
+            }
+        }
+    }
+
+    private var connectivitySection: some View {
+        VStack(alignment: .leading, spacing: TLSpace.sm) {
+            sectionDivider(Localized.connectivityHistory)
+            HStack(spacing: 4) {
+                ForEach(Array(pingMonitor.recentPingOutcomes.suffix(20).enumerated()), id: \.offset) { _, ok in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(ok ? TLPalette.success : TLPalette.separator)
+                        .frame(width: 10, height: 10)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    private var interfaceSection: some View {
+        VStack(alignment: .leading, spacing: TLSpace.sm) {
+            sectionDivider(Localized.interfaceInfo)
+            interfaceRow(label: Localized.totalUpload, value: networkMonitor.totalUpload.formattedBytes)
+            interfaceRow(label: Localized.totalDownload, value: networkMonitor.totalDownload.formattedBytes)
+            HStack {
+                Text(Localized.status)
+                    .font(TLFont.detail)
+                    .foregroundColor(TLPalette.textSecondary)
+                Spacer()
+                statusPill
+            }
+            interfaceRow(label: Localized.latencyTitle, value: latencyText)
+            interfaceRow(label: Localized.jitterTitle, value: jitterText)
+            interfaceRow(label: Localized.interfaceInfo, value: interfaceText)
+            if let mac = macText {
+                interfaceRow(label: Localized.macAddress, value: mac)
+            }
+        }
+    }
+
+    private func interfaceRow(label: String, value: String, valueColor: Color = TLPalette.textPrimary) -> some View {
+        HStack {
+            Text(label)
+                .font(TLFont.detail)
+                .foregroundColor(TLPalette.textSecondary)
+            Spacer()
+            Text(value)
+                .font(TLFont.detail.monospacedDigit())
+                .foregroundColor(valueColor)
+                .lineLimit(1)
+        }
+    }
+
+    private var statusPill: some View {
+        let up = pingMonitor.isReachable
+        return Text(up ? Localized.upState : Localized.downState)
+            .font(TLFont.medium.bold())
+            .foregroundColor(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 2)
+            .background(up ? TLPalette.success : TLPalette.danger, in: Capsule())
+    }
+
+    private var latencyText: String {
+        if let lat = pingMonitor.primaryLatency {
+            return "\(Int(lat * 1000)) ms"
+        }
+        return Localized.measuring
+    }
+
+    private var jitterText: String {
+        if let j = pingMonitor.jitter {
+            return String(format: "%.0f ms", j * 1000)
+        }
+        return "--"
+    }
+
+    private var interfaceText: String {
+        let name = hotspotDetector.currentConnection?.interfaceName ?? "-"
+        return "\(connectionTypeString) (\(name))"
+    }
+
+    private var macText: String? {
+        guard let name = hotspotDetector.currentConnection?.interfaceName else { return nil }
+        return networkMonitor.macAddress(forInterface: name)
+    }
+
+    private var topProcessesSection: some View {
+        VStack(alignment: .leading, spacing: TLSpace.xs) {
+            HStack(spacing: TLSpace.sm) {
+                Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
+                Text(Localized.topProcesses)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
+                    .fixedSize()
+                Image(systemName: "chevron.right")
+                    .font(TLFont.badge)
+                    .foregroundColor(TLPalette.textSecondary.opacity(0.5))
+                Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { openWindow(id: "appTraffic") }
+            if showAppTraffic, !trafficMonitor.apps.isEmpty {
+                HStack(spacing: TLSpace.sm) {
+                    Text(Localized.process)
+                        .font(TLFont.smallBold)
+                        .foregroundColor(TLPalette.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Circle().fill(TLPalette.download).frame(width: 8, height: 8)
+                    Circle().fill(TLPalette.upload).frame(width: 8, height: 8)
+                }
+                ForEach(topProcessRows) { app in
+                    HStack(spacing: TLSpace.sm) {
+                        procIcon(app.processName)
+                        Text(app.processName)
+                            .font(TLFont.medium)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(formatByteRate(app.bytesIn))
+                            .font(TLFont.mediumMono)
+                            .foregroundColor(TLPalette.download)
+                            .frame(width: 76, alignment: .trailing)
+                        Text(formatByteRate(app.bytesOut))
+                            .font(TLFont.mediumMono)
+                            .foregroundColor(TLPalette.upload)
+                            .frame(width: 76, alignment: .trailing)
+                    }
+                }
+            } else {
+                Text(Localized.trafficCollecting)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        }
+    }
+
+    private var topProcessRows: [TrafficMonitor.AppTraffic] {
+        Array(trafficMonitor.apps
+            .sorted { $0.bytesIn + $0.bytesOut > $1.bytesIn + $1.bytesOut }
+            .prefix(5))
+    }
+
+    private func procIcon(_ name: String) -> some View {
+        Group {
+            if let nsImage = AppIconResolver.icon(forProcess: name) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: "app")
+                    .foregroundColor(TLPalette.textSecondary)
+            }
+        }
+        .frame(width: 16, height: 16)
     }
 
     private var bottomButtons: some View {

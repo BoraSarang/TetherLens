@@ -80,7 +80,7 @@ enum TLSize {
     static let aboutWindow:      (w: CGFloat, h: CGFloat) = (380, 420)  // 정보
 
     // 시트/표준 폭 (현행 값 유지 — 값 변경은 회귀 위험으로 이번 버전에서 보류)
-    static let popoverWidth:   CGFloat = 320
+    static let popoverWidth:   CGFloat = 360   // 프리미엄 팝오버 (차트·도트·인터페이스 섹션)
     static let sheetCompact:   CGFloat = 280   // 팝오버/프로필/DNS/IP히스토리/알림
     static let sheetSaving:    CGFloat = 300   // 절약 모드
     static let sheetStandard:  CGFloat = 320   // 설정

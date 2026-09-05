@@ -251,6 +251,17 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var monthLabel: String { value(kr: "월", en: "Month") }
   static var startTime: String { value(kr: "시작 시간", en: "Start Time") }
   static var status: String { value(kr: "상태", en: "Status") }
+  static var usageHistory: String { value(kr: "사용 기록", en: "Usage History") }
+  static var connectivityHistory: String { value(kr: "연결성 기록", en: "Connectivity") }
+  static var interfaceInfo: String { value(kr: "인터페이스", en: "Interface") }
+  static var topProcesses: String { value(kr: "상위 프로세스", en: "Top Processes") }
+  static var totalUpload: String { value(kr: "총 업로드", en: "Total Up") }
+  static var totalDownload: String { value(kr: "총 다운로드", en: "Total Down") }
+  static var latencyTitle: String { value(kr: "레이턴시", en: "Latency") }
+  static var jitterTitle: String { value(kr: "Jitter", en: "Jitter") }
+  static var macAddress: String { value(kr: "MAC 주소", en: "MAC Address") }
+  static var upState: String { value(kr: "UP", en: "UP") }
+  static var downState: String { value(kr: "DOWN", en: "DOWN") }
   static var inProgress: String { value(kr: "진행 중", en: "In Progress") }
   static var time: String { value(kr: "시간", en: "Time") }
   static var sessionCount: String { value(kr: "세션", en: "Sessions") }

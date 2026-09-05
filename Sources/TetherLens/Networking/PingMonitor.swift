@@ -32,6 +32,21 @@ class PingMonitor {
     private var dnsHistory: [TimeInterval?] = []
     private var gatewayHistory: [TimeInterval?] = []
     private let historySize = 20
+
+    /// 연결성 도트 그리드용 최근 핑 성공 기록 (nil=실패, 오래된 순, 게이트웨이 우선·없으면 DNS)
+    var recentPingOutcomes: [Bool] {
+        zip(gatewayHistory, dnsHistory).map { $0 ?? $1 != nil }
+    }
+
+    /// Jitter — 대표 지연(primaryLatency 기준) 최근 기록의 표준편차 (초)
+    var jitter: TimeInterval? {
+        let samples = gatewayHistory.compactMap { $0 }
+        let base = samples.isEmpty ? dnsHistory.compactMap { $0 } : samples
+        guard base.count >= 2 else { return nil }
+        let mean = base.reduce(0, +) / Double(base.count)
+        let variance = base.reduce(0) { $0 + ($1 - mean) * ($1 - mean) } / Double(base.count)
+        return variance.squareRoot()
+    }
     private var consecutiveViolations: Int = 0
     private var sustainedStart: Date?
     private var recoveryStart: Date?
