@@ -27,14 +27,38 @@ struct FloatingWindowView: View {
                 RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous)
                     .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
             }
+            .overlay(alignment: .bottom) {
+                // 호버 시 투명도 직접 조절 (설정 창과 동일 키·범위, 레이아웃 불변)
+                if isHovering {
+                    HStack(spacing: 6) {
+                        Image(systemName: "circle.dashed")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Slider(value: $opacity, in: 0.35...1.0)
+                            .controlSize(.mini)
+                        Text("\(Int(opacity * 100))%")
+                            .font(TLFont.caption2)
+                            .foregroundColor(.secondary)
+                            .frame(width: 34, alignment: .trailing)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .padding(6)
+                }
+            }
             .frame(minWidth: 220)
             .onHover { isHovering = $0 }
     }
 
-    /// 프로세스 리스트 ON — 닫기 버튼 + 속도 2줄 + 사용량 중앙 + 트래픽 목록 (세로 120)
+    /// 프로세스 리스트 ON — 닫기 버튼 + 속도 2줄 + 사용량 중앙 + 트래픽 목록 (세로 132)
     private var fullLayout: some View {
         return VStack(spacing: 0) {
             HStack {
+                Circle()
+                    .fill(model.isReachable ? TLPalette.success : TLPalette.danger)
+                    .frame(width: 8, height: 8)
+                    .help(model.isReachable ? Localized.statusNormal : Localized.statusCritical)
                 Spacer()
                 if isHovering {
                     Button {
@@ -54,7 +78,13 @@ struct FloatingWindowView: View {
 
             menuBarMini
                 .padding(.horizontal, 14)
-                .padding(.bottom, 6)
+                .padding(.bottom, 4)
+
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(TLPalette.separator)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 4)
 
             trafficSection
                 .padding(.horizontal, 12)
@@ -69,6 +99,10 @@ struct FloatingWindowView: View {
     private var compactLayout: some View {
         let fontSize = SettingsManager.shared.menuBarFontSize
         return HStack(spacing: 10) {
+            Circle()
+                .fill(model.isReachable ? TLPalette.success : TLPalette.danger)
+                .frame(width: 8, height: 8)
+                .help(model.isReachable ? Localized.statusNormal : Localized.statusCritical)
             speedColumn(icon: "arrow.up", value: model.upSpeed, color: TLPalette.upload, size: fontSize, alignment: .trailing)
             usageColumn(fontSize: fontSize)
             speedColumn(icon: "arrow.down", value: model.downSpeed, color: TLPalette.download, size: fontSize, alignment: .leading)
@@ -212,6 +246,17 @@ struct FloatingWindowView: View {
 
     private func trafficRow(_ app: TrafficMonitor.AppTraffic) -> some View {
         HStack(spacing: 4) {
+            Group {
+                if let nsImage = AppIconResolver.icon(forProcess: app.processName) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: "app")
+                        .foregroundColor(TLPalette.textSecondary)
+                }
+            }
+            .frame(width: 14, height: 14)
             Text(app.processName)
                 .font(TLFont.medium)
                 .lineLimit(1)

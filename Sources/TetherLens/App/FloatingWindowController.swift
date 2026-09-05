@@ -46,7 +46,8 @@ final class FloatingWindowController {
             col3IsUsage: info["col3IsUsage"] as? Bool ?? false,
             col3IsLatency: info["col3IsLatency"] as? Bool ?? false,
             rssi: rssi,
-            latencyMS: latencyMS
+            latencyMS: latencyMS,
+            isReachable: info["reachable"] as? Bool ?? true
         )
         // 폭은 사용자가 리사이즈 가능, 세로는 설정 토글 변경 시 applyFixedHeight()가 유지한다
     }
@@ -76,11 +77,11 @@ final class FloatingWindowController {
     }
 
     /// 세로 크기를 프로세스 리스트 표시 여부에 따라 고정한다.
-    /// - 리스트 ON: 트래픽 헤더 + 상위 3행이 온전히 보이는 높이
+    /// - 리스트 ON: 상태점 + 속도 + 디바이더 + 트래픽 헤더 + 상위 3행이 온전히 보이는 높이
     /// - 리스트 OFF: 속도·사용량만 표시되는 콤팩트 높이
     func applyFixedHeight() {
         guard let panel else { return }
-        let targetH: CGFloat = SettingsManager.shared.floatingShowTraffic ? 120 : 40
+        let targetH: CGFloat = SettingsManager.shared.floatingShowTraffic ? 132 : 40
         guard abs(targetH - panel.frame.height) > 1 else { return }
         let screenFrame = NSScreen.main?.visibleFrame ?? panel.frame
         var origin = panel.frame.origin
@@ -98,8 +99,8 @@ final class FloatingWindowController {
         if panel == nil {
             let hosting = NSHostingController(rootView: FloatingWindowView().environmentObject(viewModel))
             let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-            // 기본 크기 — 세로는 프로세스 리스트 표시 여부에 따른 고정값 (리스트 ON 120 / OFF 40)
-            let size = NSSize(width: 300, height: SettingsManager.shared.floatingShowTraffic ? 120 : 40)
+            // 기본 크기 — 세로는 프로세스 리스트 표시 여부에 따른 고정값 (리스트 ON 132 / OFF 40)
+            let size = NSSize(width: 300, height: SettingsManager.shared.floatingShowTraffic ? 132 : 40)
             var origin = savedOrigin ?? NSPoint(
                 x: screenFrame.maxX - size.width - 20,
                 y: screenFrame.maxY - size.height - 36
@@ -122,7 +123,7 @@ final class FloatingWindowController {
             win.isReleasedWhenClosed = false
             win.contentViewController = hosting
             // contentViewController 배정 시 창이 콘텐츠 크기로 자동 재조정될 수 있어 크기를 다시 명시 고정
-            win.setContentSize(NSSize(width: 300, height: SettingsManager.shared.floatingShowTraffic ? 120 : 40))
+            win.setContentSize(NSSize(width: 300, height: SettingsManager.shared.floatingShowTraffic ? 132 : 40))
             panel = win
             observeMove(win)
             DebugLogger.shared.action("Floating", "창 생성 위치=\(origin) 크기=\(size)")
@@ -178,8 +179,9 @@ final class FloatingWindowViewModel: ObservableObject {
     @Published var col3IsLatency = false
     @Published var rssi = -1000
     @Published var latencyMS = -1
+    @Published var isReachable = true
 
-    func update(upSpeed: String, downSpeed: String, col3Top: String, col3Bottom: String, totalRatio: Double, col3IsUsage: Bool, col3IsLatency: Bool = false, rssi: Int = -1000, latencyMS: Int = -1) {
+    func update(upSpeed: String, downSpeed: String, col3Top: String, col3Bottom: String, totalRatio: Double, col3IsUsage: Bool, col3IsLatency: Bool = false, rssi: Int = -1000, latencyMS: Int = -1, isReachable: Bool = true) {
         self.upSpeed = upSpeed
         self.downSpeed = downSpeed
         self.col3Top = col3Top
@@ -189,5 +191,6 @@ final class FloatingWindowViewModel: ObservableObject {
         self.col3IsLatency = col3IsLatency
         self.rssi = rssi
         self.latencyMS = latencyMS
+        self.isReachable = isReachable
     }
 }

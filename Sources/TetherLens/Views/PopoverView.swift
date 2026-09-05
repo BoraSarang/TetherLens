@@ -886,24 +886,6 @@ struct PopoverView: View {
     private var speedView: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
-                let down = splitSpeed(networkMonitor.currentDownloadSpeed)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(down.number)
-                        .font(.system(size: 44, weight: .bold, design: .monospaced))
-                        .monospacedDigit()
-                    Text(down.unit)
-                        .font(TLFont.callout)
-                }
-                .foregroundColor(TLPalette.download)
-                HStack(spacing: 4) {
-                    Circle().fill(TLPalette.download).frame(width: 8, height: 8)
-                    Text(Localized.download)
-                        .font(TLFont.caption)
-                        .foregroundColor(TLPalette.textSecondary)
-                }
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
                 let up = splitSpeed(networkMonitor.currentUploadSpeed)
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(up.number)
@@ -914,10 +896,28 @@ struct PopoverView: View {
                 }
                 .foregroundColor(TLPalette.upload)
                 HStack(spacing: 4) {
+                    Circle().fill(TLPalette.upload).frame(width: 8, height: 8)
                     Text(Localized.upload)
                         .font(TLFont.caption)
                         .foregroundColor(TLPalette.textSecondary)
-                    Circle().fill(TLPalette.upload).frame(width: 8, height: 8)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                let down = splitSpeed(networkMonitor.currentDownloadSpeed)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(down.number)
+                        .font(.system(size: 44, weight: .bold, design: .monospaced))
+                        .monospacedDigit()
+                    Text(down.unit)
+                        .font(TLFont.callout)
+                }
+                .foregroundColor(TLPalette.download)
+                HStack(spacing: 4) {
+                    Text(Localized.download)
+                        .font(TLFont.caption)
+                        .foregroundColor(TLPalette.textSecondary)
+                    Circle().fill(TLPalette.download).frame(width: 8, height: 8)
                 }
             }
         }
@@ -1082,8 +1082,8 @@ struct PopoverView: View {
                         .font(TLFont.smallBold)
                         .foregroundColor(TLPalette.textSecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Circle().fill(TLPalette.download).frame(width: 8, height: 8)
                     Circle().fill(TLPalette.upload).frame(width: 8, height: 8)
+                    Circle().fill(TLPalette.download).frame(width: 8, height: 8)
                 }
                 ForEach(topProcessRows) { app in
                     HStack(spacing: TLSpace.sm) {
@@ -1093,13 +1093,13 @@ struct PopoverView: View {
                             .lineLimit(1)
                             .truncationMode(.tail)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(formatByteRate(app.bytesIn))
-                            .font(TLFont.mediumMono)
-                            .foregroundColor(TLPalette.download)
-                            .frame(width: 76, alignment: .trailing)
                         Text(formatByteRate(app.bytesOut))
                             .font(TLFont.mediumMono)
                             .foregroundColor(TLPalette.upload)
+                            .frame(width: 76, alignment: .trailing)
+                        Text(formatByteRate(app.bytesIn))
+                            .font(TLFont.mediumMono)
+                            .foregroundColor(TLPalette.download)
                             .frame(width: 76, alignment: .trailing)
                     }
                 }

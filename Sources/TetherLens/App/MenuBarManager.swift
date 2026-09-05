@@ -717,7 +717,7 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
         statusItem.length = menuBarView.frame.width
         // 메뉴바 호버 툴팁 — 클릭 없이 전체 상태 확인 (Osaurus 상태 툴팁 패턴)
         let tipName = hotspotDetector.currentConnection?.ssid ?? "TetherLens"
-        var tip = "\(tipName) · ▼\(downloadStr) ▲\(uploadStr)"
+        var tip = "\(tipName) · ▲\(uploadStr) ▼\(downloadStr)"
         if quotaRatio >= 0 {
             tip += " · QoS \(Int(quotaRatio * 100))%"
         }
@@ -733,7 +733,8 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
                 // RSSI/지연 표시 시 뷰가 색상을 그릴 수 있도록 원시값을 함께 전달
                 "rssi": rssi.map(String.init) ?? "",
                 "latencyMS": latency.map { String(Int($0 * 1000)) } ?? "",
-                "col3IsLatency": col3IsLatency
+                "col3IsLatency": col3IsLatency,
+                "reachable": pingMonitor.isReachable
             ]
         )
     }
