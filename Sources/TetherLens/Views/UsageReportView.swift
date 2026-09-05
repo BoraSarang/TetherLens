@@ -197,6 +197,7 @@ struct UsageReportView: View {
                 .padding(.horizontal, TLSpace.xl)
 
             contentBody
+                .frame(maxHeight: .infinity, alignment: .top)
 
             HStack {
                 HStack(spacing: TLSpace.md) {

@@ -217,6 +217,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     // MARK: - 권한
@@ -272,6 +273,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     // MARK: - 알림
@@ -292,6 +294,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     // MARK: - 성능
@@ -321,6 +324,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     // MARK: - 자동화
@@ -395,6 +399,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func pollingRow(label: String, defaultValue: Double, selection: Binding<Double>, options: [(String, Double)]) -> some View {
