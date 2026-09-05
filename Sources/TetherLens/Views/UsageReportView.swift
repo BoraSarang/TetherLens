@@ -355,9 +355,8 @@ struct UsageReportView: View {
             Spacer()
         } else {
             let peakBar = source.map { max($0.upload, $0.download) }.max() ?? 1
-            let peakCumulative = source.enumerated().map { cumulativeTotal(source, upTo: $0.offset) }.max() ?? peakBar
             let peakQuota = quotaRuleMarkBytes ?? 0
-            let yTop = max(peakBar * 2, peakCumulative, peakQuota) * 11 / 10
+            let yTop = max(peakBar, peakQuota) * 11 / 10
             let yDomain: ClosedRange<Int64> = 0 ... max(yTop, 1)
             Chart {
                 ForEach(Array(source.enumerated()), id: \.element.id) { index, usage in
@@ -410,27 +409,17 @@ struct UsageReportView: View {
                         )
                         .foregroundStyle(TLPalette.download)
                     }
-                    if isDay {
-                        LineMark(
-                            x: .value("Hour", usage.hour),
-                            y: .value("Cumulative", cumulativeTotal(source, upTo: index))
-                        )
-                        .foregroundStyle(TLPalette.accent)
-                        .lineStyle(StrokeStyle(lineWidth: 1.5))
-                    } else if isWeekly {
-                        LineMark(
-                            x: .value("Weekday", usage.hour),
-                            y: .value("Cumulative", cumulativeTotal(source, upTo: index))
-                        )
-                        .foregroundStyle(TLPalette.accent)
-                        .lineStyle(StrokeStyle(lineWidth: 1.5))
-                    } else {
-                        LineMark(
-                            x: .value("Date", usage.date ?? Date.distantPast, unit: isLong ? .month : .day),
-                            y: .value("Cumulative", cumulativeTotal(source, upTo: index))
-                        )
-                        .foregroundStyle(TLPalette.accent)
-                        .lineStyle(StrokeStyle(lineWidth: 1.5))
+                }
+                if recentPaceBytes > 0 {
+                    RuleMark(
+                        y: .value("Pace", recentPaceBytes)
+                    )
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .foregroundStyle(TLPalette.accent.opacity(0.5))
+                    .annotation(position: .top, alignment: .leading) {
+                        Text(Localized.paceLabel)
+                            .font(TLFont.small)
+                            .foregroundColor(TLPalette.accent.opacity(0.8))
                     }
                 }
                 if let quotaLine = quotaRuleMarkBytes {
@@ -561,10 +550,6 @@ struct UsageReportView: View {
               let profile = ProfileManager.shared.getProfile(id: pid),
               let quota = profile.quotaGB, quota > 0 else { return nil }
         return Int64(quota * 1_000_000_000)
-    }
-
-    private func cumulativeTotal(_ source: [ChartEntry], upTo index: Int) -> Int64 {
-        source[0...index].reduce(0) { $0 + $1.total }
     }
 
     // MARK: - Detail

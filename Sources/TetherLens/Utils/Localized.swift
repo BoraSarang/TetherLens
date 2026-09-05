@@ -276,6 +276,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var increased: String { value(kr: "증가", en: "up") }
   static var decreased: String { value(kr: "감소", en: "down") }
   static var quotaRuleLabel: String { value(kr: "할당량", en: "Quota") }
+  static var paceLabel: String { value(kr: "평균", en: "Avg") }
 
   // MARK: - Onboarding
   static var welcomeTitle: String { value(kr: "TetherLens에 오신 것을 환영합니다", en: "Welcome to TetherLens") }
