@@ -21,6 +21,7 @@
 - **인터페이스 섹션** — 총 업/다운, UP/DOWN pill, 레이턴시, Jitter(`PingMonitor.jitter`), `Wi-Fi (en0)` 형식, MAC 주소(`getifaddrs` 조회)
 - **상위 프로세스 Top5** — 앱 아이콘(`AppIconResolver`, NSWorkspace+번들 매칭, 캐시) + 다운/업 속도
 - **팝오버 320→360pt + 중간 ScrollView 고정 420pt** (NSPopover 자동 사이징 찌그러짐은 고정 높이로 해결)
+- **사용 기록 분리형 차트** — 업/다운 겹침 1개 → 독립 Y축 미니 차트 2개 (소제목+현재값, 작은 값 파형 보존)
 
 ### Changed (리포트 프리미엄 재구성)
 - **차트 기준선 정리** — 누적 LineMark 삭제(Y축 막대 기준 복원) + 평균 페이스 점선(`평균` 라벨, 막대 뒤). `cumulativeTotal` 삭제

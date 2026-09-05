@@ -944,38 +944,53 @@ struct PopoverView: View {
             sectionDivider(Localized.usageHistory)
             let history = networkMonitor.speedHistory
             if history.count >= 2 {
-                let peak = max(history.map { max($0.downloadBps, $0.uploadBps) }.max() ?? 1, 1) / 8
-                Chart {
-                    ForEach(Array(history.enumerated()), id: \.offset) { idx, sample in
-                        AreaMark(
-                            x: .value("t", idx),
-                            y: .value("down", sample.downloadBps / 8)
-                        )
-                        .foregroundStyle(TLPalette.download.opacity(0.35))
-                        .interpolationMethod(.catmullRom)
-                        AreaMark(
-                            x: .value("t", idx),
-                            y: .value("up", sample.uploadBps / 8)
-                        )
-                        .foregroundStyle(TLPalette.upload.opacity(0.35))
-                        .interpolationMethod(.catmullRom)
-                    }
-                }
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                .chartYScale(domain: 0...(peak * 1.15))
-                .frame(height: 110)
-                .overlay(alignment: .topLeading) {
-                    Text(formatByteRate(Int64(peak)))
-                        .font(TLFont.caption2)
-                        .foregroundColor(TLPalette.textSecondary)
-                }
+                speedMiniChart(
+                    title: Localized.uploadShort,
+                    color: TLPalette.upload,
+                    current: formatByteRate(Int64(networkMonitor.currentUploadSpeed / 8)),
+                    values: history.map { $0.uploadBps / 8 }
+                )
+                speedMiniChart(
+                    title: Localized.downloadShort,
+                    color: TLPalette.download,
+                    current: formatByteRate(Int64(networkMonitor.currentDownloadSpeed / 8)),
+                    values: history.map { $0.downloadBps / 8 }
+                )
             } else {
                 Text(Localized.measuring)
                     .font(TLFont.caption)
                     .foregroundColor(TLPalette.textSecondary)
-                    .frame(maxWidth: .infinity, minHeight: 110, alignment: .center)
+                    .frame(maxWidth: .infinity, minHeight: 140, alignment: .center)
             }
+        }
+    }
+
+    /// 분리형 미니 차트 (업/다운 독립 Y축 — 작은 값 파형이 묻히지 않음)
+    private func speedMiniChart(title: String, color: Color, current: String, values: [Double]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(title)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.textSecondary)
+                Spacer()
+                Text(current)
+                    .font(TLFont.caption.monospacedDigit())
+                    .foregroundColor(color)
+            }
+            Chart {
+                ForEach(Array(values.enumerated()), id: \.offset) { idx, v in
+                    AreaMark(
+                        x: .value("t", idx),
+                        y: .value("v", v)
+                    )
+                    .foregroundStyle(color.opacity(0.35))
+                    .interpolationMethod(.catmullRom)
+                }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .chartYScale(domain: 0...((values.max() ?? 1) * 1.15))
+            .frame(height: 64)
         }
     }
 
