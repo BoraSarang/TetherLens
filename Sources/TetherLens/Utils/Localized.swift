@@ -63,7 +63,6 @@ enum Localized {
   static var upload: String { value(kr: "▲ 업로드", en: "▲ Upload") }
   static var download: String { value(kr: "▼ 다운로드", en: "▼ Download") }
   static var total: String { value(kr: "합계", en: "Total") }
-  static var dailyAverage: String { value(kr: "일 평균", en: "Daily Avg") }
   static var totalUsage: String { value(kr: "총 사용량", en: "Total Usage") }
 
   // MARK: - Pin / Notifications
@@ -80,6 +79,9 @@ enum Localized {
   static var manageProfiles: String { value(kr: "프로필 관리...", en: "Manage Profiles...") }
   static var noQuota: String { value(kr: "할당량 없음 — 프로필 편집에서 설정하세요", en: "No quota — set in profile editor") }
   static var setQuota: String { value(kr: "할당량 설정", en: "Set Quota") }
+  static var quotaExhaustedToday: String { value(kr: "오늘 할당량 소진", en: "Daily quota exhausted") }
+  static func todayBudget(_ amount: String) -> String { value(kr: "오늘 \(amount)까지", en: "Up to \(amount) today") }
+  static func recentPace(_ amount: String) -> String { value(kr: "최근3일 \(amount)/일", en: "3-day avg \(amount)/day") }
   static var resetData: String { value(kr: "데이터 초기화", en: "Reset Data") }
   static var profileDeleteConfirm: String { value(kr: "통계 정보 등 모든 데이터가 삭제됩니다.", en: "All data including statistics will be deleted.") }
   static var profileResetConfirm: String { value(kr: "이 프로필의 모든 사용량 데이터가 삭제됩니다.\n프로필 자체는 유지됩니다.", en: "All usage data for this profile will be deleted.\nThe profile itself will be kept.") }
@@ -260,7 +262,6 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var topHotspot: String { value(kr: "최다 핫스팟", en: "Top Hotspot") }
   static var topApps: String { value(kr: "상위 앱", en: "Top Apps") }
   static var quotaUsage: String { value(kr: "할당량", en: "Quota") }
-  static var expectedExhaustion: String { value(kr: "예상 소진", en: "Estimated") }
   static var increased: String { value(kr: "증가", en: "up") }
   static var decreased: String { value(kr: "감소", en: "down") }
   static var quotaRuleLabel: String { value(kr: "할당량", en: "Quota") }

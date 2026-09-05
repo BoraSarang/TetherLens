@@ -17,7 +17,7 @@ struct UsageReportView: View {
     @State private var expandedSection: AppTrafficSection = .user
     @State private var sortOrder: TrafficSortOrder = .total
     @State private var previousPeriodTotal: Int64 = 0
-    @State private var topHotspot: (name: String, total: Int64)?
+    @State private var topHotspot: (id: UUID?, name: String, total: Int64)?
     @State private var topApps: [(name: String, total: Int64)] = []
 
     enum TrafficSortOrder: CaseIterable {
@@ -218,32 +218,37 @@ struct UsageReportView: View {
             insightCard(
                 title: Localized.totalUsage,
                 value: totalBytes.formattedBytes,
-                subtitle: "\(Localized.dailyAverage) \(Int64(totalBytes / max(Int64(dailyUsage.count), 1)).formattedBytes)",
+                subtitle: "↑\(totalUploadBytes.formattedBytes) ↓\(totalDownloadBytes.formattedBytes)",
                 color: TLPalette.textPrimary
             )
             insightCard(
                 title: Localized.vsPreviousPeriod,
                 value: previousPeriodText,
                 subtitle: "\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)",
-                color: previousPeriodColor
+                color: previousPeriodColor,
+                action: { viewMode = .chart }
             )
             insightCard(
                 title: Localized.topUsageDay,
                 value: topUsageDayText,
                 subtitle: topUsageDay?.total.formattedBytes ?? Localized.noUsageData,
-                color: TLPalette.accent
+                color: TLPalette.accent,
+                action: { viewMode = .detail }
             )
             insightCard(
                 title: Localized.topHotspot,
                 value: topHotspot?.name ?? Localized.noConnection,
                 subtitle: topHotspot.map { $0.total.formattedBytes } ?? "",
-                color: TLPalette.upload
+                color: TLPalette.upload,
+                action: {
+                    if let id = topHotspot?.id { selectedProfileId = id }
+                }
             )
             if let q = quotaUsagePct {
                 insightCard(
                     title: Localized.quotaUsage,
                     value: String(format: "%.1f%%", q),
-                    subtitle: expectedExhaustionDays.map { Localized.expectedExhaustion + " \($0)일" } ?? "",
+                    subtitle: quotaCardSubtitle,
                     color: q >= 90 ? TLPalette.danger : (q >= 60 ? TLPalette.upload : TLPalette.success)
                 )
             }
@@ -251,13 +256,26 @@ struct UsageReportView: View {
                 title: Localized.topApps,
                 value: topApps.isEmpty ? Localized.noUsageData : topApps.map { $0.name }.joined(separator: " · "),
                 subtitle: topApps.isEmpty ? "" : topApps.map { $0.total.formattedBytes }.joined(separator: " · "),
-                color: TLPalette.download
+                color: TLPalette.download,
+                action: { viewMode = .appTraffic }
             )
         }
         .padding(.horizontal, TLSpace.xl)
     }
 
-    private func insightCard(title: String, value: String, subtitle: String, color: Color) -> some View {
+    @ViewBuilder
+    private func insightCard(title: String, value: String, subtitle: String, color: Color, action: (() -> Void)? = nil) -> some View {
+        if let action {
+            Button(action: action) {
+                insightCardContent(title: title, value: value, subtitle: subtitle, color: color)
+            }
+            .buttonStyle(.plain)
+        } else {
+            insightCardContent(title: title, value: value, subtitle: subtitle, color: color)
+        }
+    }
+
+    private func insightCardContent(title: String, value: String, subtitle: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(TLFont.caption2)
@@ -1035,17 +1053,17 @@ struct UsageReportView: View {
             .prefix(3)
             .map { ($0.processName, $0.uploadBytes + $0.downloadBytes) })
         if pid == allProfilesId {
-            var best: (name: String, total: Int64)?
+            var best: (id: UUID?, name: String, total: Int64)?
             for profile in profiles {
                 let total = ProfileManager.shared.getDailyUsage(profileId: profile.id, days: days)
                     .reduce(0) { $0 + $1.total }
                 if total > (best?.total ?? 0) {
-                    best = (profile.name, total)
+                    best = (profile.id, profile.name, total)
                 }
             }
             topHotspot = best
         } else if let p = profiles.first(where: { $0.id == pid }) {
-            topHotspot = (p.name, dailyUsage.reduce(0) { $0 + $1.total })
+            topHotspot = (p.id, p.name, dailyUsage.reduce(0) { $0 + $1.total })
         } else {
             topHotspot = nil
         }
@@ -1053,6 +1071,38 @@ struct UsageReportView: View {
 
     private var totalBytes: Int64 {
         dailyUsage.reduce(0) { $0 + $1.total }
+    }
+
+    private var totalUploadBytes: Int64 {
+        dailyUsage.reduce(0) { $0 + $1.upload }
+    }
+
+    private var totalDownloadBytes: Int64 {
+        dailyUsage.reduce(0) { $0 + $1.download }
+    }
+
+    /// 최근 3일(오늘 포함) 평균 — 기간 전체 평균보다 현재 페이스에 가까움
+    private var recentPaceBytes: Int64 {
+        let recent = dailyUsage.suffix(3)
+        guard !recent.isEmpty else { return 0 }
+        return recent.reduce(0) { $0 + $1.total } / Int64(recent.count)
+    }
+
+    /// 오늘 사용량 (dailyUsage 마지막 = 오늘)
+    private var todayUsedBytes: Int64 {
+        dailyUsage.last?.total ?? 0
+    }
+
+    /// 할당량 카드 부제 — "오늘 N까지 · 최근3일 M/일" (소진일 대신 행동 기준)
+    private var quotaCardSubtitle: String {
+        guard let pid = selectedProfileId, pid != allProfilesId,
+              let profile = ProfileManager.shared.getProfile(id: pid),
+              let quota = profile.quotaGB, quota > 0 else { return "" }
+        let quotaBytes = Int64(quota * 1_000_000_000)
+        let todayUsed = todayUsedBytes
+        guard todayUsed < quotaBytes else { return Localized.quotaExhaustedToday }
+        let budget = quotaBytes - todayUsed
+        return "\(Localized.todayBudget(budget.formattedBytes)) · \(Localized.recentPace(recentPaceBytes.formattedBytes))"
     }
 
     private var topUsageDay: ProfileManager.DailyUsage? {
@@ -1069,16 +1119,6 @@ struct UsageReportView: View {
               let profile = ProfileManager.shared.getProfile(id: pid),
               let quota = profile.quotaGB, quota > 0 else { return nil }
         return Double(totalBytes) / (quota * 1_000_000_000) * 100
-    }
-
-    private var expectedExhaustionDays: Int? {
-        guard let q = quotaUsagePct, q > 0, q < 100 else { return nil }
-        let days = selectedPeriod.days
-        let daily = Double(totalBytes) / Double(max(days, 1))
-        guard daily > 0, let profile = selectedProfileId.flatMap({ ProfileManager.shared.getProfile(id: $0) }),
-              let quota = profile.quotaGB, quota > 0 else { return nil }
-        let remaining = quota * 1_000_000_000 - Double(totalBytes)
-        return Int(remaining / daily)
     }
 
     private func sessionStartTimeFormatted(_ date: Date) -> String {
