@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.32.0] — 2026-09-07 — 프로세스 CPU/RAM 보조 표시
+
+> 네트워크 프로세스 보기에 CPU%/메모리 보조 지표 추가 (B안). 추가 타이머·서브프로세스 없음 — nettop 주기(기본 10초)에 편승. 계획: docs/plans/PLAN_v0.32.0_macos.md
+
+### Added
+- **프로세스 CPU%/메모리** — `SystemResourceMonitor` 신규 (libproc `proc_pidinfo` + `proc_pidpath` + `host_statistics64` 직접 호출, `ps`/`top` 스폰 없음). CPU%는 델타 기반(첫 주기 "–"), 메모리는 RSS 합산
+- **팝오버 상세 보기 독립 리소스 섹션** — `시스템 리소스` 섹션 (CPU Top3 + 메모리 Top3, **전체 프로세스** 기준, v0.32.4). 간략 보기에는 프로세스·리소스 표시하지 않음. 설정에서 표시 토글
+- **플로팅 3칸** — 상세 보기처럼 프로세스 Top3 (프로세스/업로드/다운로드 3열 헤더) / CPU Top3 / RAM Top3 세 칸 (각 탭 → 앱 트래픽 창). CPU/RAM은 네트워크 무관 **전체 프로세스** 기준 (`allResources`, v0.32.4 수정 — 이전에는 네트워크 기록 있는 프로세스 안에서만 뽑혀 java/node 누락). 설정에서 칸별 표시 토글 3개
+- **플로팅 높이 자동 맞춤** — 고정 높이(40/132…) 대신 `fitToContent()` 실측 (상단 고정, 40~420 클램프). 줄 토글·수집 상태 변경 시 자동 재적합. 루트는 콘텐츠 스택 + `background` 구조 (overlay 속 콘텐츠는 ideal size에 미기여라 실측 붕괴 — v0.32.3 수정)
+- **에러코드** — `E-MAC-PERF-3201` 리소스 샘플링 실패 (복구까지 1회만 로그, 행 "–" 폴백)
+
+### Changed
+- **네트워크 프로세스 리스트 원복** — 앱 트래픽 창·팝오버 Top·플로팅 트래픽 행의 CPU/MEM 보조 표시 제거 (리소스는 독립 섹션/3줄 요약으로만 표시)
+
+### Performance
+- 추가 wakeup 0개 — `TrafficMonitor.refresh()` 직렬 queue 안에서 1회 조회, 저전력/슬립 가드는 기존 `acquire/release` 상속. 실측: 332프로세스 수집 수 ms, sysCPU +0.2% 수준
+
 ## [Unreleased] — 팝오버 재설계 (Osaurus 패턴 반영, 네이티브 유지)
 
 ### Changed

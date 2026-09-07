@@ -158,7 +158,10 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var floatingWindowShow: String { value(kr: "플로팅 창 표시", en: "Show Floating Window") }
   static var floatingWindowHide: String { value(kr: "플로팅 창 숨기기", en: "Hide Floating Window") }
   static var floatingOpacity: String { value(kr: "투명도", en: "Opacity") }
-  static var floatingShowTraffic: String { value(kr: "프로세스 트래픽 상위 3개 표시", en: "Show Top 3 App Traffic") }
+  static var floatingShowProcess: String { value(kr: "프로세스 Top3 표시", en: "Show Top 3 Processes") }
+  static var floatingShowCPU: String { value(kr: "CPU Top3 표시", en: "Show Top 3 CPU") }
+  static var floatingShowRAM: String { value(kr: "RAM Top3 표시", en: "Show Top 3 RAM") }
+  static var popoverShowResources: String { value(kr: "시스템 리소스 표시", en: "Show System Resources") }
   static var floatingShowUsage: String { value(kr: "네트워크 사용량 표시", en: "Show Network Usage") }
   static var floatingAtLaunch: String { value(kr: "앱 시작 시 표시", en: "Show at Launch") }
   static var autoSwitchProfile: String { value(kr: "새 네트워크에 프로필 자동 등록", en: "Auto-Register Profile on New Network") }
@@ -337,6 +340,15 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var resetTraffic: String { value(kr: "초기화", en: "Reset") }
   static var trafficResetConfirm: String { value(kr: "누적된 프로세스별 트래픽이 모두 초기화됩니다.", en: "All accumulated per-app traffic will be reset.") }
   static var block: String { value(kr: "차단", en: "Block") }
+  static var cpu: String { value(kr: "CPU", en: "CPU") }
+  static var memory: String { value(kr: "메모리", en: "Memory") }
+  static var sortByNetwork: String { value(kr: "네트워크순", en: "By Network") }
+  static var sortByCPU: String { value(kr: "CPU순", en: "By CPU") }
+  static var sortByMemory: String { value(kr: "메모리순", en: "By Memory") }
+  static var systemResources: String { value(kr: "시스템 리소스", en: "System Resources") }
+  static func systemLoadSummary(cpu: String, memUsed: String, memTotal: String) -> String {
+    value(kr: "시스템 CPU \(cpu) · 메모리 \(memUsed) / \(memTotal)", en: "System CPU \(cpu) · Memory \(memUsed) / \(memTotal)")
+  }
   static var blockingOn: String { value(kr: "차단 중", en: "Blocking") }
   static var includeSystemTooltip: String { value(kr: "시스템 프로세스 포함 전환", en: "Toggle system processes") }
   static var resetTrafficTooltip: String { value(kr: "누적 트래픽 초기화", en: "Reset accumulated traffic") }

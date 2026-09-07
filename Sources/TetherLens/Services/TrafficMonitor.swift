@@ -16,9 +16,17 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         let bytesOut: Int64
         let totalBytesIn: Int64
         let totalBytesOut: Int64
+        /// libproc 델타 기반 CPU% (1코어=100%). 첫 샘플 주기는 nil.
+        var cpuPercent: Double? = nil
+        /// RSS 합산 바이트. 조회 실패 시 0.
+        var memBytes: Int64 = 0
     }
 
     @Published private(set) var apps: [AppTraffic] = []
+    /// 시스템 전체 부하 요약 (헤더 표시용, v0.32).
+    @Published private(set) var systemLoad: SystemLoad?
+    /// 전체 프로세스 리소스 스냅샷 — 네트워크 무관 CPU/RAM 랭킹용 (v0.32.4).
+    @Published private(set) var allResources: [String: ProcessResource] = [:]
 
     private var timer: Timer?
     private var saveTimer: Timer?
@@ -122,6 +130,9 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         }
         refresh()
         scheduleNextRefresh()
+        Task { @MainActor in
+            DebugLogger.shared.info("SysRes", "CPU/MEM 병합 시작 — nettop 주기 편승 (추가 타이머 없음)")
+        }
         let saveTimer = Timer(timeInterval: 300, repeats: true) { [weak self] _ in
             self?.saveAccumulated()
         }
@@ -156,6 +167,8 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             self?.lastSavedAccumulated = [:]
             DispatchQueue.main.async { [weak self] in
                 self?.apps = []
+                self?.systemLoad = nil
+                self?.allResources = [:]
             }
         }
     }
@@ -222,6 +235,8 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
 
             let output = self.runNettop()
             let result = self.parse(output)
+            // CPU/MEM은 같은 주기에 편승해 1회만 조회한다 (추가 wakeup 없음, v0.32).
+            let resources = SystemResourceMonitor.shared.fetchResources()
 
             for entry in result {
                 var current = self.accumulated[entry.name, default: (0, 0)]
@@ -239,13 +254,16 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             var apps: [AppTraffic] = []
             for (name, currentBytes) in merged {
                 let acc = self.accumulated[name, default: (0, 0)]
+                let res = resources.perName[name]
                 apps.append(AppTraffic(
                     id: name,
                     processName: name,
                     bytesIn: currentBytes.bytesIn,
                     bytesOut: currentBytes.bytesOut,
                     totalBytesIn: acc.in,
-                    totalBytesOut: acc.out
+                    totalBytesOut: acc.out,
+                    cpuPercent: res?.cpuPercent,
+                    memBytes: res?.rssBytes ?? 0
                 ))
             }
             let blockedCandidates = merged.filter { $0.value.bytesIn > 0 || $0.value.bytesOut > 0 }
@@ -259,6 +277,8 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
 
             DispatchQueue.main.async { [weak self] in
                 self?.apps = apps
+                self?.systemLoad = resources.system
+                self?.allResources = resources.perName
             }
         }
     }

@@ -1,28 +1,37 @@
 import SwiftUI
 
-/// 플로팅 창 본체 — 메뉴바 표시(설정 동일 반영) + 프로세스 트래픽 상위 3개.
+/// 플로팅 창 본체 — 메뉴바 표시(설정 동일 반영) + 3줄 요약(프로세스/CPU/RAM 각 1위).
 /// borderless NSPanel(NonActivating, resizable) 안에서 호스팅된다 (FloatingWindowController 소유).
 /// 콘텐츠는 상단 정렬이고 배경(material)이 패널 크기를 채워 리사이즈에 대응한다.
 struct FloatingWindowView: View {
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var model: FloatingWindowViewModel
     @ObservedObject private var trafficMonitor = TrafficMonitor.shared
-    @AppStorage("floatingShowTraffic") private var showTraffic = true
+    @AppStorage("floatingShowProcess") private var showProcess = true
+    @AppStorage("floatingShowCPU") private var showCPU = true
+    @AppStorage("floatingShowRAM") private var showRAM = true
     @AppStorage("floatingShowUsage") private var showUsage = true
     @AppStorage("floatingOpacity") private var opacity: Double = 0.9
     @State private var isHovering = false
 
+    private var anyLine: Bool { showProcess || showCPU || showRAM }
+
     var body: some View {
-        RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous)
-            .fill(.regularMaterial)
-            .opacity(opacity)
-            .overlay {
-                if showTraffic {
-                    fullLayout
-                } else {
-                    compactLayout
-                }
+        // NOTE: 실측 자동 높이(fitToContent)가 동작하려면 콘텐츠가 루트여야 한다.
+        // RoundedRectangle + .overlay{콘텐츠} 구조에서는 overlay가 ideal size에 기여하지 않아
+        // fittingSize가 붕괴한다. 배경·테두리는 background/overlay로만 둔다.
+        Group {
+            if anyLine {
+                fullLayout
+            } else {
+                compactLayout
             }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous)
+                .fill(.regularMaterial)
+                .opacity(opacity)
+        )
             .overlay {
                 RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous)
                     .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
@@ -51,7 +60,7 @@ struct FloatingWindowView: View {
             .onHover { isHovering = $0 }
     }
 
-    /// 프로세스 리스트 ON — 닫기 버튼 + 속도 2줄 + 사용량 중앙 + 트래픽 목록 (세로 132)
+    /// 3칸 ON — 닫기 버튼 + 속도 2줄 + 사용량 중앙 + 프로세스/CPU/RAM Top3 (높이는 자동 맞춤)
     private var fullLayout: some View {
         return VStack(spacing: 0) {
             HStack {
@@ -87,7 +96,7 @@ struct FloatingWindowView: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 2)
 
-            trafficSection
+            blocksView
                 .padding(.horizontal, 12)
                 .padding(.bottom, 6)
 
@@ -96,7 +105,7 @@ struct FloatingWindowView: View {
         .padding(.top, 8)
     }
 
-    /// 프로세스 리스트 OFF — 속도·사용량 한 줄 컴팩트 (세로 30)
+    /// 줄 전부 OFF — 속도·사용량 한 줄 컴팩트 (세로 40)
     private var compactLayout: some View {
         let fontSize = SettingsManager.shared.menuBarFontSize
         return HStack(spacing: 10) {
@@ -195,65 +204,121 @@ struct FloatingWindowView: View {
         }
     }
 
-    // MARK: - 프로세스 트래픽 (상위 3, 시스템 제외)
+    // MARK: - 3칸 (프로세스/CPU/RAM 각 Top3, v0.32.2)
 
+    /// 켜진 칸만 표시 — 같은 스냅샷을 기준별로 정렬하므로 추가 폴링 없음.
     @ViewBuilder
-    private var trafficSection: some View {
-        if showTraffic {
-            if trafficMonitor.apps.isEmpty {
-                HStack {
-                    Spacer()
-                    Text(Localized.trafficCollecting)
-                        .font(TLFont.caption2)
-                        .foregroundColor(TLPalette.textSecondary)
-                    Spacer()
-                }
-                .padding(.vertical, 2)
-            } else {
-                VStack(spacing: 0) {
-                    HStack(spacing: 4) {
-                        Text(Localized.process)
-                            .font(TLFont.smallBold)
-                            .foregroundColor(TLPalette.textSecondary)
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(Localized.upload)
-                            .font(TLFont.smallBold)
-                            .foregroundColor(TLPalette.upload)
-                            .lineLimit(1)
-                            .frame(minWidth: 64, maxWidth: 96, alignment: .trailing)
-                        Text(Localized.download)
-                            .font(TLFont.smallBold)
-                            .foregroundColor(TLPalette.download)
-                            .lineLimit(1)
-                            .frame(minWidth: 72, maxWidth: 100, alignment: .trailing)
+    private var blocksView: some View {
+        if trafficMonitor.apps.isEmpty && trafficMonitor.allResources.isEmpty {
+            HStack {
+                Spacer()
+                Text(Localized.trafficCollecting)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.textSecondary)
+                Spacer()
+            }
+            .padding(.vertical, 2)
+        } else {
+            VStack(spacing: 6) {
+                if showProcess, !networkTop3.isEmpty {
+                    VStack(spacing: 0) {
+                        HStack(spacing: 4) {
+                            Text(Localized.process)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.textSecondary)
+                                .lineLimit(1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(Localized.upload)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.upload)
+                                .lineLimit(1)
+                                .frame(minWidth: 64, maxWidth: 96, alignment: .trailing)
+                            Text(Localized.download)
+                                .font(TLFont.smallBold)
+                                .foregroundColor(TLPalette.download)
+                                .lineLimit(1)
+                                .frame(minWidth: 72, maxWidth: 100, alignment: .trailing)
+                        }
+                        .frame(maxWidth: .infinity)
+                        ForEach(networkTop3) { app in
+                            netRow(app)
+                        }
                     }
-                    .frame(maxWidth: .infinity)
-                    ForEach(top3) { app in
-                        trafficRow(app)
+                }
+                if showCPU, !cpuTop3.isEmpty {
+                    blockSection(title: Localized.cpu) {
+                        ForEach(cpuTop3, id: \.name) { entry in
+                            cpuRow(entry)
+                        }
+                    }
+                }
+                if showRAM, !memTop3.isEmpty {
+                    blockSection(title: Localized.memory) {
+                        ForEach(memTop3, id: \.name) { entry in
+                            memRow(entry)
+                        }
                     }
                 }
             }
         }
     }
 
-    private var top3: [TrafficMonitor.AppTraffic] {
-        Array(trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }.prefix(3))
+    private var userApps: [TrafficMonitor.AppTraffic] {
+        trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }
     }
 
-    private func trafficRow(_ app: TrafficMonitor.AppTraffic) -> some View {
-        HStack(spacing: 4) {
-            Group {
-                if let nsImage = AppIconResolver.icon(forProcess: app.processName) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .scaledToFit()
-                } else {
-                    Image(systemName: "app")
-                        .foregroundColor(TLPalette.textSecondary)
-                }
+    private var networkTop3: [TrafficMonitor.AppTraffic] {
+        Array(userApps.sorted { ($0.bytesIn + $0.bytesOut) > ($1.bytesIn + $1.bytesOut) }.prefix(3))
+    }
+
+    /// 전체 프로세스 기준 CPU Top3 — 네트워크 무관, 시스템 제외 (v0.32.4).
+    private var cpuTop3: [(name: String, res: ProcessResource)] {
+        SystemResourceMonitor.topResources(userResources, limit: 3) { $0.cpuPercent ?? -1 }
+    }
+
+    /// 전체 프로세스 기준 메모리 Top3 — 네트워크 무관, 시스템 제외 (v0.32.4).
+    private var memTop3: [(name: String, res: ProcessResource)] {
+        SystemResourceMonitor.topResources(userResources, limit: 3) { Double($0.rssBytes) }
+    }
+
+    private var userResources: [String: ProcessResource] {
+        trafficMonitor.allResources.filter { !SystemProcesses.set.contains($0.key) }
+    }
+
+    private func blockSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            Text(title)
+                .font(TLFont.smallBold)
+                .foregroundColor(TLPalette.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            content()
+        }
+    }
+
+    private func appIcon(_ name: String) -> some View {
+        Group {
+            if let nsImage = AppIconResolver.icon(forProcess: name) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                Image(systemName: "app")
+                    .foregroundColor(TLPalette.textSecondary)
             }
-            .frame(width: 14, height: 14)
+        }
+        .frame(width: 14, height: 14)
+    }
+
+    private func symIcon(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 11))
+            .foregroundColor(TLPalette.textSecondary)
+            .frame(width: 14)
+    }
+
+    private func netRow(_ app: TrafficMonitor.AppTraffic) -> some View {
+        HStack(spacing: 4) {
+            appIcon(app.processName)
             Text(app.processName)
                 .font(TLFont.medium)
                 .lineLimit(1)
@@ -269,6 +334,44 @@ struct FloatingWindowView: View {
                 .foregroundColor(TLPalette.download)
                 .lineLimit(1)
                 .frame(minWidth: 72, maxWidth: 100, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 1)
+        .contentShape(Rectangle())
+        .onTapGesture { openWindow(id: "appTraffic") }
+    }
+
+    private func cpuRow(_ entry: (name: String, res: ProcessResource)) -> some View {
+        HStack(spacing: 4) {
+            symIcon("cpu")
+            Text(entry.name)
+                .font(TLFont.medium)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(SystemResourceMonitor.formatCPU(entry.res.cpuPercent))
+                .font(TLFont.mediumMono)
+                .foregroundColor(TLPalette.cpuHeat(entry.res.cpuPercent))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 1)
+        .contentShape(Rectangle())
+        .onTapGesture { openWindow(id: "appTraffic") }
+    }
+
+    private func memRow(_ entry: (name: String, res: ProcessResource)) -> some View {
+        HStack(spacing: 4) {
+            symIcon("memorychip")
+            Text(entry.name)
+                .font(TLFont.medium)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(SystemResourceMonitor.formatMemory(entry.res.rssBytes))
+                .font(TLFont.mediumMono)
+                .foregroundColor(TLPalette.textSecondary)
+                .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 1)

@@ -36,6 +36,7 @@ struct PopoverView: View {
     @AppStorage("popover_expanded_connection_info") private var expandedConnectionInfo = false
     @AppStorage("popover_expanded_address_info") private var expandedAddressInfo = false
     @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
+    @AppStorage("popoverShowResources") private var showResources = true
     @AppStorage("popover_summary_mode") private var summaryMode = true
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
@@ -137,9 +138,8 @@ struct PopoverView: View {
                     speedHistorySection
                     connectivitySection
                     interfaceSection
-                    if summaryMode {
-                        topProcessesSection
-                    } else {
+                    // 간략 보기에는 프로세스·리소스 섹션 없음 (v0.32.1) — 상세 보기에서만 표시
+                    if !summaryMode {
                         detailSections
                     }
                 }
@@ -282,6 +282,9 @@ struct PopoverView: View {
         if showAppTraffic, !trafficMonitor.apps.isEmpty {
             trafficSectionDivider
             appTrafficPreview
+        }
+        if showResources, !trafficMonitor.apps.isEmpty {
+            resourceSection
         }
         sectionDivider(Localized.profile)
         profileSection
@@ -1076,11 +1079,13 @@ struct PopoverView: View {
         return networkMonitor.macAddress(forInterface: name)
     }
 
-    private var topProcessesSection: some View {
+    /// 독립 리소스 섹션 — 네트워크 순위와 무관한 CPU Top3 + 메모리 Top3 (v0.32).
+    /// 같은 수집 스냅샷을 다시 정렬만 하므로 추가 폴링 없음.
+    private var resourceSection: some View {
         VStack(alignment: .leading, spacing: TLSpace.xs) {
             HStack(spacing: TLSpace.sm) {
                 Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
-                Text(Localized.topProcesses)
+                Text(Localized.systemResources)
                     .font(TLFont.caption2)
                     .foregroundColor(TLPalette.textSecondary)
                     .fixedSize()
@@ -1091,32 +1096,27 @@ struct PopoverView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { openWindow(id: "appTraffic") }
-            if showAppTraffic, !trafficMonitor.apps.isEmpty {
-                HStack(spacing: TLSpace.sm) {
-                    Text(Localized.process)
-                        .font(TLFont.smallBold)
-                        .foregroundColor(TLPalette.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Circle().fill(TLPalette.upload).frame(width: 8, height: 8)
-                    Circle().fill(TLPalette.download).frame(width: 8, height: 8)
+            if !trafficMonitor.allResources.isEmpty {
+                Text(Localized.cpu)
+                    .font(TLFont.smallBold)
+                    .foregroundColor(TLPalette.textSecondary)
+                ForEach(cpuTop3, id: \.name) { entry in
+                    resourceRow(
+                        name: entry.name,
+                        value: SystemResourceMonitor.formatCPU(entry.res.cpuPercent),
+                        valueColor: TLPalette.cpuHeat(entry.res.cpuPercent)
+                    )
                 }
-                ForEach(topProcessRows) { app in
-                    HStack(spacing: TLSpace.sm) {
-                        procIcon(app.processName)
-                        Text(app.processName)
-                            .font(TLFont.medium)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(formatByteRate(app.bytesOut))
-                            .font(TLFont.mediumMono)
-                            .foregroundColor(TLPalette.upload)
-                            .frame(width: 76, alignment: .trailing)
-                        Text(formatByteRate(app.bytesIn))
-                            .font(TLFont.mediumMono)
-                            .foregroundColor(TLPalette.download)
-                            .frame(width: 76, alignment: .trailing)
-                    }
+                Text(Localized.memory)
+                    .font(TLFont.smallBold)
+                    .foregroundColor(TLPalette.textSecondary)
+                    .padding(.top, TLSpace.xs)
+                ForEach(memTop3, id: \.name) { entry in
+                    resourceRow(
+                        name: entry.name,
+                        value: SystemResourceMonitor.formatMemory(entry.res.rssBytes),
+                        valueColor: TLPalette.textSecondary
+                    )
                 }
             } else {
                 Text(Localized.trafficCollecting)
@@ -1127,10 +1127,29 @@ struct PopoverView: View {
         }
     }
 
-    private var topProcessRows: [TrafficMonitor.AppTraffic] {
-        Array(trafficMonitor.apps
-            .sorted { $0.bytesIn + $0.bytesOut > $1.bytesIn + $1.bytesOut }
-            .prefix(5))
+    /// 전체 프로세스 기준 CPU Top3 — 네트워크 무관 (v0.32.4).
+    private var cpuTop3: [(name: String, res: ProcessResource)] {
+        SystemResourceMonitor.topResources(trafficMonitor.allResources, limit: 3) { $0.cpuPercent ?? -1 }
+    }
+
+    /// 전체 프로세스 기준 메모리 Top3 — 네트워크 무관 (v0.32.4).
+    private var memTop3: [(name: String, res: ProcessResource)] {
+        SystemResourceMonitor.topResources(trafficMonitor.allResources, limit: 3) { Double($0.rssBytes) }
+    }
+
+    private func resourceRow(name: String, value: String, valueColor: Color) -> some View {
+        HStack(spacing: TLSpace.sm) {
+            procIcon(name)
+            Text(name)
+                .font(TLFont.medium)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(value)
+                .font(TLFont.mediumMono)
+                .foregroundColor(valueColor)
+                .frame(width: 76, alignment: .trailing)
+        }
     }
 
     private func procIcon(_ name: String) -> some View {

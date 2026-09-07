@@ -362,6 +362,31 @@
 > 릴리즈 완료: v0.30.0 태그 + main push + release 빌드 (DebugPanel OFF). 커밋: 3ac7fbe (feat 메뉴바+팔레트), 82f0111 (fix 설정 제목), 1abf6c9 (세션 로그)
 > 후속: e9669e4 (스크린샷 분리 + Info.plist 0.30.0/30) — T-167 릴리즈 완료 마감
 
+## 🔄 v0.32.0 — 프로세스 CPU/RAM 보조 표시 (2026-09-07)
+
+> 사용자 요청: 네트워크 프로세스 보기처럼 CPU/RAM도 표시. B안(정렬까지) + 3면(앱 트래픽 창/팝오버 top5/플로팅 top3).
+> 계획: docs/plans/PLAN_v0.32.0_macos.md (bd: TetherLens-y8j)
+> 원칙: 추가 타이머·서브프로세스 없음 — TrafficMonitor.refresh() 주기 편승 (libproc 직접 호출).
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 175 | PLAN 작성 + bd 등록 + TODO 등록 | P0 | ✅ |
+| 176 | SystemResourceMonitor 신규 (libproc 수집 + 순수 헬퍼 + SysRes 로그) | P1 | ✅ |
+| 177 | TrafficMonitor 연동 (AppTraffic cpu/mem 확장 + refresh 병합 + systemLoad 발행) | P1 | ✅ |
+| 178 | UI 3면 (AppTraffic 정렬+컬럼+요약 / Popover top5 / Floating top3 + Localized + Theme 토큰) | P1 | ✅ |
+| 179 | 검증 (test.sh 75개 + build + 라이브 샘플링 실측 + Info.plist v0.32.0/32 + CHANGELOG/세션) | P1 | ✅ (GUI 수동 확인 — 앱 트래픽 창/팝오버/플로팅 표시 — 은 사용자 몫으로 남음) |
+| 180 | 팝오버 독립 리소스 섹션 (CPU Top3 + MEM Top3, 요약/상세) + `TLPalette.cpuHeat` 공용화 | P1 | ✅ |
+| 181 | 플로팅 독립 리소스 섹션 (CPU순 Top3 한 줄 행 + 고정 높이 244) | P1 | ✅ |
+| 182 | 검증 (test.sh 75개 + build-macos.sh debug + CHANGELOG/PLAN/TODO 갱신) | P1 | ✅ (GUI 수동 확인은 사용자 몫으로 남음) |
+| 183 | 네트워크 리스트 CPU/MEM 원복 (AppTraffic 컬럼·정렬·요약 / Popover·Floating 행 2행째 제거) | P1 | ✅ |
+| 184 | 팝오버 간략보기 프로세스·리소스 제거 (상세만) + 상세 리소스 토글 | P1 | ✅ |
+| 185 | 플로팅 3줄 요약 (프로세스/CPU/RAM 각 1위) + 줄별 표시 토글 3개 + 높이 가변 | P1 | ✅ |
+| 186 | 검증 (test.sh 75개 + build-macos.sh debug + CHANGELOG/PLAN/TODO/bd) | P1 | ✅ (GUI 수동 확인은 사용자 몫으로 남음) |
+| 187 | 플로팅 3칸 (프로세스/CPU/RAM Top3) + 높이 자동 맞춤(fitToContent) + 팝오버 간략보기 정리 + 설정 토글 | P1 | ✅ (캡처로 렌더 확인) |
+| 188 | 플로팅 자동높이 루트 구조 수정 (overlay 미기여 → 콘텐츠 스택 + background, 캡처 재확인) | P1 | ✅ |
+| 189 | 플로팅 프로세스칸 3열 헤더 복원 (프로세스/업로드/다운로드, 캡처 확인) | P1 | ✅ |
+| 190 | 리소스 랭킹 전체 프로세스 기준으로 수정 (allResources, java/node 누락 버그, 캡처 확인) | P0 | ✅ |
+
 ## 🔄 v0.31.0 — 플로팅 창 (메뉴바 축소판 + 프로세스 트래픽) (2026-09-02)
 
 > 사용자 요청: 메뉴바 표시 내용을 바탕화면 플로팅 창으로 별도 구성. 계획: docs/plans/PLAN_v0.31.0_macos.md (bd: TetherLens-9a5)

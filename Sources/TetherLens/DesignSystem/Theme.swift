@@ -34,6 +34,14 @@ enum TLPalette {
 
     // 물질 (material) — macOS 표면. macOS 26(Tahoe)은 .glassEffect로 자동 승격
     static let popoverSurface = Color(nsColor: .underPageBackgroundColor)
+
+    /// CPU% 히트 색상 — 프로세스 리소스 표시 공용 (v0.32)
+    static func cpuHeat(_ value: Double?) -> Color {
+        guard let value else { return textSecondary }
+        if value >= 80 { return danger }
+        if value >= 30 { return upload }
+        return textSecondary
+    }
 }
 
 enum TLFont {
@@ -93,6 +101,8 @@ enum TLSize {
     static let detailLabelWidth:  CGFloat = 96   // detailRow 라벨
     static let trafficUploadCol:  CGFloat = 62
     static let trafficDownloadCol: CGFloat = 68
+    static let trafficCPUCol:      CGFloat = 56   // 프로세스 CPU% (v0.32)
+    static let trafficMemCol:      CGFloat = 72   // 프로세스 메모리 (v0.32)
     static let trafficFloatingUploadCol: CGFloat = 76
     static let trafficFloatingDownloadCol: CGFloat = 82
     static let trafficFloatingProcessCol: CGFloat = 110

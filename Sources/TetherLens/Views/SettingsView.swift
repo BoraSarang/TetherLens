@@ -17,9 +17,12 @@ struct SettingsView: View {
     @State private var pingInterval: Double
     @State private var fontSize: Double
     @State private var showAppTraffic: Bool
+    @State private var showResources: Bool
     @State private var floatingShowAtLaunch: Bool
     @State private var floatingOpacity: Double
-    @State private var floatingShowTraffic: Bool
+    @State private var floatingShowProcess: Bool
+    @State private var floatingShowCPU: Bool
+    @State private var floatingShowRAM: Bool
     @State private var floatingShowUsage: Bool
     @State private var notiAuthorized = false
     @State private var locationStatus: CLAuthorizationStatus = .notDetermined
@@ -47,9 +50,12 @@ struct SettingsView: View {
         _pingInterval = State(initialValue: s.pingInterval)
         _fontSize = State(initialValue: s.menuBarFontSize)
         _showAppTraffic = State(initialValue: UserDefaults.standard.object(forKey: "popover_show_app_traffic") as? Bool ?? true)
+        _showResources = State(initialValue: s.popoverShowResources)
         _floatingShowAtLaunch = State(initialValue: s.floatingShowAtLaunch)
         _floatingOpacity = State(initialValue: s.floatingOpacity)
-        _floatingShowTraffic = State(initialValue: s.floatingShowTraffic)
+        _floatingShowProcess = State(initialValue: s.floatingShowProcess)
+        _floatingShowCPU = State(initialValue: s.floatingShowCPU)
+        _floatingShowRAM = State(initialValue: s.floatingShowRAM)
         _floatingShowUsage = State(initialValue: s.floatingShowUsage)
         _autoRules = State(initialValue: AutomationManager.shared.rules)
     }
@@ -182,6 +188,11 @@ struct SettingsView: View {
                 .onChange(of: showAppTraffic) { _, newValue in
                     UserDefaults.standard.set(newValue, forKey: "popover_show_app_traffic")
                 }
+
+                Toggle(Localized.popoverShowResources, isOn: $showResources)
+                    .onChange(of: showResources) { _, newValue in
+                        SettingsManager.shared.popoverShowResources = newValue
+                    }
             }
 
             Section(Localized.floatingWindow) {
@@ -190,9 +201,21 @@ struct SettingsView: View {
                         SettingsManager.shared.floatingShowAtLaunch = newValue
                     }
 
-                Toggle(Localized.floatingShowTraffic, isOn: $floatingShowTraffic)
-                    .onChange(of: floatingShowTraffic) { _, newValue in
-                        SettingsManager.shared.floatingShowTraffic = newValue
+                Toggle(Localized.floatingShowProcess, isOn: $floatingShowProcess)
+                    .onChange(of: floatingShowProcess) { _, newValue in
+                        SettingsManager.shared.floatingShowProcess = newValue
+                        NotificationCenter.default.post(name: .init("floatingSettingsChanged"), object: nil)
+                    }
+
+                Toggle(Localized.floatingShowCPU, isOn: $floatingShowCPU)
+                    .onChange(of: floatingShowCPU) { _, newValue in
+                        SettingsManager.shared.floatingShowCPU = newValue
+                        NotificationCenter.default.post(name: .init("floatingSettingsChanged"), object: nil)
+                    }
+
+                Toggle(Localized.floatingShowRAM, isOn: $floatingShowRAM)
+                    .onChange(of: floatingShowRAM) { _, newValue in
+                        SettingsManager.shared.floatingShowRAM = newValue
                         NotificationCenter.default.post(name: .init("floatingSettingsChanged"), object: nil)
                     }
 

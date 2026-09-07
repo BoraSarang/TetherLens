@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 
 /// 메뉴바 표시 내용(설정 연동)을 바탕화면에 띄우는 플로팅 창을 관리한다 (v0.31).
 /// - borderless NSPanel + `.floating` 레벨 → 항상 위에 떠 있는 비활성 패널
@@ -12,6 +13,7 @@ final class FloatingWindowController {
     private(set) var panel: NSPanel?
     private let viewModel = FloatingWindowViewModel()
     private var moveObserver: NSObjectProtocol?
+    private var appsCancellable: AnyCancellable?
     private var trafficAcquired = false
 
     private static let originKey = "floatingWindowOrigin"
@@ -49,14 +51,14 @@ final class FloatingWindowController {
             latencyMS: latencyMS,
             isReachable: info["reachable"] as? Bool ?? true
         )
-        // 폭은 사용자가 리사이즈 가능, 세로는 설정 토글 변경 시 applyFixedHeight()가 유지한다
+        // 폭은 사용자가 리사이즈 가능, 높이는 fitToContent()가 내용에 맞춘다
     }
 
-    /// 설정 창에서 트래픽 토글이 바뀌면 떠 있는 동안만 즉시 반영한다.
+    /// 설정 창에서 줄 토글이 바뀌면 떠 있는 동안만 즉시 반영한다.
     @objc private func handleFloatingSettingsChanged() {
         guard isVisible else { return }
-        setTrafficMonitoring(SettingsManager.shared.floatingShowTraffic)
-        applyFixedHeight()
+        setTrafficMonitoring(SettingsManager.shared.floatingVisibleLines > 0)
+        fitToContent()
     }
 
     /// acquire/release는 이 컨트롤러가 유일하게 관리한다 (중복 콜로 balance 어긋남 방지).
@@ -76,19 +78,32 @@ final class FloatingWindowController {
         if isVisible { hide() } else { show() }
     }
 
-    /// 세로 크기를 프로세스 리스트 표시 여부에 따라 고정한다.
-    /// - 리스트 ON: 상태점 + 속도 + 디바이더 + 트래픽 헤더 + 상위 3행이 온전히 보이는 높이
-    /// - 리스트 OFF: 속도·사용량만 표시되는 콤팩트 높이
-    func applyFixedHeight() {
-        guard let panel else { return }
-        let targetH: CGFloat = SettingsManager.shared.floatingShowTraffic ? 132 : 40
-        guard abs(targetH - panel.frame.height) > 1 else { return }
+    /// 콘텐츠 실측 기반 자동 높이 (v0.32.2) — 줄 토글·수집 상태·폰트에 따라 패널이 스스로 맞춘다.
+    /// 상단 고정(아래로 자람), 화면 밖으로 나가지 않게 클램프. 40~420 범위로 제한.
+    func fitToContent() {
+        guard let panel, panel.isVisible,
+              let hosting = panel.contentViewController else { return }
+        hosting.view.layoutSubtreeIfNeeded()
+        var h = hosting.view.fittingSize.height
+        guard h > 0, h.isFinite else { return }
+        h = min(max(h, 40), 420)
+        guard abs(h - panel.frame.height) > 1 else { return }
         let screenFrame = NSScreen.main?.visibleFrame ?? panel.frame
         var origin = panel.frame.origin
+        origin.y += panel.frame.height - h
         origin.x = min(max(origin.x, screenFrame.minX), max(screenFrame.maxX - panel.frame.width, screenFrame.minX))
-        origin.y = min(max(origin.y, screenFrame.minY), max(screenFrame.maxY - targetH, screenFrame.minY))
-        panel.setFrame(NSRect(origin: origin, size: NSSize(width: panel.frame.width, height: targetH)), display: true)
-        DebugLogger.shared.action("Floating", "고정 높이 적용=\(Int(targetH)) (트래픽 \(SettingsManager.shared.floatingShowTraffic ? "ON" : "OFF"))")
+        origin.y = min(max(origin.y, screenFrame.minY), max(screenFrame.maxY - h, screenFrame.minY))
+        panel.setFrame(NSRect(origin: origin, size: NSSize(width: panel.frame.width, height: h)), display: true)
+        DebugLogger.shared.action("Floating", "자동 높이 적용=\(Int(h))")
+    }
+
+    /// 수집 결과가 갱신될 때마다 높이 재적합 (수집 중 문구 ↔ 3줄 전환 대응).
+    private func observeApps() {
+        guard appsCancellable == nil else { return }
+        appsCancellable = TrafficMonitor.shared.$apps
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in self?.fitToContent() }
+            }
     }
 
     func show() {
@@ -99,8 +114,8 @@ final class FloatingWindowController {
         if panel == nil {
             let hosting = NSHostingController(rootView: FloatingWindowView().environmentObject(viewModel))
             let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-            // 기본 크기 — 세로는 프로세스 리스트 표시 여부에 따른 고정값 (리스트 ON 132 / OFF 40)
-            let size = NSSize(width: 300, height: SettingsManager.shared.floatingShowTraffic ? 132 : 40)
+            // 기본 크기 — 표시 직후 fitToContent()가 실측으로 맞추므로 추정값으로 시작
+            let size = NSSize(width: 300, height: 132)
             var origin = savedOrigin ?? NSPoint(
                 x: screenFrame.maxX - size.width - 20,
                 y: screenFrame.maxY - size.height - 36
@@ -122,15 +137,14 @@ final class FloatingWindowController {
             win.isMovableByWindowBackground = true
             win.isReleasedWhenClosed = false
             win.contentViewController = hosting
-            // contentViewController 배정 시 창이 콘텐츠 크기로 자동 재조정될 수 있어 크기를 다시 명시 고정
-            win.setContentSize(NSSize(width: 300, height: SettingsManager.shared.floatingShowTraffic ? 132 : 40))
             panel = win
             observeMove(win)
+            observeApps()
             DebugLogger.shared.action("Floating", "창 생성 위치=\(origin) 크기=\(size)")
         }
-        setTrafficMonitoring(SettingsManager.shared.floatingShowTraffic)
+        setTrafficMonitoring(SettingsManager.shared.floatingVisibleLines > 0)
         panel?.orderFront(nil)
-        applyFixedHeight()
+        fitToContent()
         DebugLogger.shared.action("Floating", "플로팅 창 표시")
     }
 
