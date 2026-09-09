@@ -7,6 +7,8 @@ struct DiagnosticsView: View {
     @State private var entries: [DiagnosticsEntry] = []
     @State private var isRunning = false
     @State private var hostInput = "8.8.8.8"
+    @State private var speedRunning = false
+    @State private var speedArmed = false  // 유료망 경고 확인 후 2차 탭에 실행
 
     private let diagnostics = NetworkDiagnostics.shared
 
@@ -16,9 +18,17 @@ struct DiagnosticsView: View {
                 Text("네트워크 진단")
                     .font(.title3.weight(.semibold))
                 Spacer()
+                Button("속도 테스트") { runSpeedTest() }
+                    .disabled(isRunning || speedRunning)
                 Button("전체 실행") { runAll() }
                     .disabled(isRunning)
                 Button("닫기") { dismiss() }
+            }
+
+            if speedArmed {
+                Text("유료/제한망 연결 — 약 15MB 소모. 다시 눌러 시작")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
             }
 
             Divider()
@@ -30,8 +40,8 @@ struct DiagnosticsView: View {
                     .frame(maxWidth: .infinity)
             }
 
-            if isRunning {
-                ProgressView("진단 실행 중…")
+            if isRunning || speedRunning {
+                ProgressView(speedRunning ? "속도 측정 중… (약 15MB)" : "진단 실행 중…")
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
             }
@@ -98,6 +108,22 @@ struct DiagnosticsView: View {
             let bloat = await diagnostics.bufferbloat()
             entries = [proxy, dns, ping, trace, bloat]
             isRunning = false
+        }
+    }
+
+    private func runSpeedTest() {
+        guard !isRunning, !speedRunning else { return }
+        Task {
+            // 유료망이면 1차 탭에 경고만, 2차 탭에 실행 (데이터 소모 통제)
+            if !speedArmed, await diagnostics.isCurrentPathExpensive() {
+                speedArmed = true
+                return
+            }
+            speedArmed = false
+            speedRunning = true
+            defer { speedRunning = false }
+            let entry = await diagnostics.speedTest()
+            entries.append(entry)
         }
     }
 

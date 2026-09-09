@@ -1,4 +1,5 @@
 import Foundation
+import Network
 
 // MARK: - 결과 타입
 
@@ -263,6 +264,114 @@ final class NetworkDiagnostics {
             let (data, _) = try await URLSession(configuration: .ephemeral).data(for: request)
             if data.isEmpty {}
         } catch {}
+    }
+
+    // MARK: - speed test (v0.35)
+
+    /// 속도 테스트 상수. 다운은 기존 bufferbloat 부하와 같은 hetzner 파일(코드베이스 선례).
+    nonisolated static let speedTestDownURL = URL(string: "https://speed.hetzner.de/10MB.bin")!
+    nonisolated static let speedTestUpURL = URL(string: "https://speed.cloudflare.com/__up")!
+    nonisolated static let speedTestDownBytes: Int64 = 10_000_000
+    nonisolated static let speedTestUpBytes: Int64 = 5_000_000
+    nonisolated static let speedTestTimeout: TimeInterval = 30
+
+    /// 바이트·전송시간 → Mbps. 핸드셰이크 제외는 호출자가 firstByte 기준으로 계산한다.
+    nonisolated static func megabitsPerSecond(bytes: Int64, elapsed: TimeInterval) -> Double? {
+        guard bytes > 0, elapsed > 0 else { return nil }
+        return Double(bytes) * 8 / elapsed / 1_000_000
+    }
+
+    /// 현재 경로가 유료/제한망인지 원샷 확인 (핫스팟 경고용, 상시 모니터 없음)
+    func isCurrentPathExpensive() async -> Bool {
+        await withCheckedContinuation { continuation in
+            let monitor = NWPathMonitor()
+            monitor.pathUpdateHandler = { path in
+                continuation.resume(returning: path.isExpensive)
+                monitor.cancel()
+            }
+            monitor.start(queue: DispatchQueue.global(qos: .utility))
+        }
+    }
+
+    /// 다운/업 실측. 수동 개시 전용 — 상시 측정 없음 (데이터·에너지 정책).
+    func speedTest() async -> DiagnosticsEntry {
+        async let down = measureDownload()
+        async let up = measureUpload()
+        let (downMbps, upMbps) = await (down, up)
+        guard let downMbps else {
+            return DiagnosticsEntry(title: "속도 테스트", status: .fail, detail: "다운로드 측정 실패/타임아웃 — 네트워크 상태 확인 필요")
+        }
+        var detail = String(format: "다운 %.1f Mbps", downMbps)
+        var status = DiagnosticsStatus.ok
+        if let upMbps {
+            detail += String(format: " · 업 %.1f Mbps", upMbps)
+        } else {
+            detail += " · 업 측정 실패"
+            status = .warn
+        }
+        detail += String(format: " (측정 소모 약 %.0fMB)", Double(Self.speedTestDownBytes + Self.speedTestUpBytes) / 1_000_000)
+        detail += "\n→ 저하 시 공유기 근접 후 재측정 — 그래도 낮으면 ISP 문제 가능"
+        return DiagnosticsEntry(title: "속도 테스트", status: status, detail: detail)
+    }
+
+    private func measureDownload() async -> Double? {
+        await withSpeedTimeout(seconds: Self.speedTestTimeout) {
+            do {
+                var request = URLRequest(url: Self.speedTestDownURL)
+                request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+                let session = URLSession(configuration: .ephemeral)
+                let (bytes, _) = try await session.bytes(for: request)
+                var total: Int64 = 0
+                var firstByte: Date?
+                for try await _ in bytes {
+                    if firstByte == nil { firstByte = Date() }
+                    total += 1
+                }
+                guard total > 0, let first = firstByte else { return nil }
+                return Self.megabitsPerSecond(bytes: total, elapsed: Date().timeIntervalSince(first))
+            } catch {
+                return nil
+            }
+        }
+    }
+
+    private func measureUpload() async -> Double? {
+        await withSpeedTimeout(seconds: Self.speedTestTimeout) {
+            do {
+                var request = URLRequest(url: Self.speedTestUpURL)
+                request.httpMethod = "POST"
+                request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+                let payload = Data(repeating: 0xAB, count: Int(Self.speedTestUpBytes))
+                let session = URLSession(configuration: .ephemeral)
+                let start = Date()
+                let (_, response) = try await session.upload(for: request, from: payload)
+                guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+                return Self.megabitsPerSecond(bytes: Int64(payload.count), elapsed: Date().timeIntervalSince(start))
+            } catch {
+                return nil
+            }
+        }
+    }
+
+    /// 타임아웃 래퍼 — 먼저 끝난 쪽(성공/실패/시간초과)을 결과로 확정한다.
+    private func withSpeedTimeout<T: Sendable>(seconds: TimeInterval, operation: @Sendable @escaping () async -> T?) async -> T? {
+        await withTaskGroup(of: T?.self, returning: T?.self) { group in
+            group.addTask { await operation() }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                return nil
+            }
+            var result: T?
+            var settled = false
+            for await value in group {
+                if !settled {
+                    result = value
+                    settled = true
+                    group.cancelAll()
+                }
+            }
+            return result
+        }
     }
 
     // MARK: - 리포트

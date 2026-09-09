@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.35.0] — 2026-09-09 — 속도 테스트 + 연결 유지 (진행 중)
+
+> 계획: docs/plans/PLAN_v0.35.0_macos.md (bd: TetherLens-e8a/lgb). COMPETITOR_ANALYSIS 벌점 아이디어 2종 정식 등록.
+
+### Added
+- **속도 테스트** (T-205, bd e8a) — 진단 센터 "속도 테스트" 버튼. 다운(hetzner 10MB, 기존 선례) + 업(Cloudflare __up 5MB) 실측, 핸드셰이크 제외 Mbps, 30초 타임아웃. 유료/제한망이면 1차 탭에 경고(약 15MB 소모), 2차 탭에 실행
+
+### Tests
+- SpeedTestTests 5개 (Mbps 산출·상수 정합, 실망 호출은 수동)
+
 ## [Unreleased] — 인사이트 섹션 제거
 
 ### Removed

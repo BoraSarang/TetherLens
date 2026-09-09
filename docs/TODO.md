@@ -448,3 +448,14 @@
 | 201 | 검증 (test.sh + swift build + CHANGELOG/세션) + 커밋 | P1 | ✅ (test 89개 + build 경고 0, UsageReportView 1252→415줄) |
 | 202 | 인사이트 섹션 제거 (사용자 요청, Unreleased) — 호출+스냅샷 배선 삭제, 엔진 파일 보존 | P2 | ✅ (test 89개 + build 성공) |
 | 203 | 인사이트 엔진 전체 삭제 (사용자 요청) — 엔진·뷰·롤업·테스트 파일 + v11 마이그레이션 + 문구 | P2 | ✅ (test 77개 + build 성공, GRDB 미등록 무시 확인) |
+
+## 🔄 v0.35.0 — 속도 테스트 + 연결 유지 (2026-09-09)
+
+> COMPETITOR_ANALYSIS 벌점 아이디어 2종 정식 등록 (09-05 이후 미등록 상태였음). 계획: docs/plans/PLAN_v0.35.0_macos.md
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 204 | PLAN 작성 + bd 등록 + TODO 등록 | P0 | ✅ |
+| 205 | 속도 테스트 (NetworkDiagnostics.speedTest + DiagnosticsView + 핫스팟 경고) | P1 | ✅ (test 82개 + build 경고 0, 실측은 수동) |
+| 206 | 연결 유지 (ConnectionGuardian + 재연결 액션 + 자동 토글 OFF) | P1 | ⬜ |
+| 207 | 검증 (test.sh + build + 수동 실측 + CHANGELOG/세션) + 커밋/푸시 | P1 | ⬜ |
