@@ -21,6 +21,7 @@
 ## 남은 TODO
 - T-194~203 전부 완료. v0.34 인사이트는 사용자 요청으로 섹션→엔진 전체 삭제 (T-202~203, test 77 + build 성공)
 - 커밋/푸시: 사용자 명시 요청으로 수행
+- **v0.35.0 릴리즈 완료** (21:49): README·랜딩·Info.plist 0.35.0/35 → release 빌드(DebugPanel OFF) → 태그 v0.35.0 → zip(2.7MB) → GitHub Release
 
 ## 전달로그
 - `[ACTION] [Stats]` 스냅샷 인사이트 수·버킷 수 (리포트 로드마다 1회)
