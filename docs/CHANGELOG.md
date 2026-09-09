@@ -5,7 +5,7 @@
 > 계획: docs/plans/PLAN_v0.35.0_macos.md (bd: TetherLens-e8a/lgb). COMPETITOR_ANALYSIS 벌점 아이디어 2종 정식 등록.
 
 ### Added
-- **속도 테스트** (T-205, bd e8a) — 진단 센터 "속도 테스트" 버튼. 다운(hetzner 10MB, 기존 선례) + 업(Cloudflare __up 5MB) 실측, 핸드셰이크 제외 Mbps, 30초 타임아웃. 유료/제한망이면 1차 탭에 경고(약 15MB 소모), 2차 탭에 실행
+- **속도 테스트** (T-205, bd e8a) — 진단 센터 "속도 테스트" 버튼. 다운(Cloudflare 1차 + hetzner 폴백 10MB) + 업(Cloudflare __up 5MB) 실측, 핸드셰이크 제외 Mbps, 30초 타임아웃. 유료/제한망이면 1차 탭에 경고(약 15MB 소모), 2차 탭에 실행
 - **연결 유지** (T-206, bd lgb) — `ConnectionGuardian` 신규. PingMonitor 끊김 이벤트 구독(신규 타이머 없음) → 자동 재연결 1회 + 5분 쿨다운 (토글 기본 OFF, 설정·알림 탭) + 진단 센터 수동 "Wi-Fi 재연결" 버튼. `networksetup` best-effort, 실패 시 수동 안내
 - **팝오버 "..." 메뉴 정렬** (T-208) — 우클릭 더보기와 동일 구성으로 (사용량 리포트·플로팅 토글·네트워크 진단 추가)
 

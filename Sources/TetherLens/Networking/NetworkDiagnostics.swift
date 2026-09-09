@@ -268,8 +268,11 @@ final class NetworkDiagnostics {
 
     // MARK: - speed test (v0.35)
 
-    /// 속도 테스트 상수. 다운은 기존 bufferbloat 부하와 같은 hetzner 파일(코드베이스 선례).
-    nonisolated static let speedTestDownURL = URL(string: "https://speed.hetzner.de/10MB.bin")!
+    /// 속도 테스트 상수. 다운은 Cloudflare 1차 + hetzner 폴백 (hetzner 단독 실패 실측).
+    nonisolated static let speedTestDownURLs = [
+        URL(string: "https://speed.cloudflare.com/__down?bytes=10000000")!,
+        URL(string: "https://speed.hetzner.de/10MB.bin")!,
+    ]
     nonisolated static let speedTestUpURL = URL(string: "https://speed.cloudflare.com/__up")!
     nonisolated static let speedTestDownBytes: Int64 = 10_000_000
     nonisolated static let speedTestUpBytes: Int64 = 5_000_000
@@ -315,9 +318,16 @@ final class NetworkDiagnostics {
     }
 
     private func measureDownload() async -> Double? {
+        for url in Self.speedTestDownURLs {
+            if let mbps = await measureDownload(from: url) { return mbps }
+        }
+        return nil
+    }
+
+    private func measureDownload(from url: URL) async -> Double? {
         await withSpeedTimeout(seconds: Self.speedTestTimeout) {
             do {
-                var request = URLRequest(url: Self.speedTestDownURL)
+                var request = URLRequest(url: url)
                 request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
                 let session = URLSession(configuration: .ephemeral)
                 let (bytes, _) = try await session.bytes(for: request)
