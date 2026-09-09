@@ -193,6 +193,10 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var quotaAlert: String { value(kr: "할당량 알림", en: "Quota Alert") }
   static var defaultDisabled: String { value(kr: "(기본: 사용 안 함)", en: "(Default: Disabled)") }
   static var latencyAlert: String { value(kr: "지연 시간 알림", en: "Latency Alert") }
+  static var autoReconnect: String { value(kr: "끊김 시 Wi-Fi 자동 재연결 (1회, 5분 쿨다운)", en: "Auto-reconnect Wi-Fi on drop (once, 5-min cooldown)") }
+  static var reconnectNow: String { value(kr: "Wi-Fi 재연결", en: "Reconnect Wi-Fi") }
+  static var reconnectSuccess: String { value(kr: "Wi-Fi 재연결을 시도했습니다", en: "Wi-Fi reconnect attempted") }
+  static var reconnectFail: String { value(kr: "Wi-Fi 재연결 실패 — 메뉴바 Wi-Fi에서 수동 연결", en: "Wi-Fi reconnect failed — join manually from the Wi-Fi menu") }
   static var defaultShown: String { value(kr: "(기본: 표시)", en: "(Default: Shown)") }
   static var performance: String { value(kr: "성능", en: "Performance") }
   static var resetDefaults: String { value(kr: "기본값 복원", en: "Reset to Defaults") }

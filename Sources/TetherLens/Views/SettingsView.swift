@@ -314,6 +314,10 @@ struct SettingsView: View {
                     get: { SettingsManager.shared.pingLatencyNotificationEnabled },
                     set: { SettingsManager.shared.pingLatencyNotificationEnabled = $0 }
                 ))
+                Toggle(Localized.autoReconnect, isOn: Binding(
+                    get: { SettingsManager.shared.autoReconnectOnDrop },
+                    set: { SettingsManager.shared.autoReconnectOnDrop = $0 }
+                ))
             }
         }
         .formStyle(.grouped)

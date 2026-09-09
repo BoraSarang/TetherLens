@@ -18,6 +18,10 @@ struct DiagnosticsView: View {
                 Text("네트워크 진단")
                     .font(.title3.weight(.semibold))
                 Spacer()
+                Button(Localized.reconnectNow) {
+                    Task { await ConnectionGuardian.shared.handleDisconnect(auto: false) }
+                }
+                .disabled(isRunning || speedRunning)
                 Button("속도 테스트") { runSpeedTest() }
                     .disabled(isRunning || speedRunning)
                 Button("전체 실행") { runAll() }

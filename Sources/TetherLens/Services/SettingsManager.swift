@@ -16,6 +16,7 @@ final class SettingsManager: @unchecked Sendable {
             "trafficMonitorInterval": Self.defaultTrafficMonitorInterval,
             "pingInterval": Self.defaultPingInterval,
             "pingLatencyNotificationEnabled": true,
+            "autoReconnectOnDrop": false,
             "autoSwitchProfile": true,
             "floatingShowAtLaunch": false,
             "floatingOpacity": 0.9,
@@ -82,6 +83,12 @@ final class SettingsManager: @unchecked Sendable {
     var pingLatencyNotificationEnabled: Bool {
         get { defaults.object(forKey: "pingLatencyNotificationEnabled") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "pingLatencyNotificationEnabled") }
+    }
+
+    /// 끊김 시 Wi-Fi 자동 재연결 (v0.35, 기본 OFF)
+    var autoReconnectOnDrop: Bool {
+        get { defaults.object(forKey: "autoReconnectOnDrop") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "autoReconnectOnDrop") }
     }
 
     var autoSwitchProfile: Bool {

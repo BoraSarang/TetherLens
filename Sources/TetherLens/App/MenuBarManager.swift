@@ -368,6 +368,7 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
         networkMonitor.start()
         hotspotDetector.start()
         pingMonitor.start()
+        ConnectionGuardian.shared.start()
         // 차단된 앱이 없으면 상시 nettop 구동이 불필요 — 차단 감지가 있을 때만 유지.
         if !AppBlockManager.shared.blockedApps.isEmpty {
             TrafficMonitor.shared.acquire(reason: .appBlock)
