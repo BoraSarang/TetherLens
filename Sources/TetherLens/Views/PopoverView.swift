@@ -1188,8 +1188,14 @@ struct PopoverView: View {
             .help(summaryMode ? Localized.detailView : Localized.summaryView)
 
             Menu {
+                Button(Localized.usageReport) { openWindow(id: "usageReport") }
                 Button(Localized.appTrafficButton) { openWindow(id: "appTraffic") }
                 Button(Localized.notificationList) { openWindow(id: "notifications") }
+                Button(FloatingWindowController.shared.isVisible ? Localized.floatingWindowHide : Localized.floatingWindowShow) {
+                    FloatingWindowController.shared.toggle()
+                }
+                Divider()
+                Button(Localized.networkDiagnostics) { DiagnosticsWindowController.shared.show() }
                 Button(Localized.manageProfiles) { showProfileManager = true }
                 Divider()
                 Button(Localized.dnsPresetApply) { showDNSPicker = true }

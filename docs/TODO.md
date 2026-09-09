@@ -459,3 +459,4 @@
 | 205 | 속도 테스트 (NetworkDiagnostics.speedTest + DiagnosticsView + 핫스팟 경고) | P1 | ✅ (test 82개 + build 경고 0, 실측은 수동) |
 | 206 | 연결 유지 (ConnectionGuardian + 재연결 액션 + 자동 토글 OFF) | P1 | ✅ (test 88개 + build 성공, 실 networksetup은 수동) |
 | 207 | 검증 (test.sh + build + 수동 실측 + CHANGELOG/세션) + 커밋/푸시 | P1 | ✅ (test 88개 + build + 재시작 + 푸시, 실측은 사용자 몫) |
+| 208 | 팝오버 "..." 메뉴를 우클릭 더보기와 정렬 (리포트·플로팅·진단 추가) | P2 | ✅ (test 88개 + build 성공) |
