@@ -447,3 +447,4 @@
 | 200 | 구 카드 제거 (insightCards/statCard/heroRow + topHotspot/topApps 상태·쿼리 + 데드 포맷 함수) | P1 | ✅ |
 | 201 | 검증 (test.sh + swift build + CHANGELOG/세션) + 커밋 | P1 | ✅ (test 89개 + build 경고 0, UsageReportView 1252→415줄) |
 | 202 | 인사이트 섹션 제거 (사용자 요청, Unreleased) — 호출+스냅샷 배선 삭제, 엔진 파일 보존 | P2 | ✅ (test 89개 + build 성공) |
+| 203 | 인사이트 엔진 전체 삭제 (사용자 요청) — 엔진·뷰·롤업·테스트 파일 + v11 마이그레이션 + 문구 | P2 | ✅ (test 77개 + build 성공, GRDB 미등록 무시 확인) |

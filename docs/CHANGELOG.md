@@ -3,7 +3,8 @@
 ## [Unreleased] — 인사이트 섹션 제거
 
 ### Removed
-- 리포트 창 **"지금 알면 좋은 것" 섹션 제거** (사용자 요청) — `InsightsView` 호출 + `statsSnapshot`/`loadInsights` 스냅샷 배선 삭제, 전기간 합계 로드는 `loadPreviousPeriod()`로 유지. 엔진·뷰 파일은 보존 (재도입 가능)
+- 리포트 창 **"지금 알면 좋은 것" 섹션 제거** (사용자 요청) — `InsightsView` 호출 + `statsSnapshot`/`loadInsights` 스냅샷 배선 삭제, 전기간 합계 로드는 `loadPreviousPeriod()`로 유지
+- **인사이트 엔진 전체 삭제** (사용자 요청) — `StatsEngine`·`InsightsView`·`Rollup`·`StatsEngineTests` 파일 + DB v11 마이그레이션(rollup 3테이블·backfill·사전 백업) + v11 테스트 3개 + 인사이트 로컬라이즈 문구. 실DB 기존 rollup 테이블은 잔류하되 미참조 (GRDB 미등록 마이그레이션 무시 확인). test 77개 통과
 
 ## [0.34.1] — 2026-09-09 — 리포트 화면 분리 + 구 카드 제거
 
