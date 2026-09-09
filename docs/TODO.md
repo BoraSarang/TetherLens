@@ -458,4 +458,4 @@
 | 204 | PLAN 작성 + bd 등록 + TODO 등록 | P0 | ✅ |
 | 205 | 속도 테스트 (NetworkDiagnostics.speedTest + DiagnosticsView + 핫스팟 경고) | P1 | ✅ (test 82개 + build 경고 0, 실측은 수동) |
 | 206 | 연결 유지 (ConnectionGuardian + 재연결 액션 + 자동 토글 OFF) | P1 | ✅ (test 88개 + build 성공, 실 networksetup은 수동) |
-| 207 | 검증 (test.sh + build + 수동 실측 + CHANGELOG/세션) + 커밋/푸시 | P1 | ⬜ |
+| 207 | 검증 (test.sh + build + 수동 실측 + CHANGELOG/세션) + 커밋/푸시 | P1 | ✅ (test 88개 + build + 재시작 + 푸시, 실측은 사용자 몫) |
