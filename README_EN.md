@@ -1,6 +1,5 @@
 <!--
-  TetherLens — Track every megabyte your Wi-Fi data plan is quietly devouring.
-  Hidden in your menu bar, it exposes exactly where your hotspot data leaks.
+  TetherLens — Track where your hotspot data goes, right from the menu bar.
 -->
 
 <p align="center">
@@ -10,7 +9,7 @@
 <h1 align="center">TetherLens 🔭</h1>
 
 <p align="center">
-  <b>A macOS menu-bar surveillance camera that hunts down tethering data waste</b><br>
+  <b>A macOS menu bar app that tracks tethering data waste</b><br>
   From rural broadband to a Galaxy S22 hotspot — <b>not a single precious GB slips by.</b>
 </p>
 
@@ -18,7 +17,7 @@
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-6.0-F05138">
   <img alt="Native" src="https://img.shields.io/badge/Native%20App-100%25-2563eb">
-  <img alt="Release" src="https://img.shields.io/badge/Release-v0.31.0-0ea5e9">
+  <img alt="Release" src="https://img.shields.io/badge/Release-v0.35.0-0ea5e9">
 </p>
 
 <p align="center">
@@ -33,7 +32,7 @@
 
 ---
 
-When you're on a hotspot, these questions are always a **mystery**:
+When you're on a hotspot, these questions are impossible to answer:
 
 > How much have I used today? Can I know before QoS throttles my speed in half?
 > Which app is draining my data?
@@ -51,7 +50,7 @@ TetherLens puts the **live picture**, **exhaustion forecast**, and the **culprit
 | 🛰️ **Network diagnostics center** | Speed test (down/up measurement) · ping · traceroute · bufferbloat + **Wi-Fi reconnect** on drop (one-shot auto / manual button) |
 | 📈 **Advanced graphs** | Breakdown by hour/day, cumulative lines, quota thresholds |
 | 📍 **GPS/IP location tracking** | Map pin of connection location (GPS·IP) + movement history timeline |
-| 🛰️ **Connection quality monitor** | Gateway + external (8.8.8.8) Ping RTT. 3-packet cross-validation flags **only real violations, no false disconnects**, with auto recovery detection |
+| 📡 **Connection quality monitor** | Gateway + external (8.8.8.8) Ping RTT. 3-packet cross-validation flags **only real violations, no false disconnects**, with auto recovery detection |
 | 🚫 **Smart saving mode** | On hotspot detection: `softwareupdate` off · `tmutil` off · blocks Apple update servers to save data |
 | 🌐 **DNS presets** | Apply 1.1.1.1 / 8.8.8.8 presets, instantly updating system network settings |
 | 🔌 **Per-app traffic** | Live ranking of which app uses how much (`nettop`-based) + icon toolbar to block/exclude/reset |
@@ -84,8 +83,8 @@ TetherLens puts the **live picture**, **exhaustion forecast**, and the **culprit
 ```bash
 swift build                               # build
 swift test                                # run unit tests
-./scripts/build-macos.sh debug            # debug app bundle + run
-./scripts/build-macos.sh release          # release build + zip
+./build_and_run.sh debug macos            # debug build + run
+./build_and_run.sh release macos          # release build + run
 ./scripts/battery-profile.sh -d 60        # battery/CPU profile
 ```
 

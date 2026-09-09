@@ -1,6 +1,5 @@
 <!--
-  TetherLens — Wi-Fi 데이터 사용량을 잡아먹는 모든 메가바이트를 추적하라.
-  메뉴바에 숨어서, 당신의 핫스팟 데이터가 어디로 새는지 낱낱이 까발린다.
+  TetherLens — 핫스팟 데이터가 어디로 새는지 메뉴바에서 추적하는 macOS 앱.
 -->
 
 <p align="center">
@@ -10,7 +9,7 @@
 <h1 align="center">TetherLens 🔭</h1>
 
 <p align="center">
-  <b>테더링 데이터 낭비를 잡아먹는 macOS 메뉴바 감시 카메라</b><br>
+  <b>테더링 데이터 누수를 메뉴바에서 추적하는 macOS 앱</b><br>
   시골 인터넷에서 갤럭시 S22 핫스팟의 소중한 GB, <b>한 바이트도 놓치지 않는다.</b>
 </p>
 
@@ -18,7 +17,7 @@
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-6.0-F05138">
   <img alt="Native" src="https://img.shields.io/badge/Native%20App-100%25-2563eb">
-  <img alt="Release" src="https://img.shields.io/badge/Release-v0.31.0-0ea5e9">
+  <img alt="Release" src="https://img.shields.io/badge/Release-v0.35.0-0ea5e9">
 </p>
 
 <p align="center">
@@ -33,7 +32,7 @@
 
 ---
 
-핫스팟으로 인터넷을 쓸 때, 이 질문들은 늘 **미궁입니다**:
+핫스팟으로 인터넷을 쓸 때, 이 질문들은 답이 없다:
 
 > 오늘 얼마나 썼지? QoS에 걸려서 속도가 반토막나기 전에 알 수 없나?
 > 어떤 앱이 데이터를 쏟아내는 거지?
@@ -51,7 +50,7 @@ TetherLens는 메뉴바 하나로 **실시간 현황**과 **소진 예측**, 그
 | 🛰️ **네트워크 진단 센터** | 속도 테스트(다운/업 실측) · 핑 · 트레이스 · bufferbloat + 끊김 시 **Wi-Fi 재연결**(자동 1회/수동 버튼) |
 | 📈 **그래프 고도화** | 시간대/요일별 세분화, 누적 라인, 할당량 임계선 |
 | 📍 **GPS/IP 위치 추적** | 연결 위치(GPS·IP) 지도 핀 + 이동 이력 타임라인 |
-| 🛰️ **연결 품질 모니터링** | 게이트웨이 + 외부(8.8.8.8) Ping RTT. 3패킷 교차 검증으로 **거짓 끊김 없이** 실제 위반만 경고, 복구 자동 감지 |
+| 📡 **연결 품질 모니터링** | 게이트웨이 + 외부(8.8.8.8) Ping RTT. 3패킷 교차 검증으로 **거짓 끊김 없이** 실제 위반만 경고, 복구 자동 감지 |
 | 🚫 **스마트 절약 모드** | 핫스팟 감지 시 `softwareupdate` off·`tmutil` off·Apple 업데이트 서버 차단으로 데이터 절약 |
 | 🌐 **DNS 프리셋** | 1.1.1.1 / 8.8.8.8 프리셋 적용, 시스템 네트워크 설정 즉시 변경 |
 | 🔌 **앱별 트래픽** | `nettop` 기반으로 어느 앱이 얼마나 쓰는지 실시간 순위 + 아이콘 툴바로 차단·제외·초기화 |
@@ -84,8 +83,8 @@ TetherLens는 메뉴바 하나로 **실시간 현황**과 **소진 예측**, 그
 ```bash
 swift build                               # 빌드
 swift test                                # 단위 테스트 실행
-./scripts/build-macos.sh debug            # 디버그 앱 번들 + 즉시 실행
-./scripts/build-macos.sh release          # 배포 빌드 + zip 산출
+./build_and_run.sh debug macos            # 디버그 빌드 + 즉시 실행
+./build_and_run.sh release macos          # 배포 빌드 + 실행
 ./scripts/battery-profile.sh -d 60        # 배터리/CPU 프로파일 측정
 ```
 
