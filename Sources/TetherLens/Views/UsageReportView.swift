@@ -17,9 +17,7 @@ struct UsageReportView: View {
     @State private var expandedSection: AppTrafficSection = .user
     @State private var sortOrder: TrafficSortOrder = .total
     @State private var previousPeriodTotal: Int64 = 0
-    @State private var topHotspot: (id: UUID?, name: String, total: Int64)?
-    @State private var topApps: [(name: String, total: Int64)] = []
-    @State private var statsSnapshot: StatsSnapshot?  // v0.34 StatsEngine 병행 운영
+    @State private var statsSnapshot: StatsSnapshot?  // v0.34 StatsEngine 인사이트
 
     enum TrafficSortOrder: CaseIterable {
         case total, upload, download
@@ -191,13 +189,12 @@ struct UsageReportView: View {
             .padding(.top, TLSpace.md)
 
             if !dailyUsage.isEmpty {
-                // v0.34 인사이트 (StatsEngine) — 기존 카드와 병행 운영, 대조 검증 후 구 카드 정리
+                // v0.34.1 인사이트 단독 (구 insightCards 제거됨)
                 if let snap = statsSnapshot {
                     InsightsView(insights: snap.insights) {
                         viewMode = .appTraffic
                     }
                 }
-                insightCards
             }
 
             Divider()
@@ -222,139 +219,34 @@ struct UsageReportView: View {
         }
     }
 
-    // MARK: - Insight Cards
-
-    // MARK: - Hero (스탯 카드 4 + QoS + Top 행)
-
-    private var insightCards: some View {
-        VStack(alignment: .leading, spacing: TLSpace.md) {
-            HStack(spacing: TLSpace.md) {
-                statCard(icon: "arrow.up.arrow.down", iconColor: TLPalette.accent, title: Localized.totalUsage, value: totalBytes.formattedBytes)
-                statCard(icon: "arrow.up", iconColor: TLPalette.upload, title: Localized.uploadShort, value: totalUploadBytes.formattedBytes)
-                statCard(icon: "arrow.down", iconColor: TLPalette.download, title: Localized.downloadShort, value: totalDownloadBytes.formattedBytes)
-                statCard(icon: "speedometer", iconColor: TLPalette.success, title: Localized.paceLabel, value: recentPaceBytes.formattedBytes)
-            }
-
-            // QoS (할당량 있을 때만)
-            if let q = quotaUsagePct {
-                VStack(alignment: .leading, spacing: 4) {
-                    ProgressView(value: min(max(q, 0), 100), total: 100)
-                        .tint(q >= 90 ? TLPalette.danger : (q >= 60 ? TLPalette.upload : TLPalette.success))
-                    Text("\(Localized.quotaUsage) \(String(format: "%.1f%%", q)) · \(quotaCardSubtitle)")
-                        .font(TLFont.caption2)
-                        .foregroundColor(TLPalette.textSecondary)
-                        .lineLimit(1)
-                }
-            }
-
-            heroRow(
-                dot: TLPalette.accent,
-                title: Localized.topUsageDay,
-                value: "\(topUsageDayText) · \(topUsageDay?.total.formattedBytes ?? Localized.noUsageData)",
-                action: { viewMode = .detail }
-            )
-            heroRow(
-                dot: TLPalette.upload,
-                title: Localized.topHotspot,
-                value: topHotspot?.name ?? Localized.noConnection,
-                subtitle: topHotspot.map { $0.total.formattedBytes } ?? "",
-                action: {
-                    if let id = topHotspot?.id { selectedProfileId = id }
-                }
-            )
-            heroRow(
-                dot: TLPalette.download,
-                title: Localized.topApps,
-                value: topApps.isEmpty ? Localized.noUsageData : topApps.map { $0.name }.joined(separator: " · "),
-                subtitle: topApps.isEmpty ? "" : topApps.map { $0.total.formattedBytes }.joined(separator: " · "),
-                action: { viewMode = .appTraffic }
-            )
-        }
-        .padding(.horizontal, TLSpace.xl)
-    }
-
-    private func statCard(icon: String, iconColor: Color, title: String, value: String) -> some View {
-        HStack(spacing: TLSpace.sm) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(iconColor)
-                .frame(width: 28, alignment: .center)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(TLFont.caption2)
-                    .foregroundColor(TLPalette.textSecondary)
-                    .lineLimit(1)
-                Text(value)
-                    .font(TLFont.callout.monospacedDigit().bold())
-                    .foregroundColor(TLPalette.textPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(TLSpace.md)
-        .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
-    }
-
-    private func heroRow(dot: Color, title: String, value: String, subtitle: String = "", action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: TLSpace.sm) {
-                Circle().fill(dot).frame(width: 8, height: 8)
-                Text(title)
-                    .font(TLFont.caption)
-                    .foregroundColor(TLPalette.textSecondary)
-                Spacer()
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(value)
-                        .font(TLFont.callout.monospacedDigit().bold())
-                        .foregroundColor(TLPalette.textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    if !subtitle.isEmpty {
-                        Text(subtitle)
-                            .font(TLFont.caption2)
-                            .foregroundColor(TLPalette.textSecondary)
-                            .lineLimit(1)
-                    }
-                }
-            }
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(title)
-    }
-
-    private var previousPeriodText: String {
-        guard let pct = previousPeriodPct else { return "—" }
-        return "\(pct >= 0 ? "▲" : "▼") \(String(format: "%.1f%%", abs(pct)))"
-    }
-
-    private var previousPeriodColor: Color {
-        guard let pct = previousPeriodPct else { return TLPalette.textSecondary }
-        return pct > 0 ? TLPalette.upload : TLPalette.success
-    }
-
-    private var topUsageDayText: String {
-        guard let day = topUsageDay else { return "—" }
-        let f = DateFormatter()
-        f.setLocalizedDateFormatFromTemplate("M/d")
-        return f.string(from: day.date)
-    }
-
     // MARK: - Content Body
 
     @ViewBuilder
     private var contentBody: some View {
         switch viewMode {
         case .chart:
-            chartView
+            ReportChartsView(
+                period: selectedPeriod,
+                dailyUsage: dailyUsage,
+                monthlyUsage: monthlyUsage,
+                hourlyUsage: hourlyUsage,
+                currentTotal: dailyUsage.reduce(0) { $0 + $1.total },
+                previousPeriodTotal: previousPeriodTotal,
+                recentPaceBytes: recentPaceBytes,
+                quotaRuleMarkBytes: quotaRuleMarkBytes
+            )
         case .detail:
-            detailView
+            ReportDetailView(period: selectedPeriod, dailyUsage: dailyUsage, monthlyUsage: monthlyUsage)
         case .session:
-            sessionView
+            ReportSessionsView(
+                period: selectedPeriod,
+                sessions: sessions,
+                dailySessionSummary: dailySessionSummary,
+                monthlySessionSummary: monthlySessionSummary,
+                profileName: sessionProfileName
+            )
         case .appTraffic:
-            appTrafficView
+            ReportAppTrafficView(appTrafficData: appTrafficData, sortOrder: $sortOrder, expandedSection: $expandedSection)
         case .heatmap:
             HeatmapView(sessions: sessions)
         case .report:
@@ -366,658 +258,13 @@ struct UsageReportView: View {
         }
     }
 
-    // MARK: - Chart
-
-    @ViewBuilder
-    private var chartView: some View {
-        let isDay = selectedPeriod.days == 1
-        let isWeekly = selectedPeriod.days == 7
-        let isLong = selectedPeriod.isLongPeriod
-        let source = chartDataSource
-        if source.isEmpty {
-            Spacer()
-            Text(Localized.noUsageData)
-                .foregroundColor(TLPalette.textSecondary)
-            Spacer()
-        } else {
-            HStack {
-                Text(selectedPeriod.localized)
-                    .font(TLFont.caption)
-                    .foregroundColor(TLPalette.textSecondary)
-                Spacer()
-                Text(previousPeriodText)
-                    .font(TLFont.caption.monospacedDigit().bold())
-                    .foregroundColor(previousPeriodColor)
-            }
-            .help("\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)")
-            .padding(.horizontal, TLSpace.xl)
-            let peakBar = source.map { max($0.upload, $0.download) }.max() ?? 1
-            let peakQuota = quotaRuleMarkBytes ?? 0
-            let yTop = max(peakBar, peakQuota) * 11 / 10
-            let yDomain: ClosedRange<Int64> = 0 ... max(yTop, 1)
-            Chart {
-                // 기준선은 막대 뒤에 그려 겹침을 방지한다
-                if recentPaceBytes > 0 {
-                    RuleMark(
-                        y: .value("Pace", recentPaceBytes)
-                    )
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .foregroundStyle(TLPalette.accent.opacity(0.5))
-                    .annotation(position: .top, alignment: .leading) {
-                        Text(Localized.paceLabel)
-                            .font(TLFont.small)
-                            .foregroundColor(TLPalette.accent.opacity(0.8))
-                    }
-                }
-                if let quotaLine = quotaRuleMarkBytes {
-                    RuleMark(
-                        y: .value("Quota", quotaLine)
-                    )
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                    .foregroundStyle(TLPalette.danger.opacity(0.6))
-                    .annotation(position: .top, alignment: .trailing) {
-                        Text(Localized.quotaRuleLabel)
-                            .font(TLFont.small)
-                            .foregroundColor(TLPalette.danger)
-                    }
-                }
-                ForEach(Array(source.enumerated()), id: \.element.id) { index, usage in
-                    if isDay {
-                        BarMark(
-                            x: .value("Hour", usage.hour),
-                            y: .value("Upload", usage.upload)
-                        )
-                        .foregroundStyle(TLPalette.upload)
-                        .annotation(position: .bottom, alignment: .center) {
-                            Text(usage.hourLabel)
-                                .font(TLFont.caption2)
-                                .foregroundColor(TLPalette.textSecondary)
-                        }
-                        BarMark(
-                            x: .value("Hour", usage.hour),
-                            y: .value("Download", usage.download)
-                        )
-                        .foregroundStyle(TLPalette.download)
-                    } else if isWeekly {
-                        BarMark(
-                            x: .value("Weekday", usage.hour),
-                            y: .value("Upload", usage.upload)
-                        )
-                        .foregroundStyle(TLPalette.upload)
-                        .annotation(position: .bottom, alignment: .center) {
-                            Text(usage.weekdayLabel)
-                                .font(TLFont.caption2)
-                                .foregroundColor(TLPalette.textSecondary)
-                        }
-                        BarMark(
-                            x: .value("Weekday", usage.hour),
-                            y: .value("Download", usage.download)
-                        )
-                        .foregroundStyle(TLPalette.download)
-                    } else {
-                        BarMark(
-                            x: .value("Date", usage.date ?? Date.distantPast, unit: isLong ? .month : .day),
-                            y: .value("Upload", usage.upload)
-                        )
-                        .foregroundStyle(TLPalette.upload)
-                        .annotation(position: .bottom, alignment: .center) {
-                            Text(usage.dateLabel)
-                                .font(TLFont.caption2)
-                                .foregroundColor(TLPalette.textSecondary)
-                        }
-                        BarMark(
-                            x: .value("Date", usage.date ?? Date.distantPast, unit: isLong ? .month : .day),
-                            y: .value("Download", usage.download)
-                        )
-                        .foregroundStyle(TLPalette.download)
-                    }
-                }
-            }
-            .chartForegroundStyleScale([
-                Localized.uploadShort: TLPalette.upload,
-                Localized.downloadShort: TLPalette.download
-            ])
-            .chartLegend(.hidden)
-            .chartXAxis(.hidden)
-            .chartYScale(domain: yDomain)
-            .chartYAxis {
-                AxisMarks { value in
-                    AxisValueLabel {
-                        if let bytes = value.as(Double.self) {
-                            Text(formatTotalBytes(Int64(bytes)))
-                                .font(TLFont.small)
-                                .monospacedDigit()
-                        }
-                    }
-                }
-            }
-            .padding(TLSpace.md)
-            .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
-            .padding(.horizontal, TLSpace.xl)
-            .frame(height: 304)
+    /// 세션 타임라인용 프로필명 (ReportSessionsView에 전달)
+    private var sessionProfileName: String {
+        if let pid = selectedProfileId {
+            if pid == allProfilesId { return Localized.allProfiles }
+            return ProfileManager.shared.getProfile(id: pid)?.name ?? "-"
         }
-    }
-
-    /// 기간별 세분화 데이터 소스.
-    private struct ChartEntry: Identifiable {
-        let id: String
-        let date: Date?
-        let hour: Int
-        let upload: Int64
-        let download: Int64
-        let isLongPeriod: Bool
-
-        var total: Int64 { upload + download }
-
-        var hourLabel: String {
-            String(format: "%02d", hour)
-        }
-
-        var weekdayLabel: String {
-            let symbols = Calendar.current.shortStandaloneWeekdaySymbols
-            guard symbols.indices.contains(hour + 1) else { return "" }
-            return symbols[hour + 1]
-        }
-
-        var dateLabel: String {
-            guard let date else { return "" }
-            if isLongPeriod {
-                let f = DateFormatter()
-                f.dateFormat = "M'월'"
-                return f.string(from: date)
-            }
-            let f = DateFormatter()
-            f.dateFormat = "M/d"
-            return f.string(from: date)
-        }
-    }
-
-    private var chartDataSource: [ChartEntry] {
-        if selectedPeriod.days == 1 {
-            return hourlyChartData
-        } else if selectedPeriod.days == 7 {
-            return weeklyChartData
-        } else if selectedPeriod.isLongPeriod {
-            return longChartData
-        } else {
-            return monthlyChartData
-        }
-    }
-
-    /// day(1일) — 시간대(0~23)별, 0인 시간은 빈 값으로 채움
-    private var hourlyChartData: [ChartEntry] {
-        var byHour = Dictionary(uniqueKeysWithValues: hourlyUsage.map { ($0.hour, $0) })
-        return (0..<24).map { hour in
-            if let u = byHour[hour] {
-                return ChartEntry(id: "\(hour)", date: nil, hour: hour, upload: u.upload, download: u.download, isLongPeriod: false)
-            } else {
-                return ChartEntry(id: "\(hour)", date: nil, hour: hour, upload: 0, download: 0, isLongPeriod: false)
-            }
-        }
-    }
-
-    /// month(30일) — 일별
-    private var monthlyChartData: [ChartEntry] {
-        dailyUsage.map { ChartEntry(id: $0.id, date: $0.date, hour: 0, upload: $0.upload, download: $0.download, isLongPeriod: false) }
-    }
-
-    /// halfYear(180일)/year(365일) — 월별
-    private var longChartData: [ChartEntry] {
-        monthlyUsage.map { ChartEntry(id: $0.id, date: $0.date, hour: 0, upload: $0.upload, download: $0.download, isLongPeriod: true) }
-    }
-
-    /// week(7일) — 요일별 합산 (0=일~6=토)
-    private var weeklyChartData: [ChartEntry] {
-        let cal = Calendar.current
-        var weekdayTotals: [Int: (upload: Int64, download: Int64)] = [:]
-        for u in dailyUsage {
-            let wd = cal.component(.weekday, from: u.date) // 1=일...7=토
-            let idx = wd - 1 // 0=일...6=토
-            let cur = weekdayTotals[idx] ?? (0, 0)
-            weekdayTotals[idx] = (cur.upload + u.upload, cur.download + u.download)
-        }
-        let dayStride: [Int] = [0, 1, 2, 3, 4, 5, 6]
-        return dayStride.compactMap { idx in
-            let t = weekdayTotals[idx] ?? (0, 0)
-            return ChartEntry(id: "\(idx)", date: nil, hour: idx, upload: t.upload, download: t.download, isLongPeriod: false)
-        }
-    }
-
-    /// 할당량 임계선 값(바이트). 전체 프로필 또는 할당량 미설정이면 nil.
-    private var quotaRuleMarkBytes: Int64? {
-        guard let pid = selectedProfileId, pid != allProfilesId,
-              let profile = ProfileManager.shared.getProfile(id: pid),
-              let quota = profile.quotaGB, quota > 0 else { return nil }
-        return Int64(quota * 1_000_000_000)
-    }
-
-    // MARK: - Detail
-
-    private var detailView: some View {
-        Group {
-            let isLong = selectedPeriod.isLongPeriod
-            let items = isLong ? monthlyUsage.map { DetailItem(id: $0.id, date: $0.date, upload: $0.upload, download: $0.download, total: $0.total, isMonthly: true) } : dailyUsage.map { DetailItem(id: $0.id, date: $0.date, upload: $0.upload, download: $0.download, total: $0.total, isMonthly: false) }
-            if items.isEmpty {
-            Spacer()
-            Text(Localized.noUsageData)
-                .foregroundColor(TLPalette.textSecondary)
-            Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        HStack(spacing: 0) {
-                            Text(isLong ? Localized.monthLabel : Localized.date)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(width: TLSize.rowColWide, alignment: .leading)
-                            Text(Localized.uploadShort)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.upload)
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                            Text(Localized.downloadShort)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.download)
-                                .frame(width: TLSize.rowColWide, alignment: .trailing)
-                            Text(Localized.total)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(width: TLSize.rowColWide, alignment: .trailing)
-                        }
-                        .padding(.vertical, TLSpace.xs)
-                        ForEach(items) { item in
-                            Divider()
-                            HoverRow {
-                                HStack(spacing: 0) {
-                                    if item.isMonthly {
-                                        Text(item.date, format: .dateTime.month().year())
-                                            .font(TLFont.caption)
-                                            .frame(width: TLSize.rowColWide, alignment: .leading)
-                                    } else {
-                                        Text(item.date, format: .dateTime.day().month())
-                                            .font(TLFont.caption)
-                                            .frame(width: TLSize.rowColWide, alignment: .leading)
-                                    }
-                                    Text(item.upload.formattedBytes)
-                                        .font(TLFont.caption.monospacedDigit())
-                                        .foregroundColor(TLPalette.upload)
-                                        .frame(maxWidth: .infinity, alignment: .trailing)
-                                    Text(item.download.formattedBytes)
-                                        .font(TLFont.caption.monospacedDigit())
-                                        .foregroundColor(TLPalette.download)
-                                        .frame(width: TLSize.rowColWide, alignment: .trailing)
-                                    Text(item.total.formattedBytes)
-                                        .font(TLFont.caption.monospacedDigit().bold())
-                                        .frame(width: TLSize.rowColWide, alignment: .trailing)
-                                }
-                                .padding(.vertical, TLSpace.xs)
-                            }
-                        }
-                    }
-                    .padding(TLSpace.md)
-                    .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
-                    .padding(.horizontal, TLSpace.xl)
-                }
-            }
-        }
-    }
-
-    private struct DetailItem: Identifiable {
-        let id: String
-        let date: Date
-        let upload: Int64
-        let download: Int64
-        let total: Int64
-        let isMonthly: Bool
-    }
-
-    // MARK: - Session
-
-    private var sessionView: some View {
-        Group {
-            if selectedPeriod.days == 1 {
-                individualSessionView
-            } else if selectedPeriod.isLongPeriod {
-                monthlySessionSummaryView
-            } else {
-                dailySessionSummaryView
-            }
-        }
-    }
-
-    private var individualSessionView: some View {
-        let name: String = {
-            if let pid = selectedProfileId {
-                if pid == allProfilesId { return Localized.allProfiles }
-                return ProfileManager.shared.getProfile(id: pid)?.name ?? "-"
-            }
-            return "-"
-        }()
-        return SessionTimelineView(sessions: sessions, profileName: name)
-    }
-
-    private var dailySessionSummaryView: some View {
-        Group {
-            if dailySessionSummary.isEmpty {
-                Spacer()
-                Text(Localized.noSessionData)
-                    .foregroundColor(TLPalette.textSecondary)
-                Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        HStack(spacing: 0) {
-                            Text(Localized.date)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Text(Localized.sessionCount)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(width: TLSize.rowColNarrow, alignment: .trailing)
-                            Text(Localized.time)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(width: TLSize.rowColTime, alignment: .trailing)
-                        }
-                        .padding(.vertical, TLSpace.xs)
-                        ForEach(dailySessionSummary) { item in
-                            Divider()
-                            HoverRow {
-                                HStack(spacing: 0) {
-                                    Text(item.date, format: .dateTime.day().month())
-                                        .font(TLFont.caption)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text("\(item.sessionCount)")
-                                        .font(TLFont.caption.monospacedDigit())
-                                        .frame(width: TLSize.rowColNarrow, alignment: .trailing)
-                                    Text(formatDuration(item.totalDuration))
-                                        .font(TLFont.caption.monospacedDigit())
-                                        .frame(width: TLSize.rowColTime, alignment: .trailing)
-                                }
-                                .padding(.vertical, TLSpace.xs)
-                            }
-                        }
-                    }
-                    .padding(TLSpace.md)
-                    .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
-                    .padding(.horizontal, TLSpace.xl)
-                }
-            }
-        }
-    }
-
-    private var monthlySessionSummaryView: some View {
-        Group {
-            if monthlySessionSummary.isEmpty {
-                Spacer()
-                Text(Localized.noSessionData)
-                    .foregroundColor(TLPalette.textSecondary)
-                Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        HStack(spacing: 0) {
-                            Text(Localized.monthLabel)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Text(Localized.sessionCount)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(width: TLSize.rowColNarrow, alignment: .trailing)
-                            Text(Localized.time)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(width: TLSize.rowColTime, alignment: .trailing)
-                        }
-                        .padding(.vertical, TLSpace.xs)
-                        ForEach(monthlySessionSummary) { item in
-                            Divider()
-                            HoverRow {
-                                HStack(spacing: 0) {
-                                    Text(item.date, format: .dateTime.month().year())
-                                        .font(TLFont.caption)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    Text("\(item.sessionCount)")
-                                        .font(TLFont.caption.monospacedDigit())
-                                        .frame(width: TLSize.rowColNarrow, alignment: .trailing)
-                                    Text(formatDuration(item.totalDuration))
-                                        .font(TLFont.caption.monospacedDigit())
-                                        .frame(width: TLSize.rowColTime, alignment: .trailing)
-                                }
-                                .padding(.vertical, TLSpace.xs)
-                            }
-                        }
-                    }
-                    .padding(TLSpace.md)
-                    .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
-                    .padding(.horizontal, TLSpace.xl)
-                }
-            }
-        }
-    }
-
-    private func formatDuration(_ interval: TimeInterval) -> String {
-        let totalSeconds = Int(interval)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        }
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-
-    // MARK: - App Traffic
-
-    private var appTrafficView: some View {
-        Group {
-            if appTrafficData.isEmpty {
-                Spacer()
-                Text(Localized.noTrafficData)
-                    .foregroundColor(TLPalette.textSecondary)
-                Spacer()
-            } else {
-                let systemSet = SystemProcesses.set
-                let sorted = appTrafficData.sorted { a, b in
-                    switch sortOrder {
-                    case .total: return a.uploadBytes + a.downloadBytes > b.uploadBytes + b.downloadBytes
-                    case .upload: return a.uploadBytes > b.uploadBytes
-                    case .download: return a.downloadBytes > b.downloadBytes
-                    }
-                }
-                let userApps = sorted.filter { !systemSet.contains($0.processName) }
-                let systemApps = sorted.filter { systemSet.contains($0.processName) }
-                let userMax = userApps.prefix(10).map { $0.uploadBytes + $0.downloadBytes }.max() ?? 1
-                let systemMax = systemApps.prefix(10).map { $0.uploadBytes + $0.downloadBytes }.max() ?? 1
-                let totalUp = appTrafficData.reduce(0) { $0 + $1.uploadBytes }
-                let totalDn = appTrafficData.reduce(0) { $0 + $1.downloadBytes }
-                let userUp = userApps.reduce(0) { $0 + $1.uploadBytes }
-                let userDn = userApps.reduce(0) { $0 + $1.downloadBytes }
-                let sysUp = systemApps.reduce(0) { $0 + $1.uploadBytes }
-                let sysDn = systemApps.reduce(0) { $0 + $1.downloadBytes }
-
-                VStack(spacing: 0) {
-                    VStack(spacing: 0) {
-                        HStack(spacing: 0) {
-                            Color.clear.frame(width: 20)
-                            Text(Localized.process)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Text(Localized.upload)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.upload)
-                                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-                            Text(Localized.download)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.download)
-                                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-                        }
-                        .frame(height: 20)
-
-                        Divider()
-
-                        summaryRow(label: Localized.totalSum, upload: totalUp, download: totalDn, isBold: true)
-                        summaryRow(label: Localized.userSum, upload: userUp, download: userDn, isBold: true)
-                        summaryRow(label: Localized.systemSum, upload: sysUp, download: sysDn, isBold: true)
-
-                        Divider()
-                            .padding(.vertical, TLSpace.xs)
-
-                        HStack(spacing: 0) {
-                            Spacer()
-                            Picker(Localized.sortBy, selection: $sortOrder) {
-                                ForEach(TrafficSortOrder.allCases, id: \.self) { order in
-                                    Text(order.localized).tag(order)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                        }
-                        .padding(.bottom, TLSpace.xs)
-                    }
-                    .padding(.horizontal, TLSpace.xl)
-
-                    Divider()
-                        .padding(.horizontal, TLSpace.xl)
-
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(spacing: 0) {
-                                Button {
-                                    withAnimation {
-                                        expandedSection = expandedSection == .user ? .system : .user
-                                        proxy.scrollTo("top", anchor: .top)
-                                    }
-                                } label: {
-                                    HStack(spacing: TLSpace.xs) {
-                                        Image(systemName: expandedSection == .user ? "chevron.down" : "chevron.right")
-                                            .font(TLFont.badge)
-                                            .foregroundColor(TLPalette.textSecondary)
-                                        Text(Localized.userProcesses)
-                                            .font(TLFont.smallBold)
-                                            .foregroundColor(TLPalette.textSecondary)
-                                        Spacer()
-                                    }
-                                    .contentShape(Rectangle())
-                                    .padding(.vertical, TLSpace.sm)
-                                }
-                                .buttonStyle(.plain)
-                                .id("top")
-
-                                if expandedSection == .user {
-                                    ForEach(Array(userApps.prefix(10).enumerated()), id: \.element.processName) { _, item in
-                                        Divider()
-                                        appTrafficRow(item, fraction: Double(item.uploadBytes + item.downloadBytes) / Double(userMax))
-                                    }
-                                }
-
-                                Button {
-                                    withAnimation {
-                                        expandedSection = expandedSection == .system ? .user : .system
-                                        proxy.scrollTo("top", anchor: .top)
-                                    }
-                                } label: {
-                                    HStack(spacing: TLSpace.xs) {
-                                        Image(systemName: expandedSection == .system ? "chevron.down" : "chevron.right")
-                                            .font(TLFont.badge)
-                                            .foregroundColor(TLPalette.textSecondary)
-                                    Text(Localized.systemProcesses)
-                                        .font(TLFont.smallBold)
-                                        .foregroundColor(TLPalette.textSecondary)
-                                    Spacer()
-                                }
-                                .contentShape(Rectangle())
-                                .padding(.vertical, TLSpace.sm)
-                            }
-                            .buttonStyle(.plain)
-
-                            if expandedSection == .system {
-                                ForEach(Array(systemApps.prefix(10).enumerated()), id: \.element.processName) { _, item in
-                                        Divider()
-                                        appTrafficRow(item, fraction: Double(item.uploadBytes + item.downloadBytes) / Double(systemMax))
-                                    }
-                                }
-                            }
-                            .padding(TLSpace.md)
-                            .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
-                            .padding(.horizontal, TLSpace.xl)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func summaryRow(label: String, upload: Int64, download: Int64, isBold: Bool) -> some View {
-        HStack(spacing: 0) {
-            Text(label)
-                .font(TLFont.medium.weight(isBold ? .bold : .regular))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(formatTotalBytes(upload))
-                .font(TLFont.mediumMono.weight(isBold ? .bold : .regular))
-                .foregroundColor(TLPalette.upload)
-                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-            Text(formatTotalBytes(download))
-                .font(TLFont.mediumMono.weight(isBold ? .bold : .regular))
-                .foregroundColor(TLPalette.download)
-                .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-        }
-        .frame(height: 20)
-    }
-
-    private func appTrafficRow(_ item: (processName: String, uploadBytes: Int64, downloadBytes: Int64), fraction: Double = 1) -> some View {
-        HoverRow {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Group {
-                        if let nsImage = AppIconResolver.icon(forProcess: item.processName) {
-                            Image(nsImage: nsImage)
-                                .resizable()
-                                .scaledToFit()
-                        } else {
-                            Image(systemName: "app")
-                                .foregroundColor(TLPalette.textSecondary)
-                        }
-                    }
-                    .frame(width: 16, height: 16)
-                    Text(item.processName)
-                        .font(TLFont.medium)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(formatTotalBytes(item.uploadBytes))
-                        .font(TLFont.mediumMono)
-                        .foregroundColor(TLPalette.upload)
-                        .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-                    Text(formatTotalBytes(item.downloadBytes))
-                        .font(TLFont.mediumMono)
-                        .foregroundColor(TLPalette.download)
-                        .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-                }
-                GeometryReader { geo in
-                    Capsule()
-                        .fill(TLPalette.upload.opacity(0.45))
-                        .frame(width: geo.size.width * min(max(fraction, 0), 1), height: 2)
-                }
-                .frame(height: 2)
-            }
-            .padding(.vertical, 2)
-        }
-    }
-
-    /// 테이블 행 호버 하이라이트 (네이티브 느낌)
-    struct HoverRow<Content: View>: View {
-        @State private var hovering = false
-        let content: Content
-        init(@ViewBuilder content: () -> Content) {
-            self.content = content()
-        }
-        var body: some View {
-            content
-                .background(hovering ? TLPalette.textBackground.opacity(0.7) : Color.clear)
-                .onHover { hovering = $0 }
-        }
+        return "-"
     }
 
     // MARK: - Helpers
@@ -1030,8 +277,6 @@ struct UsageReportView: View {
             dailySessionSummary = []
             monthlySessionSummary = []
             previousPeriodTotal = 0
-            topHotspot = nil
-            topApps = []
             return
         }
         let loadAllSessions = viewMode == .heatmap || (viewMode == .session && selectedPeriod.days == 1)
@@ -1128,38 +373,6 @@ struct UsageReportView: View {
         let prevFrom = cal.date(byAdding: .day, value: -days * 2, to: now)!
         let effectivePid = pid == allProfilesId ? nil : pid
         previousPeriodTotal = ProfileManager.shared.getUsageTotal(profileId: effectivePid, from: prevFrom, to: prevTo)
-        topApps = Array(ProfileManager.shared.getAppTrafficLogs(days: days)
-            .filter { !SystemProcesses.set.contains($0.processName) }
-            .sorted { $0.uploadBytes + $0.downloadBytes > $1.uploadBytes + $1.downloadBytes }
-            .prefix(3)
-            .map { ($0.processName, $0.uploadBytes + $0.downloadBytes) })
-        if pid == allProfilesId {
-            var best: (id: UUID?, name: String, total: Int64)?
-            for profile in profiles {
-                let total = ProfileManager.shared.getDailyUsage(profileId: profile.id, days: days)
-                    .reduce(0) { $0 + $1.total }
-                if total > (best?.total ?? 0) {
-                    best = (profile.id, profile.name, total)
-                }
-            }
-            topHotspot = best
-        } else if let p = profiles.first(where: { $0.id == pid }) {
-            topHotspot = (p.id, p.name, dailyUsage.reduce(0) { $0 + $1.total })
-        } else {
-            topHotspot = nil
-        }
-    }
-
-    private var totalBytes: Int64 {
-        dailyUsage.reduce(0) { $0 + $1.total }
-    }
-
-    private var totalUploadBytes: Int64 {
-        dailyUsage.reduce(0) { $0 + $1.upload }
-    }
-
-    private var totalDownloadBytes: Int64 {
-        dailyUsage.reduce(0) { $0 + $1.download }
     }
 
     /// 최근 3일(오늘 포함) 평균 — 기간 전체 평균보다 현재 페이스에 가까움
@@ -1169,62 +382,12 @@ struct UsageReportView: View {
         return recent.reduce(0) { $0 + $1.total } / Int64(recent.count)
     }
 
-    /// 오늘 사용량 (dailyUsage 마지막 = 오늘)
-    private var todayUsedBytes: Int64 {
-        dailyUsage.last?.total ?? 0
-    }
-
-    /// 할당량 카드 부제 — "오늘 N까지 · 최근3일 M/일" (소진일 대신 행동 기준)
-    private var quotaCardSubtitle: String {
-        guard let pid = selectedProfileId, pid != allProfilesId,
-              let profile = ProfileManager.shared.getProfile(id: pid),
-              let quota = profile.quotaGB, quota > 0 else { return "" }
-        let quotaBytes = Int64(quota * 1_000_000_000)
-        let todayUsed = todayUsedBytes
-        guard todayUsed < quotaBytes else { return Localized.quotaExhaustedToday }
-        let budget = quotaBytes - todayUsed
-        return "\(Localized.todayBudget(budget.formattedBytes)) · \(Localized.recentPace(recentPaceBytes.formattedBytes))"
-    }
-
-    private var topUsageDay: ProfileManager.DailyUsage? {
-        dailyUsage.max { $0.total < $1.total }
-    }
-
-    private var previousPeriodPct: Double? {
-        guard previousPeriodTotal > 0 else { return nil }
-        return (Double(totalBytes) - Double(previousPeriodTotal)) / Double(previousPeriodTotal) * 100
-    }
-
-    private var quotaUsagePct: Double? {
+    /// 할당량 임계선 값(바이트). 전체 프로필 또는 할당량 미설정이면 nil.
+    private var quotaRuleMarkBytes: Int64? {
         guard let pid = selectedProfileId, pid != allProfilesId,
               let profile = ProfileManager.shared.getProfile(id: pid),
               let quota = profile.quotaGB, quota > 0 else { return nil }
-        return Double(totalBytes) / (quota * 1_000_000_000) * 100
-    }
-
-    private func sessionStartTimeFormatted(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.setLocalizedDateFormatFromTemplate("HHmmss")
-        return f.string(from: date)
-    }
-
-    private func sessionDurationFormatted(_ start: Date, _ end: Date) -> String {
-        let interval = end.timeIntervalSince(start)
-        let hours = Int(interval) / 3600
-        let minutes = (Int(interval) % 3600) / 60
-        let seconds = Int(interval) % 60
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        }
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-
-    private func formatTotalBytes(_ bytes: Int64) -> String {
-        let b = Double(bytes)
-        if b >= 1_000_000_000 { return String(format: "%.1f GB", b / 1_000_000_000) }
-        if b >= 1_000_000 { return String(format: "%.1f MB", b / 1_000_000) }
-        if b >= 1_000 { return String(format: "%.1f KB", b / 1_000) }
-        return "\(bytes) B"
+        return Int64(quota * 1_000_000_000)
     }
 
     private func exportData(format: ExportFormat) {

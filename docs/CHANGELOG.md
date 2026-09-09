@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.34.1] — 2026-09-09 — 리포트 화면 분리 + 구 카드 제거
+
+> PLAN_v0.34.0 §6 3단계 후속 (bd: TetherLens-rqk). UsageReportView 1252줄 → 셸 415줄 + 분리 4파일.
+
+### Changed
+- **리포트 4파일 분리** — `ReportShared`(HoverRow·formatTotalBytes 공용) · `ReportChartsView`(차트+전기간 대비) · `ReportSessionsView`(상세 테이블+세션 요약) · `ReportAppTrafficView`(정렬·섹션 바인딩). `byHour` var→let 경고 제거
+- **구 카드 제거** — `insightCards`/`statCard`/`heroRow` + 전기간 대비 계산을 차트 파일로 이동. `topHotspot`/`topApps` 상태·추가 쿼리 삭제 (리포트 로드마다 `getAppTrafficLogs`+프로필별 `getDailyUsage` 절감), 데드 함수(`sessionStart/DurationFormatted`) 삭제
+
+### Tests
+- test.sh 89개 통과 + `swift build` 경고 0 (동작 변경 없음, GUI 확인은 사용자 몫)
+
 ## [0.34.0] — 2026-09-09 — 통계 재구축: 인사이트 중심 (진행 중)
 
 > 계획: docs/plans/PLAN_v0.34.0_macos.md (bd: TetherLens-rqk). "아 썼네 끝" 원장 나열 → "그래서 뭘 하면 되나" 처방전 구조로 전환. 기존 데이터 보존.

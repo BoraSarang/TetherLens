@@ -436,3 +436,13 @@
 | 196 | StatsEngine + 인사이트 4종 (소진예측·주범·이상치·세션효율) + 단위 테스트 | P1 | ✅ |
 | 197 | InsightsView 신규 + 병행 운영 (구 화면 분리는 후속) | P1 | ✅ |
 | 198 | 검증 (test.sh + build + 실데이터 캡처 + CHANGELOG/세션) | P1 | ✅ (test 89개 + build 성공, 2026-09-09 21:00 재확인) |
+
+## 🔄 v0.34.1 — 리포트 화면 분리 + 구 카드 제거 (2026-09-09)
+
+> PLAN_v0.34.0 §6 3단계 후속 (bd: TetherLens-rqk). UsageReportView 1252줄 분리 + InsightsView로 대체 완료된 구 insightCards 제거 + 데드 쿼리 정리.
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 199 | ReportShared/Charts/Sessions/AppTraffic 4파일 분리 (HoverRow·formatTotalBytes 공용화) | P1 | ✅ |
+| 200 | 구 카드 제거 (insightCards/statCard/heroRow + topHotspot/topApps 상태·쿼리 + 데드 포맷 함수) | P1 | ✅ |
+| 201 | 검증 (test.sh + swift build + CHANGELOG/세션) + 커밋 | P1 | ✅ (test 89개 + build 경고 0, UsageReportView 1252→415줄) |
