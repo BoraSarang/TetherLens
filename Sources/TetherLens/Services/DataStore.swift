@@ -12,22 +12,41 @@ final class DataStore: @unchecked Sendable {
         let parent = dbPath.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
         let migrator = Self.makeMigrator()
-        if let queue = try? DatabaseQueue(path: dbPath.path),
-           (try? migrator.migrate(queue)) != nil {
-            dbQueue = queue
-        } else {
-            // 손상된 DB는 백업 후 재생성 (데이터 유실 최소화)
-            let backupPath = dbPath.appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970))")
-            try? FileManager.default.moveItem(at: dbPath, to: backupPath)
-            try? FileManager.default.removeItem(at: dbPath.appendingPathExtension("wal"))
-            try? FileManager.default.removeItem(at: dbPath.appendingPathExtension("shm"))
-            dbQueue = try! DatabaseQueue(path: dbPath.path)
-            try! migrator.migrate(dbQueue)
+        if let queue = try? DatabaseQueue(path: dbPath.path) {
+            Self.backupBeforeMigration(dbPath: dbPath)
+            if (try? migrator.migrate(queue)) != nil {
+                dbQueue = queue
+                return
+            }
         }
+        // 손상된 DB는 백업 후 재생성 (데이터 유실 최소화)
+        let backupPath = dbPath.appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970))")
+        try? FileManager.default.moveItem(at: dbPath, to: backupPath)
+        try? FileManager.default.removeItem(at: dbPath.appendingPathExtension("wal"))
+        try? FileManager.default.removeItem(at: dbPath.appendingPathExtension("shm"))
+        dbQueue = try! DatabaseQueue(path: dbPath.path)
+        try! migrator.migrate(dbQueue)
     }
 
     init(dbQueue: DatabaseQueue) {
         self.dbQueue = dbQueue
+    }
+
+    /// v11+ 마이그레이션 전 원본 백업 (v0.34). 마커 키로 버전당 1회만 수행.
+    static func backupBeforeMigration(dbPath: URL) {
+        let marker = "dbBackup_v11_done"
+        guard UserDefaults.standard.bool(forKey: marker) == false else { return }
+        guard FileManager.default.fileExists(atPath: dbPath.path) else {
+            UserDefaults.standard.set(true, forKey: marker)
+            return
+        }
+        let stamp = Int(Date().timeIntervalSince1970)
+        let backup = dbPath.appendingPathExtension("pre-v11-\(stamp)")
+        try? FileManager.default.copyItem(at: dbPath, to: backup)
+        try? FileManager.default.copyItem(
+            at: dbPath.appendingPathExtension("wal"),
+            to: backup.appendingPathExtension("wal"))
+        UserDefaults.standard.set(true, forKey: marker)
     }
 
     static func makeMigrator() -> DatabaseMigrator {
@@ -148,6 +167,63 @@ final class DataStore: @unchecked Sendable {
             try db.alter(table: "session") { t in
                 t.add(column: "location_source", .text)
             }
+        }
+        m.registerMigration("v11_stats_rollup") { db in
+            // v0.34 인사이트 통계용 사전집계. 원천 테이블 불변, 실패해도 빈 테이블로 시작 가능.
+            try db.execute(sql: """
+                CREATE TABLE daily_rollup (
+                    day TEXT NOT NULL,
+                    profile_id TEXT NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
+                    upload_bytes INTEGER NOT NULL DEFAULT 0,
+                    download_bytes INTEGER NOT NULL DEFAULT 0,
+                    session_count INTEGER NOT NULL DEFAULT 0,
+                    session_seconds INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (day, profile_id)
+                );
+                CREATE TABLE app_daily_rollup (
+                    day TEXT NOT NULL,
+                    process_name TEXT NOT NULL,
+                    upload_bytes INTEGER NOT NULL DEFAULT 0,
+                    download_bytes INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (day, process_name)
+                );
+                CREATE TABLE insight_log (
+                    id TEXT PRIMARY KEY,
+                    kind TEXT NOT NULL,
+                    dedup_key TEXT NOT NULL UNIQUE,
+                    title TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    profile_id TEXT REFERENCES profile(id) ON DELETE CASCADE,
+                    created_at TEXT NOT NULL,
+                    shown_count INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE INDEX idx_insight_log_kind ON insight_log(kind);
+                """)
+            // backfill: 기존 로그에서 집계 이관 (localtime 일자 기준)
+            try db.execute(sql: """
+                INSERT OR IGNORE INTO daily_rollup (day, profile_id, upload_bytes, download_bytes)
+                SELECT DATE(recorded_at, 'localtime'), profile_id,
+                       COALESCE(SUM(upload_delta), 0), COALESCE(SUM(download_delta), 0)
+                FROM usage_log GROUP BY 1, 2;
+                """)
+            try db.execute(sql: """
+                INSERT OR IGNORE INTO app_daily_rollup (day, process_name, upload_bytes, download_bytes)
+                SELECT DATE(recorded_at, 'localtime'), process_name,
+                       COALESCE(SUM(upload_bytes), 0), COALESCE(SUM(download_bytes), 0)
+                FROM app_traffic_log GROUP BY 1, 2;
+                """)
+            // 세션 수·지속시간 반영 (종료된 세션만, 시작일 기준) — 타입 변환 없이 순수 SQL
+            try db.execute(sql: """
+                UPDATE daily_rollup AS r SET
+                    session_count = (SELECT COUNT(*) FROM session s
+                        WHERE s.profile_id = r.profile_id AND s.end_time IS NOT NULL
+                          AND DATE(s.start_time, 'localtime') = r.day),
+                    session_seconds = (SELECT COALESCE(SUM(CAST(ROUND(
+                        (julianday(s.end_time) - julianday(s.start_time)) * 86400) AS INTEGER)), 0)
+                        FROM session s
+                        WHERE s.profile_id = r.profile_id AND s.end_time IS NOT NULL
+                          AND DATE(s.start_time, 'localtime') = r.day);
+                """)
         }
         return m
     }

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.34.0] — 2026-09-09 — 통계 재구축: 인사이트 중심 (진행 중)
+
+> 계획: docs/plans/PLAN_v0.34.0_macos.md (bd: TetherLens-rqk). "아 썼네 끝" 원장 나열 → "그래서 뭘 하면 되나" 처방전 구조로 전환. 기존 데이터 보존.
+
+### Added
+- **DB v11** — `daily_rollup`/`app_daily_rollup`/`insight_log` 신설 + 기존 로그 backfill + 마이그레이션 전 자동 백업 (`data.sqlite.pre-v11-*`)
+- **StatsEngine** — `(profile, period) → 스냅샷` 단일 진입점. rollup 증분 갱신(최근 2일, 핫패스 쓰기 없음)
+- **인사이트 4종** — 한도 소진 예측(오늘 페이스→소진 시각) · 오늘의 주범(40%+ 점유) · 사용량 급증(평소 2배+) · 시간당 소모 1위 세션. 조용할수록 좋은 지표는 미표시
+- **InsightsView** — 리포트 창 최상단 병행 운영. 팝오버 시각 언어 (hero 숫자 + 컨텍스트 2줄, 장식 테두리 없음)
+
+### Tests
+- v11 backfill·대조(EXACT 일치) 3개 + StatsEngine 9개 (총 89개 통과, 2026-09-09 21:00 재확인)
+
 ## [0.32.3] — 2026-09-09 — 플로팅 둥근 모서리
 
 > 계획: docs/plans/PLAN_v0.32.1_macos.md §6 (bd: TetherLens-1xz). 투명도 35%에서 r=10 경계가 희미해 직각처럼 보인다는 피드백.

@@ -19,6 +19,7 @@ struct UsageReportView: View {
     @State private var previousPeriodTotal: Int64 = 0
     @State private var topHotspot: (id: UUID?, name: String, total: Int64)?
     @State private var topApps: [(name: String, total: Int64)] = []
+    @State private var statsSnapshot: StatsSnapshot?  // v0.34 StatsEngine 병행 운영
 
     enum TrafficSortOrder: CaseIterable {
         case total, upload, download
@@ -190,6 +191,12 @@ struct UsageReportView: View {
             .padding(.top, TLSpace.md)
 
             if !dailyUsage.isEmpty {
+                // v0.34 인사이트 (StatsEngine) — 기존 카드와 병행 운영, 대조 검증 후 구 카드 정리
+                if let snap = statsSnapshot {
+                    InsightsView(insights: snap.insights) {
+                        viewMode = .appTraffic
+                    }
+                }
                 insightCards
             }
 
@@ -1110,6 +1117,11 @@ struct UsageReportView: View {
     private func loadInsights() {
         let pid = selectedProfileId
         let days = selectedPeriod.days
+        // v0.34 StatsEngine 스냅샷 (rollup 증분 갱신 + 단일 진입점 집계)
+        StatsEngine.shared.refreshRollups()
+        let ids: [UUID] = (pid == allProfilesId) ? profiles.map(\.id) : (pid.map { [$0] } ?? [])
+        statsSnapshot = StatsEngine.shared.snapshot(profileIds: ids, days: days)
+        DebugLogger.shared.action("Stats", "스냅샷 인사이트=\(statsSnapshot?.insights.count ?? 0) 버킷=\(statsSnapshot?.buckets.count ?? 0)")
         let cal = Calendar.current
         let now = Date()
         let prevTo = cal.date(byAdding: .day, value: -days, to: now)!

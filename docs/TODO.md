@@ -424,3 +424,15 @@
 | # | Task | Priority | Status |
 |---|------|----------|--------|
 | 193 | 플로팅 모서리 24pt(전용 상수, 16→24 상향) + 투명도 70%(defaults) + 캡처 검증/문서 | P2 | ✅ |
+
+## 🔄 v0.34.0 — 통계 재구축: 인사이트 중심 (2026-09-09)
+
+> 사용자 요청: 현행 통계는 "아 썼네 끝"이라 도움 안 됨 → 행동 유도형으로 전면 재구축. DB 재설계 포함, 데이터 보존 전제. 계획: docs/plans/PLAN_v0.34.0_macos.md (bd: TetherLens-rqk)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 194 | PLAN 작성 + bd 등록 + TODO 등록 | P0 | ✅ |
+| 195 | DB v11 (daily_rollup/app_daily_rollup/insight_log + backfill + 백업 + 대조 테스트) | P0 | ✅ |
+| 196 | StatsEngine + 인사이트 4종 (소진예측·주범·이상치·세션효율) + 단위 테스트 | P1 | ✅ |
+| 197 | InsightsView 신규 + 병행 운영 (구 화면 분리는 후속) | P1 | ✅ |
+| 198 | 검증 (test.sh + build + 실데이터 캡처 + CHANGELOG/세션) | P1 | ✅ (test 89개 + build 성공, 2026-09-09 21:00 재확인) |

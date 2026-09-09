@@ -458,6 +458,20 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   ]
   static let hourLabel: String = value(kr: "시", en: "")
 
+  // MARK: - Insights (v0.34)
+  static var insightSection: String { value(kr: "지금 알면 좋은 것", en: "Worth knowing now") }
+  static var insightNone: String { value(kr: "특이사항 없음 — 평소대로 쓰는 중", en: "All clear — usage looks normal") }
+  static var insightPaceTitle: String { value(kr: "한도 소진 예상", en: "Quota exhaustion forecast") }
+  static func insightPaceOver(_ name: String) -> String { value(kr: "\(name) 한도 초과", en: "\(name) over quota") }
+  static func insightPaceBody(_ name: String, _ pct: Int) -> String { value(kr: "\(name) · \(pct)% 소진 · 절약모드 권장", en: "\(name) · \(pct)% used · saving mode recommended") }
+  static var insightOffenderTitle: String { value(kr: "오늘의 주범", en: "Today's top consumer") }
+  static func insightOffenderBody(_ app: String, _ bytes: String) -> String { value(kr: "\(app) · \(bytes) 사용", en: "\(app) · \(bytes) used") }
+  static var insightAnomalyTitle: String { value(kr: "사용량 급증", en: "Usage spike") }
+  static func insightAnomalyBody(_ bytes: String) -> String { value(kr: "평소 대비 급증 · 오늘 \(bytes)", en: "Spike vs usual · \(bytes) today") }
+  static var insightSessionTitle: String { value(kr: "시간당 소모 1위", en: "Top burn rate") }
+  static func insightSessionBody(_ name: String) -> String { value(kr: "\(name) 세션", en: "\(name) session") }
+  static var perHour: String { value(kr: "/시간", en: "/h") }
+
   // MARK: - Helper
   // MARK: - IP History
   static var ipHistory: String { value(kr: "IP 변경 이력", en: "IP History") }
