@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased] — 인사이트 섹션 제거
+
+### Removed
+- 리포트 창 **"지금 알면 좋은 것" 섹션 제거** (사용자 요청) — `InsightsView` 호출 + `statsSnapshot`/`loadInsights` 스냅샷 배선 삭제, 전기간 합계 로드는 `loadPreviousPeriod()`로 유지. 엔진·뷰 파일은 보존 (재도입 가능)
+
 ## [0.34.1] — 2026-09-09 — 리포트 화면 분리 + 구 카드 제거
 
 > PLAN_v0.34.0 §6 3단계 후속 (bd: TetherLens-rqk). UsageReportView 1252줄 → 셸 415줄 + 분리 4파일.

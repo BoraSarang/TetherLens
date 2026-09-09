@@ -17,7 +17,6 @@ struct UsageReportView: View {
     @State private var expandedSection: AppTrafficSection = .user
     @State private var sortOrder: TrafficSortOrder = .total
     @State private var previousPeriodTotal: Int64 = 0
-    @State private var statsSnapshot: StatsSnapshot?  // v0.34 StatsEngine 인사이트
 
     enum TrafficSortOrder: CaseIterable {
         case total, upload, download
@@ -188,15 +187,6 @@ struct UsageReportView: View {
             .padding(.horizontal, TLSpace.xl)
             .padding(.top, TLSpace.md)
 
-            if !dailyUsage.isEmpty {
-                // v0.34.1 인사이트 단독 (구 insightCards 제거됨)
-                if let snap = statsSnapshot {
-                    InsightsView(insights: snap.insights) {
-                        viewMode = .appTraffic
-                    }
-                }
-            }
-
             Divider()
                 .padding(.horizontal, TLSpace.xl)
 
@@ -334,7 +324,7 @@ struct UsageReportView: View {
             dailySessionSummary = allDailySess.values.sorted { $0.date < $1.date }
             monthlySessionSummary = allMonthlySess.values.sorted { $0.date < $1.date }
             appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
-            loadInsights()
+            loadPreviousPeriod()
             return
         }
         dailyUsage = ProfileManager.shared.getDailyUsage(profileId: pid, days: selectedPeriod.days)
@@ -354,19 +344,15 @@ struct UsageReportView: View {
         }
         hourlyUsage = selectedPeriod.days == 1 ? ProfileManager.shared.getHourlyUsage(profileId: pid, days: 1) : []
         appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
-        loadInsights()
+        loadPreviousPeriod()
     }
 
-    // MARK: - Insights
+    // MARK: - Previous Period
 
-    private func loadInsights() {
+    /// 차트 헤더용 전기간 합계 (v0.34.2 인사이트 섹션 제거 후 잔여)
+    private func loadPreviousPeriod() {
         let pid = selectedProfileId
         let days = selectedPeriod.days
-        // v0.34 StatsEngine 스냅샷 (rollup 증분 갱신 + 단일 진입점 집계)
-        StatsEngine.shared.refreshRollups()
-        let ids: [UUID] = (pid == allProfilesId) ? profiles.map(\.id) : (pid.map { [$0] } ?? [])
-        statsSnapshot = StatsEngine.shared.snapshot(profileIds: ids, days: days)
-        DebugLogger.shared.action("Stats", "스냅샷 인사이트=\(statsSnapshot?.insights.count ?? 0) 버킷=\(statsSnapshot?.buckets.count ?? 0)")
         let cal = Calendar.current
         let now = Date()
         let prevTo = cal.date(byAdding: .day, value: -days, to: now)!
