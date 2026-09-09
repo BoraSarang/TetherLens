@@ -16,6 +16,10 @@ struct FloatingWindowView: View {
 
     private var anyLine: Bool { showProcess || showCPU || showRAM }
 
+    /// 플로팅 전용 모서리 반경 (v0.32.3) — TLRound.medium(10)은 타 화면 공용이라 분리.
+    /// 16pt는 패널 폭 대비 밋밋하다는 실측 피드백으로 24pt로 상향.
+    private static let corner: CGFloat = 24
+
     var body: some View {
         // NOTE: 실측 자동 높이(fitToContent)가 동작하려면 콘텐츠가 루트여야 한다.
         // RoundedRectangle + .overlay{콘텐츠} 구조에서는 overlay가 ideal size에 기여하지 않아
@@ -28,13 +32,16 @@ struct FloatingWindowView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous)
+            RoundedRectangle(cornerRadius: Self.corner, style: .continuous)
                 .fill(.regularMaterial)
                 .opacity(opacity)
         )
             .overlay {
-                RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous)
-                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                // 평소에는 테두리 없음(그림자로만 구분), 호버 시에만 경계 표시 (v0.32.1)
+                if isHovering {
+                    RoundedRectangle(cornerRadius: Self.corner, style: .continuous)
+                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+                }
             }
             .overlay(alignment: .bottom) {
                 // 호버 시 투명도 직접 조절 (설정 창과 동일 키·범위, 레이아웃 불변)

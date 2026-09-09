@@ -133,7 +133,8 @@ final class FloatingWindowController {
             win.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             win.isOpaque = false
             win.backgroundColor = .clear
-            win.hasShadow = true
+            // Tahoe는 hasShadow와 함께 창 경계에 글래스 엣지(밝은 림)를 그린다 (TetherLens-vie) → 테두리 없는 외관을 위해 그림자 OFF
+            win.hasShadow = false
             win.isMovableByWindowBackground = true
             win.isReleasedWhenClosed = false
             win.contentViewController = hosting

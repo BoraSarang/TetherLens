@@ -400,3 +400,27 @@
 | 172 | 진입점: 우클릭 더보기 토글 + ⌘⇧F + ⌘K 팔레트 액션 | P1 | ⬜ |
 | 173 | SettingsView 플로팅 창 섹션(시작 시 표시/투명도/트래픽) + SettingsManager 3키 + Localized | P1 | ⬜ |
 | 174 | 검증: test.sh + build + DebugPanel(ERROR 0) + Info.plist v0.31.0/31 + 문서(CHANGELOG/TODO/세션) | P1 | ⬜ |
+
+## 🔄 v0.32.1 — 플로팅 테두리 호버시에만 표시 (2026-09-09)
+
+> 사용자 요청: 플로팅 화면의 4각 테두리 제거 → 호버시에만 표시로 합의. 계획: docs/plans/PLAN_v0.32.1_macos.md (bd: TetherLens-ix5)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 191 | 플로팅 외곽 테두리 호버시에만 표시 (`FloatingWindowView` overlay 조건분기) + 검증/문서 | P2 | ✅ |
+
+## 🔄 v0.32.2 — 플로팅 Tahoe 글래스 엣지 제거 (2026-09-09)
+
+> 후속: overlay 제거 후에도 직각의 밝은 림 잔류 → 픽셀 측정으로 Tahoe 글래스 엣지 확정 → `hasShadow=false`로 제거. 계획: docs/plans/PLAN_v0.32.1_macos.md 追記 (bd: TetherLens-vie)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 192 | 플로팅 글래스 엣지 제거 (`hasShadow=false`, 머티리얼 원복) + 캡처 검증/문서 | P2 | ✅ |
+
+## 🔄 v0.32.3 — 플로팅 모서리 16pt + 투명도 70% (2026-09-09)
+
+> 사용자 요청: 직각이 아니라 원처럼 깎인 둥근 표현 → 16pt + 투명도 70%로 합의. 계획: docs/plans/PLAN_v0.32.1_macos.md §6 (bd: TetherLens-1xz)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 193 | 플로팅 모서리 24pt(전용 상수, 16→24 상향) + 투명도 70%(defaults) + 캡처 검증/문서 | P2 | ✅ |

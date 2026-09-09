@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.32.3] — 2026-09-09 — 플로팅 둥근 모서리
+
+> 계획: docs/plans/PLAN_v0.32.1_macos.md §6 (bd: TetherLens-1xz). 투명도 35%에서 r=10 경계가 희미해 직각처럼 보인다는 피드백.
+
+### Changed
+- **플로팅 모서리 24pt** — 전용 상수 분리 (`TLRound.medium`은 타 화면 공용이라 미변경). 16pt는 패널 폭 대비 밋밋해 24pt로 상향, 캡처로 곡선 확인
+- **투명도 70%** — 저장값이라 `defaults write`로 적용 (설정 슬라이더와 동일 키, 재실행 불필요)
+
+## [0.32.2] — 2026-09-09 — 플로팅 Tahoe 글래스 엣지 제거
+
+> 계획: docs/plans/PLAN_v0.32.1_macos.md (bd: TetherLens-vie). macOS 26 Tahoe에서 `hasShadow=true`인 투명 borderless 패널 경계에 시스템이 밝은 글래스 림(픽셀 측정: 외곽→딥→피크→내부)을 함께 그림. 머티리얼 무관(단색 교체 실험でも 림 잔류), 그림자 OFF로 림 제거 확인(외곽→내부 단일 계단).
+
+### Changed
+- **플로팅 그림자 OFF** — `FloatingWindowController` `hasShadow=false` (Tahoe 글래스 엣지 제거, 대가로 드롭 섀도우 없음)
+- **플로팅 외곽 테두리 호버시에만 표시** (v0.32.1에서 선행, 유지)
+
+## [0.32.1] — 2026-09-09 — 플로팅 테두리 호버시에만 표시
+
+> 계획: docs/plans/PLAN_v0.32.1_macos.md (bd: TetherLens-ix5)
+
+### Changed
+- **플로팅 외곽 테두리** — 상시 1pt 표시 제거, 평소에는 그림자로만 구분하고 마우스 호버 시에만 `separatorColor` 테두리 표시 (`FloatingWindowView` overlay 조건분기, `fitToContent` 실측 구조 유지)
+
 ## [0.32.0] — 2026-09-07 — 프로세스 CPU/RAM 보조 표시
 
 > 네트워크 프로세스 보기에 CPU%/메모리 보조 지표 추가 (B안). 추가 타이머·서브프로세스 없음 — nettop 주기(기본 10초)에 편승. 계획: docs/plans/PLAN_v0.32.0_macos.md
