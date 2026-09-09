@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.35.0] — 2026-09-09 — 속도 테스트 + 연결 유지 (진행 중)
+## [0.35.0] — 2026-09-09 — 속도 테스트 + 연결 유지
 
 > 계획: docs/plans/PLAN_v0.35.0_macos.md (bd: TetherLens-e8a/lgb). COMPETITOR_ANALYSIS 벌점 아이디어 2종 정식 등록.
 

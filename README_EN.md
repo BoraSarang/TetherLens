@@ -47,8 +47,8 @@ TetherLens puts the **live picture**, **exhaustion forecast**, and the **culprit
 | ❤️ **Live menu-bar view** | `▼ 1.2 MB/s / ▲ 120 KB/s` up/down, plus **usage/remaining** or **signal strength (RSSI)/latency**, auto-switching based on your quota status. Insight colors (green→red) make state obvious |
 | 📱 **Auto hotspot detection** | Distinguishes iOS Personal Hotspot ↔ Android tethering. **Composite scoring** across SSID·gateway·cost·BSSID (catches model names like `S22 HotSpot`) for automatic profile switching |
 | 🎯 **QoS protection gauge** | Today's usage vs daily quota. System alerts at thresholds (50/80/95/100%) |
-| 🔮 **Exhaustion forecast** | Dashboard card predicts when the quota runs out at the current pace |
-| 📊 **Dashboard insights** | Total/daily average, period comparison, top days & hotspots, top apps — a report that shows the full picture |
+| 🔮 **Exhaustion forecast** | Predicts when the quota runs out at the current pace — shown as the chart pace line |
+| 🛰️ **Network diagnostics center** | Speed test (down/up measurement) · ping · traceroute · bufferbloat + **Wi-Fi reconnect** on drop (one-shot auto / manual button) |
 | 📈 **Advanced graphs** | Breakdown by hour/day, cumulative lines, quota thresholds |
 | 📍 **GPS/IP location tracking** | Map pin of connection location (GPS·IP) + movement history timeline |
 | 🛰️ **Connection quality monitor** | Gateway + external (8.8.8.8) Ping RTT. 3-packet cross-validation flags **only real violations, no false disconnects**, with auto recovery detection |
