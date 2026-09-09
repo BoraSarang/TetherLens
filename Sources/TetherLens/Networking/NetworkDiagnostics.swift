@@ -270,11 +270,13 @@ final class NetworkDiagnostics {
 
     /// 속도 테스트 상수. 다운은 Cloudflare 1차 + hetzner 폴백 (hetzner 단독 실패 실측).
     nonisolated static let speedTestDownURLs = [
-        URL(string: "https://speed.cloudflare.com/__down?bytes=10000000")!,
+        URL(string: "https://speed.cloudflare.com/__down?bytes=25000000")!,
         URL(string: "https://speed.hetzner.de/10MB.bin")!,
     ]
+    nonisolated static let speedTestDownBytes: Int64 = 10_000_000  // 빠른 회선 상한 (느린 회선은 시간 상한이 먼저)
+    nonisolated static let speedTestDownSeconds: TimeInterval = 12  // 느린 회선용 시간 상한
+    nonisolated static let speedTestMinBytes: Int64 = 200_000  // 신뢰 하한 (미만이면 실패)
     nonisolated static let speedTestUpURL = URL(string: "https://speed.cloudflare.com/__up")!
-    nonisolated static let speedTestDownBytes: Int64 = 10_000_000
     nonisolated static let speedTestUpBytes: Int64 = 5_000_000
     nonisolated static let speedTestTimeout: TimeInterval = 30
 
@@ -298,10 +300,12 @@ final class NetworkDiagnostics {
 
     /// 다운/업 실측. 수동 개시 전용 — 상시 측정 없음 (데이터·에너지 정책).
     func speedTest() async -> DiagnosticsEntry {
+        DebugLogger.shared.action("Network", "속도 테스트 시작")
         async let down = measureDownload()
         async let up = measureUpload()
         let (downMbps, upMbps) = await (down, up)
         guard let downMbps else {
+            DebugLogger.shared.error("Network", "속도 테스트 실패: 다운로드 측정 실패/타임아웃")
             return DiagnosticsEntry(title: "속도 테스트", status: .fail, detail: "다운로드 측정 실패/타임아웃 — 네트워크 상태 확인 필요")
         }
         var detail = String(format: "다운 %.1f Mbps", downMbps)
@@ -314,6 +318,7 @@ final class NetworkDiagnostics {
         }
         detail += String(format: " (측정 소모 약 %.0fMB)", Double(Self.speedTestDownBytes + Self.speedTestUpBytes) / 1_000_000)
         detail += "\n→ 저하 시 공유기 근접 후 재측정 — 그래도 낮으면 ISP 문제 가능"
+        DebugLogger.shared.action("Network", String(format: "속도 테스트 완료: 다운 %.1f Mbps", downMbps))
         return DiagnosticsEntry(title: "속도 테스트", status: status, detail: detail)
     }
 
@@ -336,8 +341,13 @@ final class NetworkDiagnostics {
                 for try await _ in bytes {
                     if firstByte == nil { firstByte = Date() }
                     total += 1
+                    // 빠른 회선은 용량 상한, 느린 회선은 시간 상한에서 중단
+                    if total >= Self.speedTestDownBytes { break }
+                    if total % 32768 == 0,
+                       let first = firstByte,
+                       Date().timeIntervalSince(first) >= Self.speedTestDownSeconds { break }
                 }
-                guard total > 0, let first = firstByte else { return nil }
+                guard total >= Self.speedTestMinBytes, let first = firstByte else { return nil }
                 return Self.megabitsPerSecond(bytes: total, elapsed: Date().timeIntervalSince(first))
             } catch {
                 return nil
