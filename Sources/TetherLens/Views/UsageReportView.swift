@@ -17,6 +17,7 @@ struct UsageReportView: View {
     @State private var expandedSection: AppTrafficSection = .user
     @State private var sortOrder: TrafficSortOrder = .total
     @State private var previousPeriodTotal: Int64 = 0
+    @State private var insights: [InsightItem] = []
 
     enum TrafficSortOrder: CaseIterable {
         case total, upload, download
@@ -215,16 +216,25 @@ struct UsageReportView: View {
     private var contentBody: some View {
         switch viewMode {
         case .chart:
-            ReportChartsView(
-                period: selectedPeriod,
-                dailyUsage: dailyUsage,
-                monthlyUsage: monthlyUsage,
-                hourlyUsage: hourlyUsage,
-                currentTotal: dailyUsage.reduce(0) { $0 + $1.total },
-                previousPeriodTotal: previousPeriodTotal,
-                recentPaceBytes: recentPaceBytes,
-                quotaRuleMarkBytes: quotaRuleMarkBytes
-            )
+            ScrollView {
+                VStack(spacing: 0) {
+                    InsightSectionView(
+                        insights: insights,
+                        onShowAppTraffic: { viewMode = .appTraffic },
+                        onOpenDiagnostics: { DiagnosticsWindowController.shared.show() }
+                    )
+                    ReportChartsView(
+                        period: selectedPeriod,
+                        dailyUsage: dailyUsage,
+                        monthlyUsage: monthlyUsage,
+                        hourlyUsage: hourlyUsage,
+                        currentTotal: dailyUsage.reduce(0) { $0 + $1.total },
+                        previousPeriodTotal: previousPeriodTotal,
+                        recentPaceBytes: recentPaceBytes,
+                        quotaRuleMarkBytes: quotaRuleMarkBytes
+                    )
+                }
+            }
         case .detail:
             ReportDetailView(period: selectedPeriod, dailyUsage: dailyUsage, monthlyUsage: monthlyUsage)
         case .session:
@@ -267,6 +277,7 @@ struct UsageReportView: View {
             dailySessionSummary = []
             monthlySessionSummary = []
             previousPeriodTotal = 0
+            insights = []
             return
         }
         let loadAllSessions = viewMode == .heatmap || (viewMode == .session && selectedPeriod.days == 1)
@@ -325,6 +336,7 @@ struct UsageReportView: View {
             monthlySessionSummary = allMonthlySess.values.sorted { $0.date < $1.date }
             appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
             loadPreviousPeriod()
+            refreshInsights()
             return
         }
         dailyUsage = ProfileManager.shared.getDailyUsage(profileId: pid, days: selectedPeriod.days)
@@ -345,6 +357,46 @@ struct UsageReportView: View {
         hourlyUsage = selectedPeriod.days == 1 ? ProfileManager.shared.getHourlyUsage(profileId: pid, days: 1) : []
         appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
         loadPreviousPeriod()
+        refreshInsights()
+    }
+
+    // MARK: - Insights (v0.36)
+
+    /// 차트 탭에서만 계산. DB 마이그레이션 없이 ProfileManager 기존 조회로 조립한다.
+    private func refreshInsights() {
+        guard viewMode == .chart else {
+            insights = []
+            return
+        }
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        let todayKey = f.string(from: Date())
+        let targets: [Profile]
+        if selectedProfileId == allProfilesId {
+            targets = profiles
+        } else {
+            targets = profiles.filter { $0.id == selectedProfileId }
+        }
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date.distantPast
+        let pdata: [InsightInput.ProfileData] = targets.map { p in
+            let t = ProfileManager.shared.getTodayUsage(profileId: p.id)
+            let daily = ProfileManager.shared.getDailyUsage(profileId: p.id, days: 8)
+            let hourly = ProfileManager.shared.getHourlyUsage(profileId: p.id, days: 1)
+            let ipCount = Set(ProfileManager.shared.getIPLogs(profileId: p.id)
+                .filter { $0.firstSeenAt >= weekAgo }
+                .map(\.ipAddress)).count
+            return InsightInput.ProfileData(
+                id: p.id, name: p.name,
+                quotaBytes: p.quotaGB.map { Int64($0 * 1_000_000_000) },
+                todayUpload: t.upload, todayDownload: t.download,
+                dailyTotals: daily.map { (day: $0.id, total: $0.total) },
+                hourlyTotals: hourly.map { (hour: $0.hour, total: $0.total) },
+                recentDistinctIPs: ipCount)
+        }
+        let apps = ProfileManager.shared.getAppTrafficLogs(days: 1)
+            .map { (name: $0.processName, total: $0.uploadBytes + $0.downloadBytes) }
+        insights = InsightEngine.build(InsightInput(topApps: apps, profiles: pdata, todayKey: todayKey, now: Date()))
+        DebugLogger.shared.action("Stats", "[FEATURE] Insight \(insights.count)개 (\(insights.map(\.kind.rawValue).joined(separator: ",")))")
     }
 
     // MARK: - Previous Period

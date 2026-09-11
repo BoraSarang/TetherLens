@@ -34,7 +34,7 @@ struct ReportChartsView: View {
             }
             .help("\(Localized.prevPeriod) \(previousPeriodTotal.formattedBytes)")
             .padding(.horizontal, TLSpace.xl)
-            let peakBar = source.map { max($0.upload, $0.download) }.max() ?? 1
+            let peakBar = source.map { $0.upload + $0.download }.max() ?? 1
             let peakQuota = quotaRuleMarkBytes ?? 0
             let yTop = max(peakBar, peakQuota) * 11 / 10
             let yDomain: ClosedRange<Int64> = 0 ... max(yTop, 1)
@@ -138,6 +138,7 @@ struct ReportChartsView: View {
             .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
             .padding(.horizontal, TLSpace.xl)
             .frame(height: 304)
+            .clipped()
         }
     }
 

@@ -12,7 +12,13 @@
 ### Tests
 - SpeedTestTests 5개 + ConnectionGuardianTests 6개 (Mbps·쿨다운·장치명 파싱, 실망/networksetup 호출은 수동)
 
-## [Unreleased] — 인사이트 섹션 제거
+## [Unreleased] — 인사이트 섹션 제거 + 팝오버 빠른 복사
+
+### Added
+- **팝오버 빠른 복사** `[macOS]` (bd te5) — 상태행 우측 외부 IP 칩 1클릭 복사 + 우클릭 메뉴(외부/내부 IP·게이트웨이·SSID·BSSID). 간략 보기에서도 복사 가능. `detailRow` 복사 로직을 `copyToPasteboard` 헬퍼로 통합, `[ACTION] [UI] [FEATURE] QuickCopy` 로그
+- **인사이트 재설계** `[macOS]` (bd r60) — v0.34 삭제 후 신규 6종 (한도 소진 예측·주범 앱·급증·야간 소모·업로드 편중·IP 변경 잦음). DB 마이그레이션 없이 기존 조회로 계산 (`InsightEngine` 순수 함수 + 테스트 12개). 리포트 차트 탭 최상단 고정 섹션 "눈여겨볼 점", 조용하면 "특이사항 없음". 주범 앱→앱 트래픽 탭, IP 잦음→진단 센터 연결
+- **차트 Y축 수정** `[macOS]` — 막대가 업로드+다운로드 적층인데 도메인 상한이 `max(업,다운)`이라 막대가 플롯을 뚫고 인사이트 카드를 덮던 문제 수정 (적층 합계 기준 + `clipped()`)
+- **리포트 미리보기 렌더링** `[macOS]` (bd ik3) — 원문 mono 표시 → 네이티브 렌더링 기본 + 렌더링/원문 토글. 표는 `Grid`, 복사 버튼은 원문 MD 복사 유지 (`AttributedString`은 표 미지원이라 요약 데이터 직접 렌더)
 
 ### Removed
 - 리포트 창 **"지금 알면 좋은 것" 섹션 제거** (사용자 요청) — `InsightsView` 호출 + `statsSnapshot`/`loadInsights` 스냅샷 배선 삭제, 전기간 합계 로드는 `loadPreviousPeriod()`로 유지

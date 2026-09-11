@@ -284,6 +284,40 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var decreased: String { value(kr: "감소", en: "down") }
   static var quotaRuleLabel: String { value(kr: "할당량", en: "Quota") }
   static var paceLabel: String { value(kr: "평균", en: "Avg") }
+
+  // MARK: - Insights (v0.36)
+  static var insightSectionTitle: String { value(kr: "눈여겨볼 점", en: "Worth a Look") }
+  static var insightNone: String { value(kr: "특이사항 없음", en: "All clear") }
+  static func insightPaceTitle(_ profile: String) -> String {
+    value(kr: "\(profile) 한도 소진 예상", en: "\(profile) quota exhaustion forecast")
+  }
+  static func insightPaceBody(_ time: String, _ pct: Int) -> String {
+    value(kr: "오늘 페이스면 \(time)에 \(pct)% 도달", en: "At today's pace, \(pct)% by \(time)")
+  }
+  static func insightOffenderTitle(_ app: String) -> String {
+    value(kr: "\(app) 사용량 집중", en: "\(app) dominates usage")
+  }
+  static func insightOffenderBody(_ bytes: String, _ share: Int) -> String {
+    value(kr: "오늘 \(bytes) 중 \(share)% — 탭하여 앱 트래픽 보기", en: "\(share)% of \(bytes) today — tap for app traffic")
+  }
+  static var insightSurgeTitle: String { value(kr: "평소보다 급증", en: "Usage surge") }
+  static func insightSurgeBody(_ bytes: String, _ ratio: String) -> String {
+    value(kr: "오늘 \(bytes) — 7일 평균의 \(ratio)배", en: "\(bytes) today — \(ratio)× the 7-day average")
+  }
+  static var insightNightTitle: String { value(kr: "심야 시간대 소모", en: "Overnight drain") }
+  static func insightNightBody(_ share: Int) -> String {
+    value(kr: "00–06시에 오늘의 \(share)% 사용 — 백그라운드 동기화 확인", en: "\(share)% of today used 00–06 — check background sync")
+  }
+  static var insightUploadTitle: String { value(kr: "업로드 비중 높음", en: "Heavy uploads") }
+  static func insightUploadBody(_ share: Int) -> String {
+    value(kr: "오늘 업로드가 \(share)% — 클라우드 동기화 확인", en: "Uploads are \(share)% today — check cloud sync")
+  }
+  static var insightIPTitle: String { value(kr: "IP 변경 잦음", en: "Frequent IP changes") }
+  static func insightIPBody(_ n: Int) -> String {
+    value(kr: "최근 7일간 IP \(n)개 — 탭하여 진단 열기", en: "\(n) IPs in 7 days — tap to open diagnostics")
+  }
+  static var reportRendered: String { value(kr: "렌더링", en: "Rendered") }
+  static var reportSource: String { value(kr: "원문", en: "Source") }
   static var sidebarViewSection: String { value(kr: "보기", en: "View") }
   static var sidebarAnalyzeSection: String { value(kr: "분석", en: "Analyze") }
 
@@ -369,6 +403,12 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static func copiedValue(_ val: String) -> String {
     value(kr: "\(val)가 복사되었습니다.", en: "\(val) copied.")
   }
+  static var copyExternalIP: String { value(kr: "외부 IP 복사", en: "Copy External IP") }
+  static var copyInternalIP: String { value(kr: "내부 IP 복사", en: "Copy Local IP") }
+  static var copyGateway: String { value(kr: "게이트웨이 복사", en: "Copy Gateway") }
+  static var copySSID: String { value(kr: "SSID 복사", en: "Copy SSID") }
+  static var copyBSSID: String { value(kr: "BSSID 복사", en: "Copy BSSID") }
+  static var copyExternalIPHelp: String { value(kr: "외부 IP 복사", en: "Copy external IP") }
 
   // MARK: - Picker Options
   static let menuBarIntervalOptions: [(String, Double)] = [

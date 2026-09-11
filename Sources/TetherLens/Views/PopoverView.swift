@@ -352,6 +352,7 @@ struct PopoverView: View {
     }
 
     /// 상태 1행 — 배너 3종을 대체하는 단일 상태 표시 (장식 없이 도트+텍스트)
+    /// 우측에는 외부 IP 칩을 상시 노출해 간략 보기에서도 1클릭 복사 (v0.35.1 QuickCopy)
     private var statusRow: some View {
         HStack(spacing: TLSpace.sm) {
             Circle()
@@ -361,8 +362,83 @@ struct PopoverView: View {
                 .font(TLFont.detail)
                 .foregroundColor(statusColor)
                 .lineLimit(1)
+            Spacer(minLength: TLSpace.sm)
+            quickIPChip
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contextMenu { quickCopyMenu }
+    }
+
+    /// 상태행 우측 외부 IP 칩 — 탭하면 즉시 복사
+    private var quickIPChip: some View {
+        Group {
+            if let extIP = ipResolver.externalIP {
+                Button {
+                    copyToPasteboard(extIP, source: "statusChip")
+                } label: {
+                    HStack(spacing: 3) {
+                        if let code = ipResolver.geoInfo?.countryCode {
+                            Text(flag(from: code))
+                                .font(TLFont.detail)
+                        }
+                        Text(extIP)
+                            .font(TLFont.detail.monospacedDigit())
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Image(systemName: "doc.on.doc")
+                            .font(TLFont.small)
+                            .foregroundColor(TLPalette.copyHint)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help(Localized.copyExternalIPHelp)
+                .onHover { inside in
+                    if inside { NSCursor.pointingHand.push() }
+                    else { NSCursor.pop() }
+                }
+            } else {
+                Text("—")
+                    .font(TLFont.detail.monospacedDigit())
+                    .foregroundColor(TLPalette.textSecondary)
+                    .help(Localized.measuring)
+            }
+        }
+    }
+
+    /// 상태행·속도 영역 우클릭 메뉴 — 자주 복사하는 주소 모음 (v0.35.1 QuickCopy)
+    @ViewBuilder
+    private var quickCopyMenu: some View {
+        Button(Localized.copyExternalIP) {
+            if let ip = ipResolver.externalIP { copyToPasteboard(ip, source: "menu") }
+        }
+        .disabled(ipResolver.externalIP == nil)
+        Button(Localized.copyInternalIP) {
+            if let ip = hotspotDetector.currentConnection?.localIP { copyToPasteboard(ip, source: "menu") }
+        }
+        .disabled(hotspotDetector.currentConnection?.localIP == nil)
+        Button(Localized.copyGateway) {
+            if let gw = hotspotDetector.currentConnection?.gatewayIP { copyToPasteboard(gw, source: "menu") }
+        }
+        .disabled(hotspotDetector.currentConnection?.gatewayIP == nil)
+        Button(Localized.copySSID) {
+            if let ssid = ssidString { copyToPasteboard(ssid, source: "menu") }
+        }
+        .disabled(ssidString == nil)
+        Button(Localized.copyBSSID) {
+            if let bssid = bssidString { copyToPasteboard(bssid, source: "menu") }
+        }
+        .disabled(bssidString == nil)
+    }
+
+    /// 클립보드 복사 공용 헬퍼 — detailRow/칩/메뉴가 공유
+    private func copyToPasteboard(_ value: String, source: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+        copiedIPMessage = Localized.copiedValue(value)
+        DebugLogger.shared.action("UI", "[FEATURE] QuickCopy 복사 (source=\(source))")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            copiedIPMessage = nil
+        }
     }
 
     private var statusColor: Color {
@@ -1253,12 +1329,7 @@ struct PopoverView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard let copyValue else { return }
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(copyValue, forType: .string)
-            copiedIPMessage = Localized.copiedValue(copyValue)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                copiedIPMessage = nil
-            }
+            copyToPasteboard(copyValue, source: "detailRow")
         }
     }
 
