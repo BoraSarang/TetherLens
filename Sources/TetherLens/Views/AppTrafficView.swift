@@ -122,6 +122,7 @@ struct AppTrafficView: View {
 
     private var headerRow: some View {
         HStack(spacing: 0) {
+            Color.clear.frame(width: 20)
             Text(Localized.process)
                 .font(TLFont.smallBold)
                 .foregroundColor(TLPalette.textSecondary)
@@ -144,6 +145,18 @@ struct AppTrafficView: View {
     private func appRow(_ app: TrafficMonitor.AppTraffic) -> some View {
         let isBlocked = blockedApps.contains(app.processName)
         return HStack(spacing: 0) {
+            Group {
+                if let nsImage = AppIconResolver.icon(forProcess: app.processName) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    Image(systemName: "app")
+                        .foregroundColor(TLPalette.textSecondary)
+                }
+            }
+            .frame(width: 16, height: 16)
+            .padding(.trailing, 4)
             Text(app.processName)
                 .font(TLFont.medium)
                 .lineLimit(1)
