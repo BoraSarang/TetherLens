@@ -11,6 +11,7 @@ struct FloatingWindowView: View {
     @AppStorage("floatingShowCPU") private var showCPU = true
     @AppStorage("floatingShowRAM") private var showRAM = true
     @AppStorage("floatingShowUsage") private var showUsage = true
+    @AppStorage("appTraffic_show_system") private var showSystem = false
     @AppStorage("floatingOpacity") private var opacity: Double = 0.9
     @State private var isHovering = false
 
@@ -271,7 +272,8 @@ struct FloatingWindowView: View {
     }
 
     private var userApps: [TrafficMonitor.AppTraffic] {
-        trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }
+        if showSystem { return trafficMonitor.apps }
+        return trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }
     }
 
     private var networkTop3: [TrafficMonitor.AppTraffic] {
@@ -289,7 +291,8 @@ struct FloatingWindowView: View {
     }
 
     private var userResources: [String: ProcessResource] {
-        trafficMonitor.allResources.filter { !SystemProcesses.set.contains($0.key) }
+        if showSystem { return trafficMonitor.allResources }
+        return trafficMonitor.allResources.filter { !SystemProcesses.set.contains($0.key) }
     }
 
     private func blockSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {

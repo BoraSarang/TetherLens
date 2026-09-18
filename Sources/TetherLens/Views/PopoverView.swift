@@ -37,6 +37,7 @@ struct PopoverView: View {
     @AppStorage("popover_expanded_address_info") private var expandedAddressInfo = false
     @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
     @AppStorage("popoverShowResources") private var showResources = true
+    @AppStorage("appTraffic_show_system") private var showSystemProcesses = false
     @AppStorage("popover_summary_mode") private var summaryMode = true
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
@@ -279,11 +280,11 @@ struct PopoverView: View {
         connectionInfoView
         collapsibleSectionDivider(Localized.addressInfo, isExpanded: $expandedAddressInfo)
         connectionAddressView
-        if showAppTraffic, !trafficMonitor.apps.isEmpty {
+        if showAppTraffic, !visibleAppTraffic.isEmpty {
             trafficSectionDivider
             appTrafficPreview
         }
-        if showResources, !trafficMonitor.apps.isEmpty {
+        if showResources, !trafficMonitor.allResources.isEmpty {
             resourceSection
         }
         sectionDivider(Localized.profile)
@@ -782,8 +783,13 @@ struct PopoverView: View {
         }
     }
 
+    private var visibleAppTraffic: [TrafficMonitor.AppTraffic] {
+        if showSystemProcesses { return trafficMonitor.apps }
+        return trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }
+    }
+
     private var appTrafficPreview: some View {
-        let top3 = Array(trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }.prefix(3))
+        let top3 = Array(visibleAppTraffic.prefix(3))
         return VStack(spacing: TLSpace.xs) {
             HStack(spacing: 0) {
                 Text(Localized.process)
@@ -800,7 +806,8 @@ struct PopoverView: View {
                     .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
             }
             ForEach(top3) { app in
-                HStack(spacing: 0) {
+                HStack(spacing: 4) {
+                    procIcon(app.processName)
                     Text(app.processName)
                         .font(TLFont.medium)
                         .lineLimit(1)
@@ -1172,7 +1179,7 @@ struct PopoverView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { openWindow(id: "appTraffic") }
-            if !trafficMonitor.allResources.isEmpty {
+            if !visibleResources.isEmpty {
                 Text(Localized.cpu)
                     .font(TLFont.smallBold)
                     .foregroundColor(TLPalette.textSecondary)
@@ -1203,14 +1210,19 @@ struct PopoverView: View {
         }
     }
 
-    /// 전체 프로세스 기준 CPU Top3 — 네트워크 무관 (v0.32.4).
+    /// 전체 프로세스 기준 CPU Top3 — 네트워크 무관. 시스템 표시 토글과 연동.
     private var cpuTop3: [(name: String, res: ProcessResource)] {
-        SystemResourceMonitor.topResources(trafficMonitor.allResources, limit: 3) { $0.cpuPercent ?? -1 }
+        SystemResourceMonitor.topResources(visibleResources, limit: 3) { $0.cpuPercent ?? -1 }
     }
 
-    /// 전체 프로세스 기준 메모리 Top3 — 네트워크 무관 (v0.32.4).
+    /// 전체 프로세스 기준 메모리 Top3 — 네트워크 무관. 시스템 표시 토글과 연동.
     private var memTop3: [(name: String, res: ProcessResource)] {
-        SystemResourceMonitor.topResources(trafficMonitor.allResources, limit: 3) { Double($0.rssBytes) }
+        SystemResourceMonitor.topResources(visibleResources, limit: 3) { Double($0.rssBytes) }
+    }
+
+    private var visibleResources: [String: ProcessResource] {
+        if showSystemProcesses { return trafficMonitor.allResources }
+        return trafficMonitor.allResources.filter { !SystemProcesses.set.contains($0.key) }
     }
 
     private func resourceRow(name: String, value: String, valueColor: Color) -> some View {
