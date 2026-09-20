@@ -72,11 +72,12 @@ jobs:
           case "$BODY" in
             *"## 설치 방법"*) ;; # 이미 포함됨
             *)
-              gh release edit "$TAG" --notes "$BODY
-
-⸺
-## 설치 방법
-1. \`TetherLens-${TAG}.zip\`을 다운로드해 압축을 풉니다.
-2. \`TetherLens.app\`을 응용프로그램 폴더에 덮어씁니다.
-3. 첫 실행은 Finder에서 우클릭 → '열기'로 허용합니다 (ad-hoc 서명)." ;;
+              {
+                printf '%s\n\n' "$BODY"
+                printf '---\n## 설치 방법\n'
+                printf '1. `TetherLens-%s.zip`을 다운로드해 압축을 풉니다.\n' "$TAG"
+                printf '2. `TetherLens.app`을 응용프로그램 폴더에 덮어씁니다.\n'
+                printf '3. 첫 실행은 Finder에서 우클릭 → "열기"로 허용합니다 (ad-hoc 서명).\n'
+              } > /tmp/release_body.md
+              gh release edit "$TAG" --notes-file /tmp/release_body.md ;;
           esac
