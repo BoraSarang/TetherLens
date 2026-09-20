@@ -29,6 +29,7 @@ struct PopoverView: View {
     @State private var savingModeActive = SavingModeManager.shared.isEnabled
     @State private var showIPHistory = false
     @ObservedObject private var trafficMonitor = TrafficMonitor.shared
+    @ObservedObject private var updater = UpdaterManager.shared
     @State private var sessionStartTime: Date?
     @State private var quotaAlertMessage: String?
     @State private var pingAlert: PingAlert?
@@ -134,10 +135,15 @@ struct PopoverView: View {
                 qosGaugeBody
             }
             .padding(TLSpace.inset)
+            // 사용 기록·연결성은 고정 영역에 둔다 — 인터페이스부터만 스크롤
+            VStack(spacing: TLSpace.xl) {
+                speedHistorySection
+                connectivitySection
+            }
+            .padding(.horizontal, TLSpace.inset)
+            .padding(.bottom, TLSpace.xl)
             ScrollView {
                 VStack(spacing: TLSpace.xl) {
-                    speedHistorySection
-                    connectivitySection
                     interfaceSection
                     // 간략 보기에는 프로세스·리소스 섹션 없음 (v0.32.1) — 상세 보기에서만 표시
                     if !summaryMode {
@@ -148,7 +154,8 @@ struct PopoverView: View {
                 .padding(.bottom, TLSpace.sm)
             }
             // NSPopover 자동 사이징에서는 maxHeight가 무시되고 찌그러지므로 고정 높이 사용
-            .frame(height: 420)
+            // 간략/상세 동일 높이 — 모드 전환 시 팝오버 크기 변경(출렁임) 방지. 상세는 내부 스크롤
+            .frame(height: 180)
             Divider()
             bottomButtons
                 .padding(.horizontal, TLSpace.inset)
@@ -184,6 +191,8 @@ struct PopoverView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("popoverWillShow"))) { _ in
             resetPopoverState()
+            // 팝오버를 열 때 주기에 맞춰 조용히 최신 버전을 확인한다
+            Task { await updater.maybeAutoCheckForUpdate() }
         }
         .animation(.easeOut(duration: 0.2), value: quotaAlertMessage)
         .animation(.easeOut(duration: 0.2), value: pingAlert)
@@ -1030,53 +1039,72 @@ struct PopoverView: View {
             sectionDivider(Localized.usageHistory)
             let history = networkMonitor.speedHistory
             if history.count >= 2 {
-                speedMiniChart(
-                    title: Localized.uploadShort,
-                    color: TLPalette.upload,
-                    current: formatByteRate(Int64(networkMonitor.currentUploadSpeed / 8)),
-                    values: history.map { $0.uploadBps / 8 }
-                )
-                speedMiniChart(
-                    title: Localized.downloadShort,
-                    color: TLPalette.download,
-                    current: formatByteRate(Int64(networkMonitor.currentDownloadSpeed / 8)),
-                    values: history.map { $0.downloadBps / 8 }
-                )
+                speedCombinedChart(history: history)
             } else {
                 Text(Localized.measuring)
                     .font(TLFont.caption)
                     .foregroundColor(TLPalette.textSecondary)
-                    .frame(maxWidth: .infinity, minHeight: 140, alignment: .center)
+                    .frame(maxWidth: .infinity, minHeight: 104, alignment: .center)
             }
         }
     }
 
-    /// 분리형 미니 차트 (업/다운 독립 Y축 — 작은 값 파형이 묻히지 않음)
-    private func speedMiniChart(title: String, color: Color, current: String, values: [Double]) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(title)
-                    .font(TLFont.caption)
-                    .foregroundColor(TLPalette.textSecondary)
+    /// 단일 오버레이 차트 — 다운로드 Area + 업로드 Line, 공유 Y축, series 구분 필수.
+    /// series 없이 같은 값 라벨을 쓰면 Charts가 업/다운을 단일 시리즈로 병합해 렌더가 엉킴.
+    /// 업은 Line만 그려 작은 값도 식별되고 겹침 탁함도 없음. Y축 0구간(idle) 대비 하한 1 보장.
+    private func speedCombinedChart(history: [NetworkMonitor.SpeedSample]) -> some View {
+        let uploads = history.map { $0.uploadBps / 8 }
+        let downloads = history.map { $0.downloadBps / 8 }
+        let peak = max(uploads.max() ?? 0, downloads.max() ?? 0, 1) * 1.15
+        let upCurrent = formatByteRate(Int64(networkMonitor.currentUploadSpeed / 8))
+        let downCurrent = formatByteRate(Int64(networkMonitor.currentDownloadSpeed / 8))
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: TLSpace.md) {
+                HStack(spacing: 4) {
+                    Circle().fill(TLPalette.upload).frame(width: 6, height: 6)
+                    Text(Localized.uploadShort)
+                        .font(TLFont.caption)
+                        .foregroundColor(TLPalette.textSecondary)
+                    Text(upCurrent)
+                        .font(TLFont.caption.monospacedDigit())
+                        .foregroundColor(TLPalette.upload)
+                }
                 Spacer()
-                Text(current)
-                    .font(TLFont.caption.monospacedDigit())
-                    .foregroundColor(color)
+                HStack(spacing: 4) {
+                    Text(downCurrent)
+                        .font(TLFont.caption.monospacedDigit())
+                        .foregroundColor(TLPalette.download)
+                    Text(Localized.downloadShort)
+                        .font(TLFont.caption)
+                        .foregroundColor(TLPalette.textSecondary)
+                    Circle().fill(TLPalette.download).frame(width: 6, height: 6)
+                }
             }
             Chart {
-                ForEach(Array(values.enumerated()), id: \.offset) { idx, v in
+                ForEach(Array(downloads.enumerated()), id: \.offset) { idx, v in
                     AreaMark(
                         x: .value("t", idx),
-                        y: .value("v", v)
+                        y: .value("v", v),
+                        series: .value("방향", "다운")
                     )
-                    .foregroundStyle(color.opacity(0.35))
+                    .foregroundStyle(TLPalette.download.opacity(0.30))
+                    .interpolationMethod(.catmullRom)
+                }
+                ForEach(Array(uploads.enumerated()), id: \.offset) { idx, v in
+                    LineMark(
+                        x: .value("t", idx),
+                        y: .value("v", v),
+                        series: .value("방향", "업")
+                    )
+                    .foregroundStyle(TLPalette.upload)
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
                     .interpolationMethod(.catmullRom)
                 }
             }
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
-            .chartYScale(domain: 0...((values.max() ?? 1) * 1.15))
-            .frame(height: 64)
+            .chartYScale(domain: 0...peak)
+            .frame(height: 88)
         }
     }
 
@@ -1294,7 +1322,9 @@ struct PopoverView: View {
                 }
                 Divider()
                 Button(Localized.settings) { openSettings() }
-                Button(Localized.checkUpdates) { UpdaterManager.shared.openDownloadPage() }
+                Button(Localized.checkUpdates) {
+                    NotificationCenter.default.post(name: .init("manualUpdateCheck"), object: nil)
+                }
                 Button(Localized.about) { openWindow(id: "about") }
                 #if DEBUG
                 Divider()

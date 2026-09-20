@@ -214,6 +214,29 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var appDescription: String { value(kr: "macOS 핫스팟/테더링 데이터 사용량 모니터", en: "macOS Hotspot & Tethering Data Monitor") }
   static var createdBy: String { value(kr: "제작", en: "Created by") }
 
+  // MARK: - Updates
+  static var updateTabTitle: String { value(kr: "업데이트", en: "Updates") }
+  static var updateSectionTitle: String { value(kr: "앱 업데이트", en: "App Updates") }
+  static var updateCheckNow: String { value(kr: "업데이트 확인", en: "Check Now") }
+  static var updateChecking: String { value(kr: "확인 중...", en: "Checking...") }
+  static var updateCheckFailed: String { value(kr: "업데이트 확인에 실패했습니다. 네트워크 연결을 확인해 보세요.", en: "Could not check for updates. Check your network connection.") }
+  static var updateNoRelease: String { value(kr: "게시된 릴리스가 없습니다", en: "No published releases yet") }
+  static var updateUpToDate: String { value(kr: "최신 버전입니다", en: "You're up to date") }
+  static var updateFrequency: String { value(kr: "자동 확인 주기", en: "Check Frequency") }
+  static var updateFrequencyFootnote: String { value(kr: "앱 실행·팝오버를 열 때 주기적으로 GitHub에서 최신 버전을 확인합니다.", en: "Checks GitHub for new versions on launch and when opening the popover.") }
+  static var updateFrequencyAtLaunch: String { value(kr: "실행할 때마다", en: "Every Launch") }
+  static var updateFrequencyDaily: String { value(kr: "매일", en: "Daily") }
+  static var updateFrequencyWeekly: String { value(kr: "매주", en: "Weekly") }
+  static var updateFrequencyNever: String { value(kr: "하지 않음", en: "Never") }
+  static var currentVersion: String { value(kr: "현재 버전", en: "Current Version") }
+  static var updateAvailableTitle: String { value(kr: "새 버전 v%@ 사용 가능", en: "New version v%@ available") }
+  static func updateAvailableTitle(_ tag: String) -> String { String(format: updateAvailableTitle, tag) }
+  static var updateNewVersion: String { value(kr: "새 버전", en: "New Version") }
+  static var updateNotes: String { value(kr: "업데이트 내역", en: "Release Notes") }
+  static var updateMethodTitle: String { value(kr: "설치 방법", en: "How to Install") }
+  static var updateMethodBody: String { value(kr: "1. ZIP을 다운로드해 압축을 풉니다.\n2. TetherLens.app을 응용프로그램 폴더에 덮어씁니다.\n3. 첫 실행은 우클릭 → 열기로 실행합니다.", en: "1. Download and unzip the ZIP file.\n2. Replace TetherLens.app in Applications.\n3. First launch: right-click → Open.") }
+  static var updateDownloadButton: String { value(kr: "다운로드", en: "Download") }
+
   // MARK: - Saving Mode
   static var savingModeTitle: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var enableSavingMode: String { value(kr: "절약 모드 활성화", en: "Enable Saving Mode") }

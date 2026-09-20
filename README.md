@@ -17,7 +17,7 @@
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-6.0-F05138">
   <img alt="Native" src="https://img.shields.io/badge/Native%20App-100%25-2563eb">
-  <img alt="Release" src="https://img.shields.io/badge/Release-v0.35.0-0ea5e9">
+  <img alt="Release" src="https://img.shields.io/badge/Release-v0.36.0-0ea5e9">
 </p>
 
 <p align="center">

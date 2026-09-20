@@ -42,6 +42,7 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
     private var cachedTotalUsage: (upload: Int64, download: Int64)?
     private var cacheNeedsInvalidation = false
     private var pendingIPLog: (ip: String, country: String?, latitude: Double?, longitude: Double?)?
+    private var updateWindow: NSWindow?
 
     private(set) var popoverPinned = false
 
@@ -104,11 +105,61 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             self, selector: #selector(handleTogglePopover),
             name: .init("togglePopover"), object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleShowUpdateSheet),
+            name: .init("showUpdateSheet"), object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleManualUpdateCheck),
+            name: .init("manualUpdateCheck"), object: nil
+        )
     }
 
     /// ⌘⇧P 메뉴/단축키에서 팝오버를 연다 (v0.30).
     @objc private func handleTogglePopover() {
         togglePopover()
+    }
+
+    /// 팝오버/메뉴에서 업데이트가 있을 때 전용 업데이트 창을 연다 (NSPopover는 시트 직접 불가).
+    @objc private func handleShowUpdateSheet() {
+        guard let update = UpdaterManager.shared.availableUpdate else { return }
+        presentUpdateWindow(update)
+    }
+
+    /// 메뉴바 "업데이트 확인" — 즉시 확인 후 새 버전이면 업데이트 창, 최신이면 안내.
+    @objc private func handleManualUpdateCheck() {
+        Task {
+            await UpdaterManager.shared.checkForUpdates()
+            if let update = UpdaterManager.shared.availableUpdate {
+                presentUpdateWindow(update)
+            } else if case .upToDate = UpdaterManager.shared.state {
+                presentUpToDateNotice()
+            }
+        }
+    }
+
+    private func presentUpdateWindow(_ update: (tag: String, htmlURL: String, notes: String)) {
+        updateWindow?.close()
+        let hosting = NSHostingController(rootView: UpdateAvailableSheet(update: update, onClose: { [weak self] in
+            self?.updateWindow?.close()
+        }))
+        let window = NSWindow(contentViewController: hosting)
+        window.title = Localized.updateAvailableTitle(update.tag)
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.setContentSize(hosting.view.fittingSize)
+        window.center()
+        updateWindow = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func presentUpToDateNotice() {
+        let alert = NSAlert()
+        alert.messageText = Localized.updateUpToDate
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: Localized.close)
+        alert.runModal()
     }
 
     /// 시스템 슬립 진입 — 모든 폴링을 일시중지한다 (배터리/CPU 절감).
@@ -282,7 +333,7 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
             self?.openPopoverAndTrigger("settings")
         })
         menu.addItem(moreMenuItem(Localized.checkUpdates) {
-            UpdaterManager.shared.openDownloadPage()
+            NotificationCenter.default.post(name: .init("manualUpdateCheck"), object: nil)
         })
         menu.addItem(moreMenuItem(Localized.about) { [weak self] in
             self?.openPopoverAndTrigger("about")

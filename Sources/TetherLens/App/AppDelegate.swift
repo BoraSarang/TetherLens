@@ -22,6 +22,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 FloatingWindowController.shared.show()
             }
         }
+        // 앱 실행 시 설정된 주기에 맞춰 최신 버전을 조용히 확인한다
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            Task { await UpdaterManager.shared.maybeAutoCheckForUpdate() }
+        }
 
         showOnboardingIfNeeded()
         closeAutoRestoredSettings()

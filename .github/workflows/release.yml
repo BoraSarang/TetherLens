@@ -1,0 +1,82 @@
+name: Release macOS
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version tag
+        run: |
+          echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Verify tag matches bundle version
+        run: |
+          ACTUAL="$(/usr/libexec/PlistBuddy -c \
+            'Print CFBundleShortVersionString' Resources/Info.plist)"
+          [ "$VERSION" = "$ACTUAL" ]
+          echo "bundle version $ACTUAL matches tag v$VERSION"
+
+      - name: Run tests
+        run: swift test --scratch-path .build-ci
+
+      - name: Build release binary
+        run: swift build -c release --scratch-path .build-ci
+
+      - name: Assemble app bundle
+        run: |
+          APP_PATH="TetherLens.app"
+          rm -rf "$APP_PATH"
+          mkdir -p "$APP_PATH/Contents/MacOS" "$APP_PATH/Contents/Resources"
+          cp ".build-ci/release/TetherLens" "$APP_PATH/Contents/MacOS/"
+          install_name_tool -add_rpath "@executable_path/../Frameworks" \
+            "$APP_PATH/Contents/MacOS/TetherLens" || true
+          cp "Resources/Info.plist" "$APP_PATH/Contents/"
+          cp "Resources/TetherLens.icns" "$APP_PATH/Contents/Resources/"
+
+      - name: Ad-hoc sign and zip
+        run: |
+          # ad-hoc 서명 — 첫 실행은 우클릭 → 열기로 허용 (공증 없음)
+          codesign --force --deep --sign - "TetherLens.app"
+          ditto -c -k --sequesterRsrc --keepParent \
+            "TetherLens.app" "TetherLens-${TAG}.zip"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ env.TAG }}"
+          NOTES="release-notes/${TAG}.md"
+          if [ -f "$NOTES" ]; then
+            gh release create "$TAG" --title "TetherLens $TAG" \
+              --notes-file "$NOTES" "TetherLens-${TAG}.zip"
+          else
+            gh release create "$TAG" --title "TetherLens $TAG" \
+              --generate-notes "TetherLens-${TAG}.zip"
+          fi
+
+      - name: Append install instructions to release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ env.TAG }}"
+          BODY="$(gh release view "$TAG" --json body -q .body)"
+          case "$BODY" in
+            *"## 설치 방법"*) ;; # 이미 포함됨
+            *)
+              gh release edit "$TAG" --notes "$BODY
+
+⸺
+## 설치 방법
+1. \`TetherLens-${TAG}.zip\`을 다운로드해 압축을 풉니다.
+2. \`TetherLens.app\`을 응용프로그램 폴더에 덮어씁니다.
+3. 첫 실행은 Finder에서 우클릭 → '열기'로 허용합니다 (ad-hoc 서명)." ;;
+          esac

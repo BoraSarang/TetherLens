@@ -36,6 +36,9 @@ struct SettingsView: View {
     @State private var ruleTarget = ""
     @State private var settingsWindow: NSWindow?
     @State private var selectedTab = 0
+    @State private var updateFrequency: UpdateCheckFrequency
+    @State private var presentUpdateSheet = false
+    @ObservedObject private var updater = UpdaterManager.shared
 
     init() {
         let s = SettingsManager.shared
@@ -58,6 +61,7 @@ struct SettingsView: View {
         _floatingShowRAM = State(initialValue: s.floatingShowRAM)
         _floatingShowUsage = State(initialValue: s.floatingShowUsage)
         _autoRules = State(initialValue: AutomationManager.shared.rules)
+        _updateFrequency = State(initialValue: UpdaterManager.shared.frequency)
     }
 
     private var menuBarOptions: [(String, Double)] { Localized.menuBarIntervalOptions }
@@ -83,6 +87,14 @@ struct SettingsView: View {
             automationTab
                 .tabItem { Label(Localized.automationTitle, systemImage: "bolt") }
                 .tag(4)
+            updateTab
+                .tabItem { Label(Localized.updateTabTitle, systemImage: "arrow.down.circle") }
+                .tag(5)
+        }
+        .sheet(isPresented: $presentUpdateSheet) {
+            if let update = updater.availableUpdate {
+                UpdateAvailableSheet(update: update)
+            }
         }
         .frame(width: TLSize.settingsWindow.w, height: TLSize.settingsWindow.h)
         .background(WindowCapture { window in settingsWindow = window })
@@ -427,6 +439,87 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    // MARK: - 업데이트
+
+    private var updateTab: some View {
+        Form {
+            Section {
+                HStack {
+                    Text(Localized.currentVersion)
+                    Spacer()
+                    Text("v\(currentVersionText)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Picker(Localized.updateFrequency, selection: $updateFrequency) {
+                    Text(Localized.updateFrequencyAtLaunch).tag(UpdateCheckFrequency.atLaunch)
+                    Text(Localized.updateFrequencyDaily).tag(UpdateCheckFrequency.daily)
+                    Text(Localized.updateFrequencyWeekly).tag(UpdateCheckFrequency.weekly)
+                    Text(Localized.updateFrequencyNever).tag(UpdateCheckFrequency.never)
+                }
+                .onChange(of: updateFrequency) { _, newValue in
+                    updater.frequency = newValue
+                }
+            } header: {
+                Text(Localized.updateSectionTitle)
+            } footer: {
+                Text(Localized.updateFrequencyFootnote)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Button {
+                    manualUpdateCheck()
+                } label: {
+                    HStack {
+                        Text(Localized.updateCheckNow)
+                        Spacer()
+                        if updater.isChecking {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else if updater.availableUpdate != nil {
+                            Text(Localized.updateAvailableTitle(updateNewVersionText))
+                                .font(.caption)
+                                .foregroundColor(TLPalette.upload)
+                        } else if case .upToDate = updater.state {
+                            Text(Localized.updateUpToDate)
+                                .font(.caption)
+                                .foregroundColor(TLPalette.success)
+                        }
+                    }
+                }
+                .disabled(updater.isChecking)
+                if case let .unavailable(message) = updater.state {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(TLPalette.danger)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private var currentVersionText: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+    }
+
+    private var updateNewVersionText: String {
+        guard let tag = updater.availableUpdate?.tag else { return "" }
+        let normalized = tag.replacingOccurrences(of: "^v", with: "", options: .regularExpression)
+        return "v\(normalized)"
+    }
+
+    private func manualUpdateCheck() {
+        Task {
+            await updater.checkForUpdates()
+            if updater.availableUpdate != nil {
+                presentUpdateSheet = true
+            }
+        }
     }
 
     private func pollingRow(label: String, defaultValue: Double, selection: Binding<Double>, options: [(String, Double)]) -> some View {

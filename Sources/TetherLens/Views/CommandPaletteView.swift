@@ -40,7 +40,7 @@ struct CommandPaletteView: View {
                 FloatingWindowController.shared.toggle()
             },
             PaletteItem(title: Localized.checkUpdates, icon: "arrow.down.circle") {
-                UpdaterManager.shared.openDownloadPage()
+                NotificationCenter.default.post(name: .init("manualUpdateCheck"), object: nil)
             },
             PaletteItem(title: Localized.quit, icon: "power") {
                 NSApplication.shared.terminate(nil)
