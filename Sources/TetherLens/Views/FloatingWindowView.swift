@@ -21,6 +21,19 @@ struct FloatingWindowView: View {
     /// 16pt는 패널 폭 대비 밋밋하다는 실측 피드백으로 24pt로 상향.
     private static let corner: CGFloat = 24
 
+    /// 창 드래그 제스처 — 상단 영역에만 부착한다.
+    /// minimumDistance 미만(클릭)은 제스처가 실패해 버튼 탭·행 탭이 그대로 동작하고,
+    /// 하단 투명도 슬라이더·3칸 행 탭과는 영역이 겹치지 않는다.
+    private var windowDrag: some Gesture {
+        DragGesture(minimumDistance: 5)
+            .onChanged { value in
+                FloatingWindowController.shared.dragWindow(by: value.translation)
+            }
+            .onEnded { _ in
+                FloatingWindowController.shared.endWindowDrag()
+            }
+    }
+
     var body: some View {
         // NOTE: 실측 자동 높이(fitToContent)가 동작하려면 콘텐츠가 루트여야 한다.
         // RoundedRectangle + .overlay{콘텐츠} 구조에서는 overlay가 ideal size에 기여하지 않아
@@ -69,40 +82,45 @@ struct FloatingWindowView: View {
     }
 
     /// 3칸 ON — 닫기 버튼 + 속도 2줄 + 사용량 중앙 + 프로세스/CPU/RAM Top3 (높이는 자동 맞춤)
+    /// 상단(상태행·속도·구분선)은 창 드래그 영역 — 행 탭·호버 컨트롤과 겹치지 않는다.
     private var fullLayout: some View {
         return VStack(spacing: 0) {
-            HStack {
-                Circle()
-                    .fill(model.isReachable ? TLPalette.success : TLPalette.danger)
-                    .frame(width: 8, height: 8)
-                    .help(model.isReachable ? Localized.statusNormal : Localized.statusCritical)
-                Spacer()
-                if isHovering {
-                    Button {
-                        FloatingWindowController.shared.toggle()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.secondary)
-                            .frame(width: 14, height: 14)
-                            .background(.quaternary, in: Circle())
+            VStack(spacing: 0) {
+                HStack {
+                    Circle()
+                        .fill(model.isReachable ? TLPalette.success : TLPalette.danger)
+                        .frame(width: 8, height: 8)
+                        .help(model.isReachable ? Localized.statusNormal : Localized.statusCritical)
+                    Spacer()
+                    if isHovering {
+                        Button {
+                            FloatingWindowController.shared.toggle()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.secondary)
+                                .frame(width: 14, height: 14)
+                                .background(.quaternary, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(Localized.floatingWindowHide)
                     }
-                    .buttonStyle(.plain)
-                    .help(Localized.floatingWindowHide)
                 }
-            }
-            .frame(height: 14)
-            .padding(.horizontal, 12)
-
-            menuBarMini
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
-
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(TLPalette.separator)
+                .frame(height: 14)
                 .padding(.horizontal, 12)
-                .padding(.bottom, 2)
+
+                menuBarMini
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 4)
+
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(TLPalette.separator)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 2)
+            }
+            .gesture(windowDrag)
+            .help(Localized.floatingDragHint)
 
             blocksView
                 .padding(.horizontal, 12)
@@ -128,6 +146,8 @@ struct FloatingWindowView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 14)
         .padding(.vertical, 4)
+        .gesture(windowDrag)
+        .help(Localized.floatingDragHint)
         .overlay(alignment: .topTrailing) {
             if isHovering {
                 Button {

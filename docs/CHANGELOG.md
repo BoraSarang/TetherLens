@@ -1,16 +1,10 @@
 # Changelog
 
-## [0.35.0] — 2026-09-09 — 속도 테스트 + 연결 유지
+## [Unreleased]
 
-> 계획: docs/plans/PLAN_v0.35.0_macos.md (bd: TetherLens-e8a/lgb). COMPETITOR_ANALYSIS 벌점 아이디어 2종 정식 등록.
-
-### Added
-- **속도 테스트** (T-205/T-209/T-210, bd e8a) — 진단 센터 "속도 테스트" 버튼. 다운(Cloudflare 1차 + hetzner 폴백, 10MB·12초 먼저 도달 기준) + 업(Cloudflare __up 5MB) 실측, 핸드셰이크 제외 Mbps, 30초 타임아웃. 시작·완료·실패 `[ACTION]/[ERROR] [Network]` 로그. 유료/제한망이면 1차 탭에 경고(약 15MB 소모), 2차 탭에 실행
-- **연결 유지** (T-206, bd lgb) — `ConnectionGuardian` 신규. PingMonitor 끊김 이벤트 구독(신규 타이머 없음) → 자동 재연결 1회 + 5분 쿨다운 (토글 기본 OFF, 설정·알림 탭) + 진단 센터 수동 "Wi-Fi 재연결" 버튼. `networksetup` best-effort, 실패 시 수동 안내
-- **팝오버 "..." 메뉴 정렬** (T-208) — 우클릭 더보기와 동일 구성으로 (사용량 리포트·플로팅 토글·네트워크 진단 추가)
-
-### Tests
-- SpeedTestTests 5개 + ConnectionGuardianTests 6개 (Mbps·쿨다운·장치명 파싱, 실망/networksetup 호출은 수동)
+### Fixed
+- **업데이트 창 제목 "vv" 중복** (bd jcv) — "새 버전 vv0.36.0 사용 가능" 표시. 포맷(`v%@`)에 `v` 포함 태그 전달이 원인, `updateAvailableTitle(_:)`에서 선행 `v` 제거로 중앙 수정 (창 제목·시트 제목·설정 탭)
+- **플로팅 창 드래그 불가** (bd hu9) — `isMovableByWindowBackground`가 SwiftUI 배경 클릭 가로챔으로 무력화. 상단(상태행·속도·구분선) DragGesture → `FloatingWindowController.dragWindow(by:)` 직접 이동 (Y 뒤집힘 보정, 버튼 탭·슬라이더와 분리, 위치 저장 유지)
 
 ## [0.36.0] — 2026-09-20 — 업데이트 시스템 + 팝오버 레이아웃
 
@@ -22,12 +16,24 @@
 - **리포트 미리보기 렌더링** `[macOS]` (bd ik3) — 원문 mono 표시 → 네이티브 렌더링 기본 + 렌더링/원문 토글. 표는 `Grid`, 복사 버튼은 원문 MD 복사 유지 (`AttributedString`은 표 미지원이라 요약 데이터 직접 렌더)
 
 ### Changed
-- **팝오버 고정 영역 확장** `[macOS]` (bd sac) — 헤더~연결성 기록까지 스크롤 없이 고정, 스크롤은 인터페이스부터. 단일 차트 병합으로 생긴 하단 여백 제거 (스크롤 높이 간략 180/상세 244). 미측정 "측정 중" 플레이스홀더를 실차트와 동일 높이(104)로 맞춰 높이 점프 방지
+- **팝오버 고정 영역 확장** `[macOS]` (bd sac) — 헤더~연결성 기록까지 스크롤 없이 고정, 스크롤은 인터페이스부터. 단일 차트 병합으로 생긴 하단 여백 제거 (스크롤 높이 180 통일 — 간략/상세 전환 출렁임 방지). 미측정 "측정 중" 플레이스홀더를 실차트와 동일 높이(104)로 맞춰 높이 점프 방지
 - **팝오버 사용 기록 단일 차트** `[macOS]` (bd sok/e7w) — 업/다운 2개 차트를 단일 오버레이로 합침 (다운 Area + 업 Line, 공유 Y축, 업은 Line이라 작은 값도 식별). 높이 절약 + idle 0구간 도메인 하한 보장. 첫 구현에서 두 Area가 series 미구분으로 단일 시리즈 병합 렌더되던 문제 수정 (업 Area 제거 + `series` 구분)
 
 ### Removed
 - 리포트 창 **"지금 알면 좋은 것" 섹션 제거** (사용자 요청) — `InsightsView` 호출 + `statsSnapshot`/`loadInsights` 스냅샷 배선 삭제, 전기간 합계 로드는 `loadPreviousPeriod()`로 유지
 - **인사이트 엔진 전체 삭제** (사용자 요청) — `StatsEngine`·`InsightsView`·`Rollup`·`StatsEngineTests` 파일 + DB v11 마이그레이션(rollup 3테이블·backfill·사전 백업) + v11 테스트 3개 + 인사이트 로컬라이즈 문구. 실DB 기존 rollup 테이블은 잔류하되 미참조 (GRDB 미등록 마이그레이션 무시 확인). test 77개 통과
+
+## [0.35.0] — 2026-09-09 — 속도 테스트 + 연결 유지
+
+> 계획: docs/plans/PLAN_v0.35.0_macos.md (bd: TetherLens-e8a/lgb). COMPETITOR_ANALYSIS 벌점 아이디어 2종 정식 등록.
+
+### Added
+- **속도 테스트** (T-205/T-209/T-210, bd e8a) — 진단 센터 "속도 테스트" 버튼. 다운(Cloudflare 1차 + hetzner 폴백, 10MB·12초 먼저 도달 기준) + 업(Cloudflare __up 5MB) 실측, 핸드셰이크 제외 Mbps, 30초 타임아웃. 시작·완료·실패 `[ACTION]/[ERROR] [Network]` 로그. 유료/제한망이면 1차 탭에 경고(약 15MB 소모), 2차 탭에 실행
+- **연결 유지** (T-206, bd lgb) — `ConnectionGuardian` 신규. PingMonitor 끊김 이벤트 구독(신규 타이머 없음) → 자동 재연결 1회 + 5분 쿨다운 (토글 기본 OFF, 설정·알림 탭) + 진단 센터 수동 "Wi-Fi 재연결" 버튼. `networksetup` best-effort, 실패 시 수동 안내
+- **팝오버 "..." 메뉴 정렬** (T-208) — 우클릭 더보기와 동일 구성으로 (사용량 리포트·플로팅 토글·네트워크 진단 추가)
+
+### Tests
+- SpeedTestTests 5개 + ConnectionGuardianTests 6개 (Mbps·쿨다운·장치명 파싱, 실망/networksetup 호출은 수동)
 
 ## [0.34.1] — 2026-09-09 — 리포트 화면 분리 + 구 카드 제거
 

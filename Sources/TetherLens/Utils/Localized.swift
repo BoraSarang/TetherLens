@@ -164,6 +164,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var popoverShowResources: String { value(kr: "시스템 리소스 표시", en: "Show System Resources") }
   static var floatingShowUsage: String { value(kr: "네트워크 사용량 표시", en: "Show Network Usage") }
   static var floatingAtLaunch: String { value(kr: "앱 시작 시 표시", en: "Show at Launch") }
+  static var floatingDragHint: String { value(kr: "드래그로 이동", en: "Drag to move") }
   static var autoSwitchProfile: String { value(kr: "새 네트워크에 프로필 자동 등록", en: "Auto-Register Profile on New Network") }
   static var automationTitle: String { value(kr: "자동화", en: "Automation") }
   static var automationEmpty: String { value(kr: "등록된 규칙이 없습니다. 아래 버튼으로 추가해 보세요.", en: "No rules yet. Add one below.") }
@@ -230,7 +231,11 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var updateFrequencyNever: String { value(kr: "하지 않음", en: "Never") }
   static var currentVersion: String { value(kr: "현재 버전", en: "Current Version") }
   static var updateAvailableTitle: String { value(kr: "새 버전 v%@ 사용 가능", en: "New version v%@ available") }
-  static func updateAvailableTitle(_ tag: String) -> String { String(format: updateAvailableTitle, tag) }
+  static func updateAvailableTitle(_ tag: String) -> String {
+        // 태그(v0.36.0)·정규화 버전(v0.36.0) 어느 쪽이 와도 "vv" 중복 방지
+        let normalized = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        return String(format: updateAvailableTitle, normalized)
+    }
   static var updateNewVersion: String { value(kr: "새 버전", en: "New Version") }
   static var updateNotes: String { value(kr: "업데이트 내역", en: "Release Notes") }
   static var updateMethodTitle: String { value(kr: "설치 방법", en: "How to Install") }

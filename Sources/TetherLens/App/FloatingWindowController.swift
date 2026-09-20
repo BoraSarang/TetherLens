@@ -4,7 +4,8 @@ import Combine
 
 /// 메뉴바 표시 내용(설정 연동)을 바탕화면에 띄우는 플로팅 창을 관리한다 (v0.31).
 /// - borderless NSPanel + `.floating` 레벨 → 항상 위에 떠 있는 비활성 패널
-/// - `isMovableByWindowBackground`로 드래그 이동 + UserDefaults 위치 저장/복원
+/// - SwiftUI 배경이 클릭을 가로채 `isMovableByWindowBackground`가 무력화되므로,
+///   상단 영역 DragGesture → `dragWindow(by:)`로 직접 이동 + UserDefaults 위치 저장/복원
 /// - 트래픽 상위 3개 표시 시 `TrafficMonitor` 참조를 유일하게 소유한다 (acquire/release 균형)
 @MainActor
 final class FloatingWindowController {
@@ -15,6 +16,7 @@ final class FloatingWindowController {
     private var moveObserver: NSObjectProtocol?
     private var appsCancellable: AnyCancellable?
     private var trafficAcquired = false
+    private var dragAnchor: NSPoint?
 
     private static let originKey = "floatingWindowOrigin"
 
@@ -154,6 +156,21 @@ final class FloatingWindowController {
         panel?.orderOut(nil)
         setTrafficMonitoring(false)
         DebugLogger.shared.action("Floating", "플로팅 창 숨김")
+    }
+
+    /// 상단 영역 DragGesture에서 호출 — NSPanel을 직접 이동시킨다.
+    /// DragGesture translation은 뷰 좌표(y 아래가 +)라 스크린 좌표(y 위가 +)로 뒤집어 적용.
+    /// 버튼 탭·슬라이더와 겹치지 않게 상단(상태행·속도 표시) 영역에만 제스처를 단다.
+    func dragWindow(by translation: CGSize) {
+        guard let panel else { return }
+        if dragAnchor == nil { dragAnchor = panel.frame.origin }
+        panel.setFrameOrigin(NSPoint(x: dragAnchor!.x + translation.width,
+                                     y: dragAnchor!.y - translation.height))
+    }
+
+    func endWindowDrag() {
+        dragAnchor = nil
+        if let panel { savedOrigin = panel.frame.origin }
     }
 
     private func observeMove(_ panel: NSPanel) {
