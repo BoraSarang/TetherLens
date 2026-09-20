@@ -21,18 +21,7 @@ struct FloatingWindowView: View {
     /// 16pt는 패널 폭 대비 밋밋하다는 실측 피드백으로 24pt로 상향.
     private static let corner: CGFloat = 24
 
-    /// 창 드래그 제스처 — 상단 영역에만 부착한다.
-    /// minimumDistance 미만(클릭)은 제스처가 실패해 버튼 탭·행 탭이 그대로 동작하고,
-    /// 하단 투명도 슬라이더·3칸 행 탭과는 영역이 겹치지 않는다.
-    private var windowDrag: some Gesture {
-        DragGesture(minimumDistance: 5)
-            .onChanged { value in
-                FloatingWindowController.shared.dragWindow(by: value.translation)
-            }
-            .onEnded { _ in
-                FloatingWindowController.shared.endWindowDrag()
-            }
-    }
+    // 창 드래그는 FloatingWindowController.installDragMonitor(AppKit 로컬 모니터)가 담당
 
     var body: some View {
         // NOTE: 실측 자동 높이(fitToContent)가 동작하려면 콘텐츠가 루트여야 한다.
@@ -119,7 +108,6 @@ struct FloatingWindowView: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 2)
             }
-            .gesture(windowDrag)
             .help(Localized.floatingDragHint)
 
             blocksView
@@ -146,7 +134,6 @@ struct FloatingWindowView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 14)
         .padding(.vertical, 4)
-        .gesture(windowDrag)
         .help(Localized.floatingDragHint)
         .overlay(alignment: .topTrailing) {
             if isHovering {

@@ -4,8 +4,9 @@ import Combine
 
 /// 메뉴바 표시 내용(설정 연동)을 바탕화면에 띄우는 플로팅 창을 관리한다 (v0.31).
 /// - borderless NSPanel + `.floating` 레벨 → 항상 위에 떠 있는 비활성 패널
-/// - SwiftUI 배경이 클릭을 가로채 `isMovableByWindowBackground`가 무력화되므로,
-///   상단 영역 DragGesture → `dragWindow(by:)`로 직접 이동 + UserDefaults 위치 저장/복원
+/// - 배경 클릭 가로챔 + 비활성 패널 제스처 미발화로 시스템/SwiftUI 드래그가 모두 무력화되어
+///   AppKit 로컬 모니터(`installDragMonitor`)로 직접 이동 + UserDefaults 위치 저장/복원
+/// - NSControl 위에서 시작된 드래그는 제외(투명도 슬라이더 보호), 드래그 중 높이 재적합 중단
 /// - 트래픽 상위 3개 표시 시 `TrafficMonitor` 참조를 유일하게 소유한다 (acquire/release 균형)
 @MainActor
 final class FloatingWindowController {
@@ -16,7 +17,12 @@ final class FloatingWindowController {
     private var moveObserver: NSObjectProtocol?
     private var appsCancellable: AnyCancellable?
     private var trafficAcquired = false
-    private var dragAnchor: NSPoint?
+    // AppKit 로컬 모니터 기반 드래그 상태
+    private var dragMonitor: Any?
+    private var dragPressScreen: NSPoint?
+    private var dragOriginAtPress: NSPoint?
+    private var dragSkippedControl = false
+    private var isDragging = false
 
     private static let originKey = "floatingWindowOrigin"
 
@@ -83,7 +89,7 @@ final class FloatingWindowController {
     /// 콘텐츠 실측 기반 자동 높이 (v0.32.2) — 줄 토글·수집 상태·폰트에 따라 패널이 스스로 맞춘다.
     /// 상단 고정(아래로 자람), 화면 밖으로 나가지 않게 클램프. 40~420 범위로 제한.
     func fitToContent() {
-        guard let panel, panel.isVisible,
+        guard !isDragging, let panel, panel.isVisible,
               let hosting = panel.contentViewController else { return }
         hosting.view.layoutSubtreeIfNeeded()
         var h = hosting.view.fittingSize.height
@@ -137,12 +143,13 @@ final class FloatingWindowController {
             win.backgroundColor = .clear
             // Tahoe는 hasShadow와 함께 창 경계에 글래스 엣지(밝은 림)를 그린다 (TetherLens-vie) → 테두리 없는 외관을 위해 그림자 OFF
             win.hasShadow = false
-            win.isMovableByWindowBackground = true
+            // 배경 드래그는 installDragMonitor가 처리 (시스템 배경 드래그는 배경 클릭 가로챔으로 무력화)
             win.isReleasedWhenClosed = false
             win.contentViewController = hosting
             panel = win
             observeMove(win)
             observeApps()
+            installDragMonitor(for: win)
             DebugLogger.shared.action("Floating", "창 생성 위치=\(origin) 크기=\(size)")
         }
         setTrafficMonitoring(SettingsManager.shared.floatingVisibleLines > 0)
@@ -158,19 +165,53 @@ final class FloatingWindowController {
         DebugLogger.shared.action("Floating", "플로팅 창 숨김")
     }
 
-    /// 상단 영역 DragGesture에서 호출 — NSPanel을 직접 이동시킨다.
-    /// DragGesture translation은 뷰 좌표(y 아래가 +)라 스크린 좌표(y 위가 +)로 뒤집어 적용.
-    /// 버튼 탭·슬라이더와 겹치지 않게 상단(상태행·속도 표시) 영역에만 제스처를 단다.
-    func dragWindow(by translation: CGSize) {
-        guard let panel else { return }
-        if dragAnchor == nil { dragAnchor = panel.frame.origin }
-        panel.setFrameOrigin(NSPoint(x: dragAnchor!.x + translation.width,
-                                     y: dragAnchor!.y - translation.height))
-    }
-
-    func endWindowDrag() {
-        dragAnchor = nil
-        if let panel { savedOrigin = panel.frame.origin }
+    /// AppKit 로컬 모니터로 패널 드래그를 직접 처리한다 (bd hu9).
+    /// - 마우스다운 즉시 앵커를 잡아 첫 픽셀부터 1:1 추적 (SwiftUI 제스처의 dead zone·스냅 없음).
+    /// - NSControl 위에서 시작된 드래그(투명도 슬라이더·네이티브 버튼)는 제외해 네이티브 동작 보장.
+    /// - 이벤트는 항상 그대로 전달(return event)하므로 버튼 탭·행 탭·슬라이더 클릭 유지.
+    /// - 패널 밖에서 released되면 mouseUp을 못 받으므로, 다음 mouseDown에서 상태를 먼저 리셋.
+    private func installDragMonitor(for panel: NSPanel) {
+        guard dragMonitor == nil else { return }
+        dragMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]
+        ) { [weak self, weak panel] event in
+            guard let self, let panel, panel.isVisible else { return event }
+            switch event.type {
+            case .leftMouseDown:
+                self.dragPressScreen = nil
+                self.dragOriginAtPress = nil
+                self.dragSkippedControl = false
+                self.isDragging = false
+                guard event.window === panel else { return event }
+                if let hit = panel.contentView?.hitTest(event.locationInWindow), hit is NSControl {
+                    self.dragSkippedControl = true
+                } else {
+                    self.dragPressScreen = NSEvent.mouseLocation
+                    self.dragOriginAtPress = panel.frame.origin
+                    self.isDragging = true
+                    DebugLogger.shared.action("Floating", "드래그 시작")
+                }
+            case .leftMouseDragged:
+                guard !self.dragSkippedControl,
+                      let press = self.dragPressScreen,
+                      let origin = self.dragOriginAtPress else { return event }
+                let cur = NSEvent.mouseLocation
+                panel.setFrameOrigin(NSPoint(x: origin.x + cur.x - press.x,
+                                             y: origin.y + cur.y - press.y))
+            case .leftMouseUp:
+                if self.dragPressScreen != nil {
+                    self.savedOrigin = panel.frame.origin
+                    DebugLogger.shared.action("Floating", "드래그 종료")
+                }
+                self.dragPressScreen = nil
+                self.dragOriginAtPress = nil
+                self.dragSkippedControl = false
+                self.isDragging = false
+            default:
+                break
+            }
+            return event
+        }
     }
 
     private func observeMove(_ panel: NSPanel) {

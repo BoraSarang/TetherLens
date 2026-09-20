@@ -4,7 +4,7 @@
 
 ### Fixed
 - **업데이트 창 제목 "vv" 중복** (bd jcv) — "새 버전 vv0.36.0 사용 가능" 표시. 포맷(`v%@`)에 `v` 포함 태그 전달이 원인, `updateAvailableTitle(_:)`에서 선행 `v` 제거로 중앙 수정 (창 제목·시트 제목·설정 탭)
-- **플로팅 창 드래그 불가** (bd hu9) — `isMovableByWindowBackground`가 SwiftUI 배경 클릭 가로챔으로 무력화. 상단(상태행·속도·구분선) DragGesture → `FloatingWindowController.dragWindow(by:)` 직접 이동 (Y 뒤집힘 보정, 버튼 탭·슬라이더와 분리, 위치 저장 유지)
+- **플로팅 창 드래그 불가** (bd hu9) — 배경 클릭 가로챔으로 시스템 드래그·SwiftUI 제스처 모두 무력화(상단 제스처는 dead zone 스냅으로 밀리는 느낌). AppKit 로컬 모니터로 교체: 마우스다운 즉시 앵커로 첫 픽셀부터 1:1 추적, NSControl 위 시작 제외(슬라이더 보호), 드래그 중 높이 재적합 중단, 이벤트 그대로 전달해 버튼·행 탭 유지
 
 ## [0.36.0] — 2026-09-20 — 업데이트 시스템 + 팝오버 레이아웃
 
