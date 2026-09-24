@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.38.0] — 2026-09-24 — 경고 알림 해소 연동 (스로틀링 팁 잔류 수정)
+
+### Added
+- **알림 해소 마킹** `[macOS]` (bd 7am/9mb/6fb/tmc) — `AppNotification.resolvedAt?` + `isActive`(기존 JSON missing key→nil 하위호환) + `NotificationType.isWarningLike`(pingWarning/pingCritical/connectionLost, quota 제외). `NotificationManager` 해소 API: `resolve(types:/type:/id:)`·`resolveWarnings()`·`activeWarnings`, UserDefaults 주입 테스트 지원
+- **해소 상태 알림 UI** `[macOS]` — `NotificationListView`에서 해소된 경고: opacity 0.55 + 체크 아이콘 + "해소됨" 배지 + `→ HH:mm` 병기. 미해소 경고는 기존 색·💡팁 본문 유지 (팁 조건화)
+
+### Fixed
+- **스로틀링/끊김 경고 후속조치 잔류** `[macOS]` — 복구(`pingRecovery`/`connectionRestored`) 시 ①시스템 알림센터에서 경고 제거(`removeDeliveredNotifications`, 발송 identifier 추적) ②앱 알림 목록 경고 전부 해소 마킹. `ConnectionGuardian` 재연결 성공 시 `connectionLost` 해소. 플래핑 가드로 복구 알림이 생략돼도 복구 전환 시점에 해소
+- `Info.plist` — CFBundleShortVersionString `0.37.0` → `0.38.0`, CFBundleVersion `37` → `38`
+
+### Tests
+- `NotificationManagerTests` 신규 5개 (해소 범위·타입 선별·재해소 시각 유지·legacy JSON 하위호환·isWarningLike 판별) — 전체 126개 통과
+
 ## [0.37.0] — 2026-09-24 — iStat 대시보드 + 시스템 대시보드 rename + 안정성·성능 리팩터링
 
 ### Added

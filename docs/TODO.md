@@ -494,3 +494,17 @@
 | 224 | 성능 P1: PopoverView·ReportView·ReportAppTrafficView·MovementTimeline·SessionTimeline body 고비용 연산 hoisting | P0 | ✅ (@State 캐시 + onAppear/onChange 1회 계산, HeatmapMapView 포함) |
 | 225 | 성능 P2: NetworkMonitor 타이머 tolerance/leeway, DateFormatter static 재사용, FloatingWindowViewModel 스냅샷 발행 | P1 | ✅ (leeway 100ms, static DateFormatter, 단일 스냅샷) |
 | 226 | 검증 (test.sh + build) + 문서(CHANGELOG/PLAN §3.4/세션/bd close) | P1 | ✅ (build OK + test 122 통과, 문서 갱신) |
+
+## 🔔 v0.38.0 — 스로틀링 알림 잔류 수정 + 문서 정리 (2026-09-24)
+
+> 스로틀링 경고 해소 API + 시스템 알림 제거 + UI 마킹. 문서(README/CHANGELOG/랜딩) + 릴리즈 v0.38.0. test 126 + build OK.
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 227 | AppNotification 해소 API (resolvedAt/isActive/isWarningLike) + NotificationManager resolveWarnings | P0 | ✅ |
+| 228 | PingMonitor 복구 시 시스템 알림 제거 + activeSystemNotificationIds 추적, ConnectionGuardian connectionLost 해소 | P0 | ✅ |
+| 229 | NotificationListView 해소 경고 UI (opacity 0.55 + 체크 + "해소됨" + 시각) + Localized | P1 | ✅ |
+| 230 | NotificationManagerTests 5개 신규 + 전체 검증 | P1 | ✅ (test 126 통과) |
+| 231 | 문서 정리 (README/README_EN 배지 v0.38.0 + 다운로드 링크 + 연결 품질 카드 해소 설명, CHANGELOG 0.38.0, DESIGN §8 해소, 랜딩 v0.38.0 링크 + 피처) | P1 | ✅ |
+| 232 | release-notes/v0.38.0.md + Info.plist 0.38.0/38 + 세션 로그 | P1 | ✅ |
+| 233 | 커밋 → 브랜치 → PR → 머지 → 태그 v0.38.0 → release CI 확인 | P0 | ✅ |

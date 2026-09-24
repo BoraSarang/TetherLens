@@ -59,6 +59,10 @@ final class ConnectionGuardian: @unchecked Sendable {
         let message = ok ? Localized.reconnectSuccess : Localized.reconnectFail
         NotificationManager.shared.add(
             type: ok ? .connectionRestored : .connectionLost, message: message)
+        // 재연결 성공 시 기존 끊김(connectionLost) 알림 해소 — add 직후 enqueue 순서 보장
+        if ok {
+            NotificationManager.shared.resolve(types: [.connectionLost])
+        }
         await DebugLogger.shared.action("Network", "Wi-Fi 재연결 \(ok ? "성공" : "실패") (\(auto ? "자동" : "수동"))")
     }
 

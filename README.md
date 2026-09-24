@@ -17,11 +17,11 @@
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-6.0-F05138">
   <img alt="Native" src="https://img.shields.io/badge/Native%20App-100%25-2563eb">
-  <img alt="Release" src="https://img.shields.io/badge/Release-v0.36.0-0ea5e9">
+  <img alt="Release" src="https://img.shields.io/badge/Release-v0.38.0-0ea5e9">
 </p>
 
 <p align="center">
-  <a href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">⬇️ macOS에서 다운로드</a>
+  <a href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-v0.38.0.zip">⬇️ macOS에서 다운로드</a>
   ·
   <a href="https://github.com/BoraSarang/TetherLens/releases/latest">릴리스 보기</a>
   ·
@@ -50,7 +50,7 @@ TetherLens는 메뉴바 하나로 **실시간 현황**과 **소진 예측**, 그
 | 🛰️ **네트워크 진단 센터** | 속도 테스트(다운/업 실측) · 핑 · 트레이스 · bufferbloat + 끊김 시 **Wi-Fi 재연결**(자동 1회/수동 버튼) |
 | 📈 **그래프 고도화** | 시간대/요일별 세분화, 누적 라인, 할당량 임계선 |
 | 📍 **GPS/IP 위치 추적** | 연결 위치(GPS·IP) 지도 핀 + 이동 이력 타임라인 |
-| 📡 **연결 품질 모니터링** | 게이트웨이 + 외부(8.8.8.8) Ping RTT. 3패킷 교차 검증으로 **거짓 끊김 없이** 실제 위반만 경고, 복구 자동 감지 |
+| 📡 **연결 품질 모니터링** | 게이트웨이 + 외부(8.8.8.8) Ping RTT. 3패킷 교차 검증으로 **거짓 끊김 없이** 실제 위반만 경고, 복구 자동 감지. 복구 시 시스템 알림 제거 + 앱 목록 경고 **해소됨** 마킹 (💡팁 잔류 없음) |
 | 🚫 **스마트 절약 모드** | 핫스팟 감지 시 `softwareupdate` off·`tmutil` off·Apple 업데이트 서버 차단으로 데이터 절약 |
 | 🌐 **DNS 프리셋** | 1.1.1.1 / 8.8.8.8 프리셋 적용, 시스템 네트워크 설정 즉시 변경 |
 | 🔌 **앱별 트래픽** | `nettop` 기반으로 어느 앱이 얼마나 쓰는지 실시간 순위 + 아이콘 툴바로 차단·제외·초기화 |
@@ -69,7 +69,7 @@ TetherLens는 메뉴바 하나로 **실시간 현황**과 **소진 예측**, 그
 
 ## ⚙️ 설치
 
-1. [TetherLens-macOS.zip](https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip) 다운로드 → 압축 해제 → `TetherLens.app`을 `응용 프로그램`으로 이동
+1. [TetherLens-v0.38.0.zip](https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-v0.38.0.zip) 다운로드 → 압축 해제 → `TetherLens.app`을 `응용 프로그램`으로 이동
 2. **미확인 개발자 경고** 시 터미널에서 한 줄 실행:
    ```bash
    xattr -rd com.apple.quarantine /Applications/TetherLens.app
