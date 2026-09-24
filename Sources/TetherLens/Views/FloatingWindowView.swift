@@ -49,6 +49,7 @@ struct FloatingWindowView: View {
                 Spacer(minLength: 0)
             }
             .padding(.top, 8)
+            .padding(.bottom, 12)
         }
         .background(
             RoundedRectangle(cornerRadius: Self.corner, style: .continuous)
