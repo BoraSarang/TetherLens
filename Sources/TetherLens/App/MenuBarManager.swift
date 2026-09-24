@@ -16,7 +16,7 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
     private var cacheTimer: Timer?
     private var locationTimer: Timer?
 
-    private let networkMonitor = NetworkMonitor()
+    private let networkMonitor = NetworkMonitor.shared
     private let hotspotDetector = HotspotDetector()
     private let pingMonitor = PingMonitor()
     private let ipResolver = IPResolver()

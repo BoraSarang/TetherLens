@@ -13,14 +13,31 @@ struct AppTrafficView: View {
     }
 
     var body: some View {
-        VStack(spacing: TLSpace.xl) {
-            if monitor.apps.isEmpty {
-                emptyView
-            } else {
-                trafficList
+        // 카드(코어바·Top5) + 프로세스 15행은 고정 높이 초과 → 전체 스크롤로 잘림 방지
+        // 카드는 플로팅/설정 그래프 토글과 무관하게 항상 전체 표시 (앱 트래픽 전용)
+        // sort/filter/topN은 본문 1회만 계산 (v0.38.1)
+        let resources = visibleResources
+        let rows = filteredApps
+        let cpu5 = SystemResourceMonitor.topResources(resources, limit: 5) { $0.cpuPercent ?? -1 }
+        let mem5 = SystemResourceMonitor.topResources(resources, limit: 5) { Double($0.rssBytes) }
+        return ScrollView {
+            VStack(spacing: TLSpace.xl) {
+                SystemMetricsCards(
+                    detail: .full,
+                    cpuTop: cpu5,
+                    memTop: mem5,
+                    alwaysShowAll: true
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, -TLSpace.md)
+                if rows.isEmpty {
+                    emptyView
+                } else {
+                    trafficList(rows: rows)
+                }
             }
+            .padding(TLSpace.inset)
         }
-        .padding(TLSpace.inset)
         .frame(width: TLSize.trafficWindow.w, height: TLSize.trafficWindow.h)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
@@ -101,26 +118,22 @@ struct AppTrafficView: View {
         }
     }
 
-    private var trafficList: some View {
-        List {
-            headerRow
-            ForEach(filteredApps.prefix(15)) { app in
-                appRow(app)
+    private func trafficList(rows: [TrafficMonitor.AppTraffic]) -> some View {
+        // sort/filter/share는 본문에서 1회 전달 — 행마다 재계산 O(n²) 방지 (v0.38.1)
+        let total = Double(rows.reduce(Int64(0)) { $0 + $1.bytesIn + $1.bytesOut })
+        return MetricCard(title: Localized.process) {
+            LazyVStack(spacing: 0) {
+                processColumnHeader
+                    .padding(.bottom, 2)
+                ForEach(rows.prefix(15)) { app in
+                    appRow(app, shareTotal: total)
+                }
             }
         }
-        .listStyle(.plain)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var filteredApps: [TrafficMonitor.AppTraffic] {
-        let sorted = monitor.apps.sorted {
-            $0.bytesIn + $0.bytesOut > $1.bytesIn + $1.bytesOut
-        }
-        if showSystemProcesses { return sorted }
-        return sorted.filter { !SystemProcesses.set.contains($0.processName) }
-    }
-
-    private var headerRow: some View {
+    private var processColumnHeader: some View {
         HStack(spacing: 0) {
             Color.clear.frame(width: 20)
             Text(Localized.process)
@@ -142,45 +155,66 @@ struct AppTrafficView: View {
         }
     }
 
-    private func appRow(_ app: TrafficMonitor.AppTraffic) -> some View {
-        let isBlocked = blockedApps.contains(app.processName)
-        return HStack(spacing: 0) {
-            Group {
-                if let nsImage = AppIconResolver.icon(forProcess: app.processName) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .scaledToFit()
-                } else {
-                    Image(systemName: "app")
-                        .foregroundColor(TLPalette.textSecondary)
-                }
-            }
-            .frame(width: 16, height: 16)
-            .padding(.trailing, 4)
-            Text(app.processName)
-                .font(TLFont.medium)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Button {
-                toggleBlock(app.processName)
-            } label: {
-                Image(systemName: isBlocked ? "hand.raised.fill" : "hand.raised")
-                    .foregroundColor(isBlocked ? TLPalette.danger : TLPalette.textSecondary)
-            }
-            .buttonStyle(.plain)
-            .frame(width: 36, alignment: .center)
-            Text(formatByteRate(app.bytesIn))
-                .font(TLFont.mediumMono)
-                .foregroundColor(TLPalette.upload)
-                .frame(width: 64, alignment: .trailing)
-            Text(formatByteRate(app.bytesOut))
-                .font(TLFont.mediumMono)
-                .foregroundColor(TLPalette.download)
-                .frame(width: 64, alignment: .trailing)
+    private var headerRow: some View { processColumnHeader }
+
+    private var filteredApps: [TrafficMonitor.AppTraffic] {
+        let sorted = monitor.apps.sorted {
+            $0.bytesIn + $0.bytesOut > $1.bytesIn + $1.bytesOut
         }
-        .padding(.vertical, 2)
+        if showSystemProcesses { return sorted }
+        return sorted.filter { !SystemProcesses.set.contains($0.processName) }
+    }
+
+    private var visibleResources: [String: ProcessResource] {
+        if showSystemProcesses { return monitor.allResources }
+        return monitor.allResources.filter { !SystemProcesses.set.contains($0.key) }
+    }
+
+    private func appRow(_ app: TrafficMonitor.AppTraffic, shareTotal: Double) -> some View {
+        let isBlocked = blockedApps.contains(app.processName)
+        let share = TLShare.ratio(Double(app.bytesIn + app.bytesOut), of: shareTotal)
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 0) {
+                Group {
+                    if let nsImage = AppIconResolver.icon(forProcess: app.processName) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .scaledToFit()
+                    } else {
+                        Image(systemName: "app")
+                            .foregroundColor(TLPalette.textSecondary)
+                    }
+                }
+                .frame(width: 16, height: 16)
+                .padding(.trailing, 4)
+                Text(app.processName)
+                    .font(TLFont.medium)
+                    .foregroundColor(TLPalette.textPrimary.opacity(0.9))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    toggleBlock(app.processName)
+                } label: {
+                    Image(systemName: isBlocked ? "hand.raised.fill" : "hand.raised")
+                        .foregroundColor(isBlocked ? TLPalette.danger : TLPalette.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .frame(width: 36, alignment: .center)
+                Text(formatByteRate(app.bytesIn))
+                    .font(TLFont.mediumMono)
+                    .foregroundColor(TLPalette.upload)
+                    .frame(width: 64, alignment: .trailing)
+                Text(formatByteRate(app.bytesOut))
+                    .font(TLFont.mediumMono)
+                    .foregroundColor(TLPalette.download)
+                    .frame(width: 64, alignment: .trailing)
+            }
+            TLShareBar(ratio: share, color: TLPalette.download)
+        }
+        .padding(.vertical, 3)
         .opacity(isBlocked ? 0.5 : 1)
+        .contentShape(Rectangle())
     }
 
     private func toggleBlock(_ name: String) {

@@ -20,11 +20,10 @@ final class SettingsManager: @unchecked Sendable {
             "autoSwitchProfile": true,
             "floatingShowAtLaunch": false,
             "floatingOpacity": 0.9,
-            "floatingShowProcess": true,
-            "floatingShowCPU": true,
-            "floatingShowRAM": true,
             "popoverShowResources": true,
-            "floatingShowUsage": true
+            "showCPUGraph": false,
+            "showGPUGraph": false,
+            "showMemGraph": true
         ])
     }
 
@@ -106,36 +105,26 @@ final class SettingsManager: @unchecked Sendable {
         set { defaults.set(newValue, forKey: "floatingOpacity") }
     }
 
-    /// 플로팅 3줄(프로세스/CPU/RAM) 표시 토글 (v0.32.1).
-    var floatingShowProcess: Bool {
-        get { defaults.object(forKey: "floatingShowProcess") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "floatingShowProcess") }
-    }
-
-    var floatingShowCPU: Bool {
-        get { defaults.object(forKey: "floatingShowCPU") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "floatingShowCPU") }
-    }
-
-    var floatingShowRAM: Bool {
-        get { defaults.object(forKey: "floatingShowRAM") as? Bool ?? true }
-        set { defaults.set(newValue, forKey: "floatingShowRAM") }
-    }
-
-    /// 켜진 줄 수 (0이면 컴팩트 높이).
-    var floatingVisibleLines: Int {
-        [floatingShowProcess, floatingShowCPU, floatingShowRAM].filter { $0 }.count
-    }
-
     /// 상세 보기 시스템 리소스 섹션 표시 (v0.32.1).
     var popoverShowResources: Bool {
         get { defaults.object(forKey: "popoverShowResources") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "popoverShowResources") }
     }
 
-    var floatingShowUsage: Bool {
-        get { defaults.bool(forKey: "floatingShowUsage") }
-        set { defaults.set(newValue, forKey: "floatingShowUsage") }
+    /// 개별 카드 표시 — 기본: CPU/GPU OFF, 메모리 ON (v0.37). 네트워크 카드는 항상 표시.
+    var showCPUGraph: Bool {
+        get { defaults.object(forKey: "showCPUGraph") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "showCPUGraph") }
+    }
+
+    var showGPUGraph: Bool {
+        get { defaults.object(forKey: "showGPUGraph") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "showGPUGraph") }
+    }
+
+    var showMemGraph: Bool {
+        get { defaults.object(forKey: "showMemGraph") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "showMemGraph") }
     }
 
     func resetPollingIntervals() {

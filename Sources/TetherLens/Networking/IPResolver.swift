@@ -39,7 +39,10 @@ class IPResolver {
         let oldIP = externalIP
 
         do {
-            let url = URL(string: "https://api.ipify.org?format=json")!
+            guard let url = URL(string: "https://api.ipify.org?format=json") else {
+                DebugLogger.shared.error("Network", "IP 조회 URL 생성 실패")
+                return
+            }
             var request = URLRequest(url: url)
             request.timeoutInterval = 10
             let (data, _) = try await URLSession.shared.data(for: request)
@@ -55,7 +58,12 @@ class IPResolver {
                     lastFetch = Date()
                     return
                 }
-                let geoURL = URL(string: "https://ipapi.co/\(ip)/json/")!
+                guard let geoURL = URL(string: "https://ipapi.co/\(ip)/json/") else {
+                    DebugLogger.shared.error("Network", "지역 조회 URL 생성 실패 (ip=\(ip))")
+                    externalIP = ip
+                    lastFetch = Date()
+                    return
+                }
                 DebugLogger.shared.apiCall("Network", "GET", "https://ipapi.co/\(ip)/json/")
                 var geoRequest = URLRequest(url: geoURL)
                 geoRequest.timeoutInterval = 10

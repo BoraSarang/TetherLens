@@ -140,7 +140,7 @@ final class NetworkDiagnostics {
         }
         resolvers = Array(Set(resolvers)).sorted()
 
-        let userDNS = DNSManager.shared.currentServers().sorted()
+        let userDNS = (await DNSManager.shared.currentServersAsync()).sorted()
 
         if resolvers.isEmpty {
             return DiagnosticsEntry(
@@ -290,9 +290,12 @@ final class NetworkDiagnostics {
     func isCurrentPathExpensive() async -> Bool {
         await withCheckedContinuation { continuation in
             let monitor = NWPathMonitor()
+            let gate = ResumeOnceGate()
             monitor.pathUpdateHandler = { path in
-                continuation.resume(returning: path.isExpensive)
-                monitor.cancel()
+                if gate.tryResume() {
+                    monitor.cancel()
+                    continuation.resume(returning: path.isExpensive)
+                }
             }
             monitor.start(queue: DispatchQueue.global(qos: .utility))
         }
@@ -427,4 +430,18 @@ private func validateHostName(_ host: String) -> Bool {
     guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
     let range = NSRange(location: 0, length: host.utf16.count)
     return regex.firstMatch(in: host, range: range) != nil
+}
+
+/// continuation 이중 resume 가드 — NWPathMonitor pathUpdateHandler가 재호출되어도 1회만 통과.
+private final class ResumeOnceGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done = false
+
+    func tryResume() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if done { return false }
+        done = true
+        return true
+    }
 }

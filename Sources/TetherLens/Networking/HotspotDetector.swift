@@ -29,33 +29,43 @@ struct ConnectionInfo {
 }
 
 class HotspotDetector: @unchecked Sendable {
-    private let monitor = NWPathMonitor()
+    // cancel된 NWPathMonitor는 재시작 불가 — stop 시 인스턴스를 폐기하고 start 시 새로 만든다 (v0.38.0)
+    private var monitor: NWPathMonitor?
     private let queue = DispatchQueue(label: "com.tetherlens.hotspot-detector", qos: .utility)
 
     private(set) var currentConnection: ConnectionInfo?
-    var isNetworkAvailable: Bool { monitor.currentPath.status == .satisfied }
+    var isNetworkAvailable: Bool { monitor?.currentPath.status == .satisfied }
 
     private var hasStarted = false
 
     func start() {
         guard !hasStarted else { return }
         hasStarted = true
-        monitor.pathUpdateHandler = { [weak self] path in
-            DispatchQueue.main.async {
-                self?.updateConnection(path: path)
-            }
+        let pathMonitor = NWPathMonitor()
+        pathMonitor.pathUpdateHandler = { [weak self] path in
+            self?.handlePathUpdate(path)
         }
-        monitor.start(queue: queue)
+        pathMonitor.start(queue: queue)
+        monitor = pathMonitor
     }
 
     func stop() {
         hasStarted = false
-        monitor.cancel()
+        monitor?.cancel()
+        monitor = nil
     }
 
     func refreshNow() {
-        let path = monitor.currentPath
-        updateConnection(path: path)
+        guard let path = monitor?.currentPath else { return }
+        handlePathUpdate(path)
+    }
+
+    /// route/DNS 조회(프로세스·파일 I/O)는 utility queue에서 수행 후 결과만 메인에 반영한다 (v0.38.1).
+    private func handlePathUpdate(_ path: NWPath) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.updateConnection(path: path)
+        }
     }
 
     func refreshWifiInfo() -> (ssid: String?, bssid: String?, rssi: Int?, noise: Int?, linkSpeed: Double?, channel: Int?, channelWidth: Int?, channelBand: String?, phyMode: String?) {
@@ -144,12 +154,13 @@ class HotspotDetector: @unchecked Sendable {
         let gatewayIP = getGatewayIP()
 
         if usesEthernet {
-            currentConnection = makeInfo(
+            let info = makeInfo(
                 type: .ethernet,
                 interfaceName: interfaceName,
                 localIP: localIP, gatewayIP: gatewayIP,
                 isExpensive: isExpensive, isConstrained: isConstrained
             )
+            publish(info)
             return
         }
 
@@ -178,22 +189,31 @@ class HotspotDetector: @unchecked Sendable {
                 detectedType = .normalWiFi(ssid: wifi.ssid, bssid: wifi.bssid)
             }
 
-            currentConnection = makeWiFiInfo(
+            let info = makeWiFiInfo(
                 type: detectedType,
                 interfaceName: interfaceName,
                 localIP: localIP, gatewayIP: gatewayIP,
                 isExpensive: isExpensive, isConstrained: isConstrained,
                 wifi: wifi
             )
+            publish(info)
             return
         }
 
-        currentConnection = makeInfo(
+        let info = makeInfo(
             type: .unknown,
             interfaceName: interfaceName,
             localIP: localIP, gatewayIP: gatewayIP,
             isExpensive: isExpensive, isConstrained: isConstrained
         )
+        publish(info)
+    }
+
+    /// 백그라운드에서 만든 ConnectionInfo를 메인에서 단일 저장으로 반영한다.
+    private func publish(_ info: ConnectionInfo) {
+        DispatchQueue.main.async { [weak self] in
+            self?.currentConnection = info
+        }
     }
 
     private func availableInterfaces(from path: NWPath) -> String? {
@@ -214,14 +234,19 @@ class HotspotDetector: @unchecked Sendable {
         while true {
             let addr = ptr.pointee
             let name = String(cString: addr.ifa_name)
-            let family = addr.ifa_addr.pointee.sa_family
+            guard let sa = addr.ifa_addr else {
+                guard let next = addr.ifa_next else { break }
+                ptr = next
+                continue
+            }
+            let family = sa.pointee.sa_family
 
             if family == UInt8(AF_INET),
                name == "en0" || name == "en1" || name == "ap1" {
                 var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
                 getnameinfo(
-                    addr.ifa_addr,
-                    socklen_t(addr.ifa_addr.pointee.sa_len),
+                    sa,
+                    socklen_t(sa.pointee.sa_len),
                     &hostname, socklen_t(hostname.count),
                     nil, 0,
                     NI_NUMERICHOST

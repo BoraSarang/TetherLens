@@ -387,19 +387,20 @@
 | 189 | 플로팅 프로세스칸 3열 헤더 복원 (프로세스/업로드/다운로드, 캡처 확인) | P1 | ✅ |
 | 190 | 리소스 랭킹 전체 프로세스 기준으로 수정 (allResources, java/node 누락 버그, 캡처 확인) | P0 | ✅ |
 
-## 🔄 v0.31.0 — 플로팅 창 (메뉴바 축소판 + 프로세스 트래픽) (2026-09-02)
+## ✅ v0.31.0 — 플로팅 창 (메뉴바 축소판 + 프로세스 트래픽) (2026-09-02)
 
 > 사용자 요청: 메뉴바 표시 내용을 바탕화면 플로팅 창으로 별도 구성. 계획: docs/plans/PLAN_v0.31.0_macos.md (bd: TetherLens-9a5)
+> 2026-09-24 상태 점검: 코드베이스 구현 완료 확인 후 마감 (드래그·글래스엣지·자동높이 등 v0.32.x 후속 포함)
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
 | 168 | PLAN 작성 + bd 등록 | P0 | ✅ |
-| 169 | TrafficMonitor `Usage.floating` + MenuBarManager `floatingContentChanged` 발행 | P1 | ⬜ |
-| 170 | FloatingWindowController: borderless NSPanel + 위치 저장/복원 + 트래픽 acquire/release | P1 | ⬜ |
-| 171 | FloatingWindowView: 메뉴바 축소판(폰트 반영) + 트래픽 top3 + 투명도/닫기 + 행 클릭→앱트래픽 | P1 | ⬜ |
-| 172 | 진입점: 우클릭 더보기 토글 + ⌘⇧F + ⌘K 팔레트 액션 | P1 | ⬜ |
-| 173 | SettingsView 플로팅 창 섹션(시작 시 표시/투명도/트래픽) + SettingsManager 3키 + Localized | P1 | ⬜ |
-| 174 | 검증: test.sh + build + DebugPanel(ERROR 0) + Info.plist v0.31.0/31 + 문서(CHANGELOG/TODO/세션) | P1 | ⬜ |
+| 169 | TrafficMonitor `Usage.floating` + MenuBarManager `floatingContentChanged` 발행 | P1 | ✅ (코드 확인: FloatingWindowController:34, MenuBarManager:779) |
+| 170 | FloatingWindowController: borderless NSPanel + 위치 저장/복원 + 트래픽 acquire/release | P1 | ✅ |
+| 171 | FloatingWindowView: 메뉴바 축소판(폰트 반영) + 트래픽 top3 + 투명도/닫기 + 행 클릭→앱트래픽 | P1 | ✅ (후속 v0.37.1 네트워크 카드·시스템 카드 통합 포함) |
+| 172 | 진입점: 우클릭 더보기 토글 + ⌘⇧F + ⌘K 팔레트 액션 | P1 | ✅ (메뉴/팔레트/팝오버 … 토글 확인) |
+| 173 | SettingsView 플로팅 창 섹션(시작 시 표시/투명도/트래픽) + SettingsManager 3키 + Localized | P1 | ✅ (SettingsView:208~242, SettingsManager floatingShowAtLaunch/Opacity) |
+| 174 | 검증: test.sh + build + DebugPanel(ERROR 0) + 문서(CHANGELOG/TODO/세션) | P1 | ✅ (test 122 통과; Info.plist bump는 릴리즈 시점) |
 
 ## 🔄 v0.32.1 — 플로팅 테두리 호버시에만 표시 (2026-09-09)
 
@@ -462,3 +463,34 @@
 | 208 | 팝오버 "..." 메뉴를 우클릭 더보기와 정렬 (리포트·플로팅·진단 추가) | P2 | ✅ (test 88개 + build 성공) |
 | 209 | 속도 테스트 다운로드원 교체 (hetzner 차단 실측 → Cloudflare 1차 + hetzner 폴백) | P1 | ✅ (test 88개 + build 성공) |
 | 210 | 느린 회선 대응 (10MB 고정 → 10MB·12초 선착 + 디버그 로그 3종) | P1 | ✅ (test 88개 + build 성공) |
+
+## ✅ v0.37.0 — iStat 스타일 트래픽 + CPU/GPU/MEM 그래프 (2026-09-24)
+
+> 사용자 요청: 3면 프로세스 트래픽 iStat Menus 점유율 바로 표현 + 시스템 CPU/GPU/MEM 스파크라인. RelayConsole UI 참고. GPU 실패 시 숨김.
+> 계획: docs/plans/PLAN_v0.37.0_iStat_macos.md (bd: TetherLens-4kb, closed 2026-09-24)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 211 | PLAN 작성 + bd 등록 + TODO 등록 | P0 | ✅ |
+| 212 | MetricsHistory 링버퍼 + TLSparkline/TLShareBar + SystemMetricsStrip | P0 | ✅ (Components 신규, 60점 링, GPU 칸 조건부) |
+| 213 | SystemResourceMonitor GPU(IOKit) + SystemLoad.gpuPercent + TrafficMonitor push | P0 | ✅ (IOKit 3클래스·4키 후보, 실패 시 nil/info 1회) |
+| 214 | 3면 UI (점유율 바 + 시스템 그래프 스트립) + 설정 토글 + Localized | P0 | ✅ (플로팅/팝오버/앱트래픽 + showSystemGraphs, 후속 T-217에서 개별 토글로 대체) |
+| 215 | 검증 (test.sh + build + DebugPanel ERROR 0) + 문서(CHANGELOG/세션/bd) | P1 | ✅ (test 114개 + build 경고 0, GUI 육안은 사용자 몫) |
+| 216 | SystemMetricsStrip → SystemMetricsCards 카드형 재구성 (iStat) + perCore/loadavg | P0 | ✅ (MetricCard/TLGaugeBar/TLCoreBars, host_processor_info+getloadavg, 3면 detail 분기, test 120개 통과) |
+| 217 | 설정 플로팅 창: CPU/GPU/RAM 그래프 개별 토글 (기본 RAM만 ON) | P0 | ✅ (showCPUGraph/showGPUGraph/showMemGraph, 단일 showSystemGraphs 제거) |
+| 218 | 플로팅 RAM 카드: `17 / 32 GB`를 제목 오른쪽 우측 정렬로 이동 | P1 | ✅ (MetricCard trailing 헤더, hero 텍스트 제거) |
+| 219 | CPU/GPU 카드 trailing 통일 + 플로팅 호버 지표 토글 메뉴 + RAM 라벨 통일 | P1 | ✅ (제목 우측 수치, 차트 아이콘 드롭다운, Localized memory/sortByMemory/showMemGraph → RAM) |
+| 220 | 플로팅 카드 배경 투명도 연동 + 앱 트래픽 창 프로세스 목록 잘림 수정 | P1 | ✅ (MetricCard.backgroundOpacity, AppTraffic ScrollView+LazyVStack) |
+| 221 | 앱 트래픽 창: 카드 스타일 통일 + 항상 전체 표시 + 640×760 고정(리사이즈 금지) | P1 | ✅ (MetricCard 셸, alwaysShowAll, windowResizability.contentSize) |
+| 222 | 플로팅 재구성: 네트워크 카드(팝오버 차트+큰 숫자+프로세스Top3) 항상 표시 + 프로세스/그래프 분리 토글 제거 | P0 | ✅ (TLNetworkSpeedChart 공용, NetworkMonitor.shared, showCPUGraph 등 카드 통합, floatingShow* 제거) |
+
+## ✅ v0.38.2 — 안정성·성능 재점검 후속 (2026-09-24)
+
+> 조사 + 코드 패치 완료 (bd k5o 안정성 / bd rsk 성능, 둘 다 close). test 122 + build OK.
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 223 | 안정성 P1: IPResolver URL! 가드 / isCurrentPathExpensive continuation resume-once / DNS 메인스레드 Process → 백그라운드 | P0 | ✅ (ResumeOnceGate, currentServersAsync, PopoverView/dnsLeakCheck) |
+| 224 | 성능 P1: PopoverView·ReportView·ReportAppTrafficView·MovementTimeline·SessionTimeline body 고비용 연산 hoisting | P0 | ✅ (@State 캐시 + onAppear/onChange 1회 계산, HeatmapMapView 포함) |
+| 225 | 성능 P2: NetworkMonitor 타이머 tolerance/leeway, DateFormatter static 재사용, FloatingWindowViewModel 스냅샷 발행 | P1 | ✅ (leeway 100ms, static DateFormatter, 단일 스냅샷) |
+| 226 | 검증 (test.sh + build) + 문서(CHANGELOG/PLAN §3.4/세션/bd close) | P1 | ✅ (build OK + test 122 통과, 문서 갱신) |

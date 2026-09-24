@@ -51,6 +51,7 @@ class DNSManager: @unchecked Sendable {
 
         do {
             try task.run()
+            task.waitUntilExit()
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             let output = String(data: data, encoding: .utf8) ?? ""
             if output.contains("There aren't any DNS Servers") {
@@ -67,6 +68,13 @@ class DNSManager: @unchecked Sendable {
         } catch {
             return []
         }
+    }
+
+    /// 백그라운드에서 현재 DNS 서버를 읽는다 (메인스레드 블로킹 방지).
+    func currentServersAsync() async -> [String] {
+        await Task.detached(priority: .utility) { [weak self] in
+            self?.currentServers() ?? []
+        }.value
     }
 
     func applyPreset(_ preset: DNSPreset, completion: @escaping @Sendable (Bool, String) -> Void) {

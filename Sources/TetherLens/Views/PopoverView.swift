@@ -38,6 +38,9 @@ struct PopoverView: View {
     @AppStorage("popover_expanded_address_info") private var expandedAddressInfo = false
     @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
     @AppStorage("popoverShowResources") private var showResources = true
+    @AppStorage("showCPUGraph") private var showCPUGraph = false
+    @AppStorage("showGPUGraph") private var showGPUGraph = false
+    @AppStorage("showMemGraph") private var showMemGraph = true
     @AppStorage("appTraffic_show_system") private var showSystemProcesses = false
     @AppStorage("popover_summary_mode") private var summaryMode = true
     @Environment(\.openWindow) private var openWindow
@@ -53,9 +56,11 @@ struct PopoverView: View {
             .sheet(isPresented: $showDNSPicker) {
                 dnsPresetPicker
                     .onAppear {
-                        currentDNSServers = DNSManager.shared.currentServers()
                         applyingPresetID = nil
                         dnsStatusMessage = nil
+                        Task {
+                            currentDNSServers = await DNSManager.shared.currentServersAsync()
+                        }
                     }
             }
             .sheet(isPresented: $showProfileManager) {
@@ -362,7 +367,7 @@ struct PopoverView: View {
     }
 
     /// 상태 1행 — 배너 3종을 대체하는 단일 상태 표시 (장식 없이 도트+텍스트)
-    /// 우측에는 외부 IP 칩을 상시 노출해 간략 보기에서도 1클릭 복사 (v0.35.1 QuickCopy)
+    /// 우측에는 게이트웨이·외부 IP 칩을 상시 노출해 간략 보기에서도 1클릭 복사 (v0.35.1 QuickCopy)
     private var statusRow: some View {
         HStack(spacing: TLSpace.sm) {
             Circle()
@@ -373,10 +378,41 @@ struct PopoverView: View {
                 .foregroundColor(statusColor)
                 .lineLimit(1)
             Spacer(minLength: TLSpace.sm)
+            quickGatewayChip
             quickIPChip
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contextMenu { quickCopyMenu }
+    }
+
+    /// 상태행 외부 IP 칩 왼쪽 게이트웨이 칩 — 탭하면 즉시 복사
+    private var quickGatewayChip: some View {
+        Group {
+            if let gw = hotspotDetector.currentConnection?.gatewayIP {
+                Button {
+                    copyToPasteboard(gw, source: "statusChip")
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "network")
+                            .font(TLFont.small)
+                            .foregroundColor(TLPalette.textSecondary)
+                        Text(gw)
+                            .font(TLFont.detail.monospacedDigit())
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Image(systemName: "doc.on.doc")
+                            .font(TLFont.small)
+                            .foregroundColor(TLPalette.copyHint)
+                    }
+                }
+                .buttonStyle(.plain)
+                .help(Localized.copyGatewayHelp)
+                .onHover { inside in
+                    if inside { NSCursor.pointingHand.push() }
+                    else { NSCursor.pop() }
+                }
+            }
+        }
     }
 
     /// 상태행 우측 외부 IP 칩 — 탭하면 즉시 복사
@@ -799,6 +835,7 @@ struct PopoverView: View {
 
     private var appTrafficPreview: some View {
         let top3 = Array(visibleAppTraffic.prefix(3))
+        let shareTotal = Double(visibleAppTraffic.reduce(Int64(0)) { $0 + $1.bytesIn + $1.bytesOut })
         return VStack(spacing: TLSpace.xs) {
             HStack(spacing: 0) {
                 Text(Localized.process)
@@ -815,21 +852,27 @@ struct PopoverView: View {
                     .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
             }
             ForEach(top3) { app in
-                HStack(spacing: 4) {
-                    procIcon(app.processName)
-                    Text(app.processName)
-                        .font(TLFont.medium)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(formatByteRate(app.bytesIn))
-                        .font(TLFont.mediumMono)
-                        .foregroundColor(TLPalette.upload)
-                        .frame(width: TLSize.trafficUploadCol, alignment: .trailing)
-                    Text(formatByteRate(app.bytesOut))
-                        .font(TLFont.mediumMono)
-                        .foregroundColor(TLPalette.download)
-                        .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        procIcon(app.processName)
+                        Text(app.processName)
+                            .font(TLFont.medium)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(formatByteRate(app.bytesIn))
+                            .font(TLFont.mediumMono)
+                            .foregroundColor(TLPalette.upload)
+                            .frame(width: TLSize.trafficUploadCol, alignment: .trailing)
+                        Text(formatByteRate(app.bytesOut))
+                            .font(TLFont.mediumMono)
+                            .foregroundColor(TLPalette.download)
+                            .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
+                    }
+                    TLShareBar(
+                        ratio: TLShare.ratio(Double(app.bytesIn + app.bytesOut), of: shareTotal),
+                        color: TLPalette.download
+                    )
                 }
             }
             Button(Localized.showMore) { openWindow(id: "appTraffic") }
@@ -1037,74 +1080,11 @@ struct PopoverView: View {
     private var speedHistorySection: some View {
         VStack(alignment: .leading, spacing: TLSpace.sm) {
             sectionDivider(Localized.usageHistory)
-            let history = networkMonitor.speedHistory
-            if history.count >= 2 {
-                speedCombinedChart(history: history)
-            } else {
-                Text(Localized.measuring)
-                    .font(TLFont.caption)
-                    .foregroundColor(TLPalette.textSecondary)
-                    .frame(maxWidth: .infinity, minHeight: 104, alignment: .center)
-            }
-        }
-    }
-
-    /// 단일 오버레이 차트 — 다운로드 Area + 업로드 Line, 공유 Y축, series 구분 필수.
-    /// series 없이 같은 값 라벨을 쓰면 Charts가 업/다운을 단일 시리즈로 병합해 렌더가 엉킴.
-    /// 업은 Line만 그려 작은 값도 식별되고 겹침 탁함도 없음. Y축 0구간(idle) 대비 하한 1 보장.
-    private func speedCombinedChart(history: [NetworkMonitor.SpeedSample]) -> some View {
-        let uploads = history.map { $0.uploadBps / 8 }
-        let downloads = history.map { $0.downloadBps / 8 }
-        let peak = max(uploads.max() ?? 0, downloads.max() ?? 0, 1) * 1.15
-        let upCurrent = formatByteRate(Int64(networkMonitor.currentUploadSpeed / 8))
-        let downCurrent = formatByteRate(Int64(networkMonitor.currentDownloadSpeed / 8))
-        return VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: TLSpace.md) {
-                HStack(spacing: 4) {
-                    Circle().fill(TLPalette.upload).frame(width: 6, height: 6)
-                    Text(Localized.uploadShort)
-                        .font(TLFont.caption)
-                        .foregroundColor(TLPalette.textSecondary)
-                    Text(upCurrent)
-                        .font(TLFont.caption.monospacedDigit())
-                        .foregroundColor(TLPalette.upload)
-                }
-                Spacer()
-                HStack(spacing: 4) {
-                    Text(downCurrent)
-                        .font(TLFont.caption.monospacedDigit())
-                        .foregroundColor(TLPalette.download)
-                    Text(Localized.downloadShort)
-                        .font(TLFont.caption)
-                        .foregroundColor(TLPalette.textSecondary)
-                    Circle().fill(TLPalette.download).frame(width: 6, height: 6)
-                }
-            }
-            Chart {
-                ForEach(Array(downloads.enumerated()), id: \.offset) { idx, v in
-                    AreaMark(
-                        x: .value("t", idx),
-                        y: .value("v", v),
-                        series: .value("방향", "다운")
-                    )
-                    .foregroundStyle(TLPalette.download.opacity(0.30))
-                    .interpolationMethod(.catmullRom)
-                }
-                ForEach(Array(uploads.enumerated()), id: \.offset) { idx, v in
-                    LineMark(
-                        x: .value("t", idx),
-                        y: .value("v", v),
-                        series: .value("방향", "업")
-                    )
-                    .foregroundStyle(TLPalette.upload)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
-                    .interpolationMethod(.catmullRom)
-                }
-            }
-            .chartXAxis(.hidden)
-            .chartYAxis(.hidden)
-            .chartYScale(domain: 0...peak)
-            .frame(height: 88)
+            TLNetworkSpeedChart(
+                history: networkMonitor.speedHistory,
+                uploadBitRate: networkMonitor.currentUploadSpeed,
+                downloadBitRate: networkMonitor.currentDownloadSpeed
+            )
         }
     }
 
@@ -1191,9 +1171,12 @@ struct PopoverView: View {
     }
 
     /// 독립 리소스 섹션 — 네트워크 순위와 무관한 CPU Top3 + 메모리 Top3 (v0.32).
-    /// 같은 수집 스냅샷을 다시 정렬만 하므로 추가 폴링 없음.
+    /// 같은 수집 스냅샷을 다시 정렬만 하므로 추가 폴링 없음. sort/filter은 본문 1회 (v0.38.2).
     private var resourceSection: some View {
-        VStack(alignment: .leading, spacing: TLSpace.xs) {
+        let resources = filteredResources(trafficMonitor.allResources)
+        let cpu3 = cpuTop3(from: resources)
+        let mem3 = memTop3(from: resources)
+        return VStack(alignment: .leading, spacing: TLSpace.xs) {
             HStack(spacing: TLSpace.sm) {
                 Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
                 Text(Localized.systemResources)
@@ -1207,29 +1190,16 @@ struct PopoverView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { openWindow(id: "appTraffic") }
-            if !visibleResources.isEmpty {
-                Text(Localized.cpu)
-                    .font(TLFont.smallBold)
-                    .foregroundColor(TLPalette.textSecondary)
-                ForEach(cpuTop3, id: \.name) { entry in
-                    resourceRow(
-                        name: entry.name,
-                        value: SystemResourceMonitor.formatCPU(entry.res.cpuPercent),
-                        valueColor: TLPalette.cpuHeat(entry.res.cpuPercent)
-                    )
-                }
-                Text(Localized.memory)
-                    .font(TLFont.smallBold)
-                    .foregroundColor(TLPalette.textSecondary)
-                    .padding(.top, TLSpace.xs)
-                ForEach(memTop3, id: \.name) { entry in
-                    resourceRow(
-                        name: entry.name,
-                        value: SystemResourceMonitor.formatMemory(entry.res.rssBytes),
-                        valueColor: TLPalette.textSecondary
-                    )
-                }
-            } else {
+            if showCPUGraph || showGPUGraph || showMemGraph {
+                SystemMetricsCards(
+                    detail: .standard,
+                    cpuTop: cpu3,
+                    memTop: mem3,
+                    onShowProcesses: { openWindow(id: "appTraffic") }
+                )
+                .padding(.bottom, TLSpace.xs)
+            }
+            if resources.isEmpty {
                 Text(Localized.trafficCollecting)
                     .font(TLFont.caption2)
                     .foregroundColor(TLPalette.textSecondary)
@@ -1239,33 +1209,18 @@ struct PopoverView: View {
     }
 
     /// 전체 프로세스 기준 CPU Top3 — 네트워크 무관. 시스템 표시 토글과 연동.
-    private var cpuTop3: [(name: String, res: ProcessResource)] {
-        SystemResourceMonitor.topResources(visibleResources, limit: 3) { $0.cpuPercent ?? -1 }
+    private func cpuTop3(from resources: [String: ProcessResource]) -> [(name: String, res: ProcessResource)] {
+        SystemResourceMonitor.topResources(resources, limit: 3) { $0.cpuPercent ?? -1 }
     }
 
     /// 전체 프로세스 기준 메모리 Top3 — 네트워크 무관. 시스템 표시 토글과 연동.
-    private var memTop3: [(name: String, res: ProcessResource)] {
-        SystemResourceMonitor.topResources(visibleResources, limit: 3) { Double($0.rssBytes) }
+    private func memTop3(from resources: [String: ProcessResource]) -> [(name: String, res: ProcessResource)] {
+        SystemResourceMonitor.topResources(resources, limit: 3) { Double($0.rssBytes) }
     }
 
-    private var visibleResources: [String: ProcessResource] {
-        if showSystemProcesses { return trafficMonitor.allResources }
-        return trafficMonitor.allResources.filter { !SystemProcesses.set.contains($0.key) }
-    }
-
-    private func resourceRow(name: String, value: String, valueColor: Color) -> some View {
-        HStack(spacing: TLSpace.sm) {
-            procIcon(name)
-            Text(name)
-                .font(TLFont.medium)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(value)
-                .font(TLFont.mediumMono)
-                .foregroundColor(valueColor)
-                .frame(width: 76, alignment: .trailing)
-        }
+    private func filteredResources(_ all: [String: ProcessResource]) -> [String: ProcessResource] {
+        if showSystemProcesses { return all }
+        return all.filter { !SystemProcesses.set.contains($0.key) }
     }
 
     private func procIcon(_ name: String) -> some View {
@@ -1304,7 +1259,7 @@ struct PopoverView: View {
             .help(summaryMode ? Localized.detailView : Localized.summaryView)
 
             Menu {
-                Button(Localized.usageReport) { openWindow(id: "usageReport") }
+                // 사용량 리포트는 좌측 주 버튼과 중복 → 제거. 순서는 메뉴바 더보기/팔레트와 동일 (P1)
                 Button(Localized.appTrafficButton) { openWindow(id: "appTraffic") }
                 Button(Localized.notificationList) { openWindow(id: "notifications") }
                 Button(FloatingWindowController.shared.isVisible ? Localized.floatingWindowHide : Localized.floatingWindowShow) {

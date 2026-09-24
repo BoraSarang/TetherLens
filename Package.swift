@@ -28,7 +28,8 @@ let package = Package(
                 .linkedFramework("Network"),
                 .linkedFramework("SystemConfiguration"),
                 .linkedFramework("AppKit"),
-                .linkedFramework("SwiftUI")
+                .linkedFramework("SwiftUI"),
+                .linkedFramework("IOKit")
             ]
         ),
         .testTarget(

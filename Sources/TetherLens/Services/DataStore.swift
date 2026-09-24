@@ -7,15 +7,21 @@ final class DataStore: @unchecked Sendable {
     let dbQueue: DatabaseQueue
 
     private init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         let dbPath = appSupport.appendingPathComponent("TetherLens/data.sqlite")
         let parent = dbPath.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
         let migrator = Self.makeMigrator()
         if let queue = try? DatabaseQueue(path: dbPath.path) {
-            if (try? migrator.migrate(queue)) != nil {
+            do {
+                try migrator.migrate(queue)
                 dbQueue = queue
                 return
+            } catch {
+                Task { @MainActor in
+                    DebugLogger.shared.error("DB", "migration failed: \(error)")
+                }
             }
         }
         // 손상된 DB는 백업 후 재생성 (데이터 유실 최소화)
@@ -23,8 +29,16 @@ final class DataStore: @unchecked Sendable {
         try? FileManager.default.moveItem(at: dbPath, to: backupPath)
         try? FileManager.default.removeItem(at: dbPath.appendingPathExtension("wal"))
         try? FileManager.default.removeItem(at: dbPath.appendingPathExtension("shm"))
-        dbQueue = try! DatabaseQueue(path: dbPath.path)
-        try! migrator.migrate(dbQueue)
+        if let queue = try? DatabaseQueue(path: dbPath.path), (try? migrator.migrate(queue)) != nil {
+            dbQueue = queue
+            return
+        }
+        // 재생성 실패 시 비상용 in-memory DB (앱 기동은 유지, 원인은 로그)
+        Task { @MainActor in
+            DebugLogger.shared.error("DB", "disk restore failed — falling back to in-memory (data will not persist)")
+        }
+        // GRDB DatabaseQueue() 기본이 in-memory
+        dbQueue = (try? DatabaseQueue()) ?? (try! DatabaseQueue())
     }
 
     init(dbQueue: DatabaseQueue) {

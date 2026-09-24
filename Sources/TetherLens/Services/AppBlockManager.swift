@@ -9,16 +9,29 @@ final class AppBlockManager: ObservableObject {
     private let defaults = UserDefaults.standard
     private let blockedKey = "blocked_apps"
     private var notified: Set<String> = []
+    /// UserDefaults/CSV 파싱 캐시 — 매 refresh마다 재파싱 방지 (v0.38.1)
+    private var blockedCache: Set<String>? = nil
 
-    private init() {}
+    private init() {
+        // 기존 값 1회 로드
+        blockedCache = loadFromDefaults()
+    }
+
+    private func loadFromDefaults() -> Set<String> {
+        let raw = defaults.string(forKey: blockedKey) ?? ""
+        return Set(raw.split(separator: ",").map(String.init))
+    }
 
     var blockedApps: Set<String> {
         get {
-            let raw = defaults.string(forKey: blockedKey) ?? ""
-            return Set(raw.split(separator: ",").map(String.init))
+            if let cached = blockedCache { return cached }
+            let loaded = loadFromDefaults()
+            blockedCache = loaded
+            return loaded
         }
         set {
             defaults.set(newValue.sorted().joined(separator: ","), forKey: blockedKey)
+            blockedCache = newValue
             notified.removeAll()
             objectWillChange.send()
         }

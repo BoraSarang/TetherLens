@@ -32,6 +32,8 @@ struct ReportAppTrafficView: View {
                 let userDn = userApps.reduce(0) { $0 + $1.downloadBytes }
                 let sysUp = systemApps.reduce(0) { $0 + $1.uploadBytes }
                 let sysDn = systemApps.reduce(0) { $0 + $1.downloadBytes }
+                let userTop = Array(userApps.prefix(10))
+                let systemTop = Array(systemApps.prefix(10))
 
                 VStack(spacing: 0) {
                     VStack(spacing: 0) {
@@ -102,7 +104,7 @@ struct ReportAppTrafficView: View {
                                 .id("top")
 
                                 if expandedSection == .user {
-                                    ForEach(Array(userApps.prefix(10).enumerated()), id: \.element.processName) { _, item in
+                                    ForEach(Array(userTop.enumerated()), id: \.element.processName) { _, item in
                                         Divider()
                                         appTrafficRow(item, fraction: Double(item.uploadBytes + item.downloadBytes) / Double(userMax))
                                     }
@@ -129,7 +131,7 @@ struct ReportAppTrafficView: View {
                             .buttonStyle(.plain)
 
                             if expandedSection == .system {
-                                ForEach(Array(systemApps.prefix(10).enumerated()), id: \.element.processName) { _, item in
+                                ForEach(Array(systemTop.enumerated()), id: \.element.processName) { _, item in
                                         Divider()
                                         appTrafficRow(item, fraction: Double(item.uploadBytes + item.downloadBytes) / Double(systemMax))
                                     }

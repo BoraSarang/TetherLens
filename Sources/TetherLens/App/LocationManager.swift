@@ -24,8 +24,8 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         manager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
         lastLatitude = UserDefaults.standard.object(forKey: Self.latKey) as? Double
         lastLongitude = UserDefaults.standard.object(forKey: Self.lngKey) as? Double
-        if lastLatitude != nil {
-            DebugLogger.shared.system("Location", "복원된 위치: \(lastLatitude!),\(lastLongitude!)")
+        if let lat = lastLatitude, let lng = lastLongitude {
+            DebugLogger.shared.system("Location", "복원된 위치: \(lat),\(lng)")
         }
         if isAuthorized {
             startUpdating()
@@ -58,7 +58,11 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
         if let iface = wifiInterface {
             result.append("SSID: \(iface.ssid() ?? "-")")
         }
-        result.append("Cached: \(lastLatitude != nil ? "\(lastLatitude!),\(lastLongitude!)" : "None")")
+        if let lat = lastLatitude, let lng = lastLongitude {
+            result.append("Cached: \(lat),\(lng)")
+        } else {
+            result.append("Cached: None")
+        }
         return result
     }
 

@@ -26,6 +26,12 @@ final class DebugLogger: ObservableObject {
     static let shared = DebugLogger()
     @Published var logs: [DebugLogEntry] = []
     private let maxLogs = 5000
+    /// 로그마다 DateFormatter를 새로 만들지 않도록 재사용 (v0.38.1)
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss.SSS"
+        return f
+    }()
     #if DEBUG
     private let isDebug = true
     #else
@@ -36,19 +42,18 @@ final class DebugLogger: ObservableObject {
 
     private func push(_ level: DebugLogLevel, category: String, message: String, meta: Any? = nil) {
         guard isDebug else { return }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss.SSS"
         let entry = DebugLogEntry(
-            timestamp: formatter.string(from: Date()),
+            timestamp: Self.timeFormatter.string(from: Date()),
             level: level,
             platform: "MACOS",
             category: category,
             message: message,
             meta: meta != nil ? "\(meta!)" : nil
         )
-        DispatchQueue.main.async {
-            self.logs.append(entry)
-            if self.logs.count > self.maxLogs { self.logs.removeFirst() }
+        // push는 이미 MainActor — 추가 dispatch 불필요 (v0.38.1)
+        logs.append(entry)
+        if logs.count > maxLogs {
+            logs.removeFirst(logs.count - maxLogs)
         }
         print("[\(entry.timestamp)] [\(level.rawValue)] [\(entry.platform)] [\(category)] \(message)\(entry.meta.map { " | meta=\($0)" } ?? "")")
     }
@@ -61,7 +66,7 @@ final class DebugLogger: ObservableObject {
     func error(_ category: String, _ message: String, meta: Any? = nil) { push(.error, category: category, message: message, meta: meta) }
     func system(_ category: String, _ message: String, meta: Any? = nil) { push(.system, category: category, message: message, meta: meta) }
 
-    func clear() { DispatchQueue.main.async { self.logs.removeAll() } }
+    func clear() { logs.removeAll() }
 
     func formatForAgent(_ entries: [DebugLogEntry]) -> String {
         entries.map { "[\($0.timestamp)] [\($0.level.rawValue)] [\($0.platform)] [\($0.category)] \($0.message)\($0.meta.map { " | meta=\($0)" } ?? "")" }.joined(separator: "\n")
