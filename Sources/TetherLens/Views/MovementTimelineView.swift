@@ -4,7 +4,15 @@ struct MovementTimelineView: View {
   let sessions: [Session]
   let onSelect: (Session) -> Void
 
-  private var timeline: [TimelineItem] {
+  @State private var timeline: [TimelineItem] = []
+
+  fileprivate static let timeFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.setLocalizedDateFormatFromTemplate("MMMd HHmm")
+    return f
+  }()
+
+  private static func buildTimeline(sessions: [Session]) -> [TimelineItem] {
     let profileIds = Set(sessions.compactMap(\.profileId))
     var events: [TimelineItem] = []
     let pm = ProfileManager.shared
@@ -25,7 +33,7 @@ struct MovementTimelineView: View {
     return events.sorted { $0.timestamp > $1.timestamp }
   }
 
-  private func daysFor(sessions: [Session], profileId: UUID) -> Int {
+  private static func daysFor(sessions: [Session], profileId: UUID) -> Int {
     guard let oldest = sessions.filter({ $0.profileId == profileId }).map(\.startTime).min(),
           let days = Calendar.current.dateComponents([.day], from: oldest, to: Date()).day else { return 30 }
     return max(days, 1)
@@ -54,6 +62,12 @@ struct MovementTimelineView: View {
         }
       }
     }
+    .onAppear {
+      timeline = Self.buildTimeline(sessions: sessions)
+    }
+    .onChange(of: sessions) { _, newValue in
+      timeline = Self.buildTimeline(sessions: newValue)
+    }
   }
 }
 
@@ -73,9 +87,7 @@ private struct MovementRow: View {
   let onTap: () -> Void
 
   private var timeString: String {
-    let f = DateFormatter()
-    f.setLocalizedDateFormatFromTemplate("MMMd HHmm")
-    return f.string(from: item.timestamp)
+    MovementTimelineView.timeFormatter.string(from: item.timestamp)
   }
 
   private var kindLabel: String {

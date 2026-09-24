@@ -26,16 +26,16 @@ final class ProfileManager: @unchecked Sendable {
     // MARK: - Profile CRUD
 
     func getAllProfiles() -> [Profile] {
-        try! db.read { db in
+        return (try? db.read { db in
             try Profile.order(Column("last_connected").desc).fetchAll(db)
-        }
+        }) ?? []
     }
 
     func getProfile(ssid: String) -> Profile? {
         if isCacheValid(cachedProfileTime), cachedSSID == ssid, let result = cachedProfileResult {
             return result
         }
-        let result = try! db.read { db in
+        let result = try? db.read { db in
             try Profile.filter(Column("ssid") == ssid).fetchOne(db)
         }
         cachedSSID = ssid
@@ -45,20 +45,20 @@ final class ProfileManager: @unchecked Sendable {
     }
 
     func getProfile(id: UUID) -> Profile? {
-        try! db.read { db in
+        return (try? db.read { db in
             try Profile.fetchOne(db, key: id)
-        }
+        }) ?? nil
     }
 
     func saveProfile(_ profile: Profile) {
-        try! db.write { db in
+        try? db.write { db in
             try profile.save(db)
         }
         invalidateCache()
     }
 
     func deleteProfile(id: UUID) {
-        try! db.write { db in
+        try? db.write { db in
             try UsageLog.filter(Column("profile_id") == id).deleteAll(db)
             try IPLog.filter(Column("profile_id") == id).deleteAll(db)
             try Session.filter(Column("profile_id") == id).deleteAll(db)
@@ -69,7 +69,7 @@ final class ProfileManager: @unchecked Sendable {
     }
 
     func deleteUsageData(profileId: UUID) {
-        try! db.write { db in
+        try? db.write { db in
             try UsageLog.filter(Column("profile_id") == profileId).deleteAll(db)
         }
         invalidateCache()
@@ -125,7 +125,7 @@ final class ProfileManager: @unchecked Sendable {
                     recordedAt: Date(),
                     sessionId: sessionId
                 )
-                try! db.write { db in
+                try? db.write { db in
                     try log.insert(db)
                 }
                 invalidateUsageCache()
@@ -149,18 +149,18 @@ final class ProfileManager: @unchecked Sendable {
 
     func getUsageLogs(profileId: UUID, days: Int = 7) -> [UsageLog] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
-        return try! db.read { db in
+        return (try? db.read { db in
             try UsageLog
                 .filter(Column("profile_id") == profileId)
                 .filter(Column("recorded_at") >= cutoff)
                 .order(Column("recorded_at").asc)
                 .fetchAll(db)
-        }
+}) ?? []
     }
 
     func cleanupOldLogs() {
         let cutoff = Calendar.current.date(byAdding: .day, value: -365, to: Date())!
-        try! db.write { db in
+        try? db.write { db in
             try UsageLog.filter(Column("recorded_at") < cutoff).deleteAll(db)
             let oldSessions = try Session
                 .filter(Column("end_time") < cutoff)
@@ -190,7 +190,7 @@ final class ProfileManager: @unchecked Sendable {
            let result = cachedUsageResult {
             return result
         }
-        let row = try! db.read { db in
+        let row = try? db.read { db in
             try Row.fetchOne(db, sql: """
                 SELECT COALESCE(SUM(upload_delta), 0) AS up,
                        COALESCE(SUM(download_delta), 0) AS dn
@@ -293,7 +293,7 @@ final class ProfileManager: @unchecked Sendable {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
-        return try! db.read { db in
+        return (try? db.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT DATE(recorded_at, 'localtime') AS day,
                        COALESCE(SUM(upload_delta), 0) AS up,
@@ -311,14 +311,14 @@ final class ProfileManager: @unchecked Sendable {
                 else { return nil }
                 return DailyUsage(id: dayStr, date: date, upload: up, download: dn)
             }
-        }
+}) ?? []
     }
 
     func getMonthlyUsage(profileId: UUID, months: Int) -> [MonthlyUsage] {
         let cutoff = Calendar.current.date(byAdding: .month, value: -months, to: Date())!
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM"
-        return try! db.read { db in
+        return (try? db.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT strftime('%Y-%m', recorded_at, 'localtime') AS month,
                        COALESCE(SUM(upload_delta), 0) AS up,
@@ -336,13 +336,13 @@ final class ProfileManager: @unchecked Sendable {
                 else { return nil }
                 return MonthlyUsage(id: monthStr, date: date, upload: up, download: dn)
             }
-        }
+}) ?? []
     }
 
     /// 시간대(0~23시)별 사용량 집계. 하루(1일) 그래프용.
     func getHourlyUsage(profileId: UUID, days: Int) -> [HourlyUsage] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
-        return try! db.read { db in
+        return (try? db.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT CAST(strftime('%H', recorded_at, 'localtime') AS INTEGER) AS hour,
                        COALESCE(SUM(upload_delta), 0) AS up,
@@ -359,14 +359,14 @@ final class ProfileManager: @unchecked Sendable {
                 else { return nil }
                 return HourlyUsage(id: Int(hour), hour: Int(hour), upload: up, download: dn)
             }
-        }
+}) ?? []
     }
 
     func getDailySessionSummary(profileId: UUID, days: Int) -> [DailySessionSummary] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
-        return try! db.read { db in
+        return (try? db.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT DATE(start_time, 'localtime') AS day,
                        COUNT(*) AS cnt,
@@ -384,14 +384,14 @@ final class ProfileManager: @unchecked Sendable {
                 else { return nil }
                 return DailySessionSummary(id: dayStr, date: date, sessionCount: Int(cnt), totalDuration: dur)
             }
-        }
+}) ?? []
     }
 
     func getMonthlySessionSummary(profileId: UUID, months: Int) -> [MonthlySessionSummary] {
         let cutoff = Calendar.current.date(byAdding: .month, value: -months, to: Date())!
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM"
-        return try! db.read { db in
+        return (try? db.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT strftime('%Y-%m', start_time, 'localtime') AS month,
                        COUNT(*) AS cnt,
@@ -409,18 +409,18 @@ final class ProfileManager: @unchecked Sendable {
                 else { return nil }
                 return MonthlySessionSummary(id: monthStr, date: date, sessionCount: Int(cnt), totalDuration: dur)
             }
-        }
+}) ?? []
     }
 
     func getTotalUsage(profileId: UUID) -> (upload: Int64, download: Int64) {
-        try! db.read { db in
+        return (try? db.read { db in
             let row = try Row.fetchOne(db, sql: """
                 SELECT COALESCE(SUM(upload_delta), 0) AS up,
                        COALESCE(SUM(download_delta), 0) AS dn
                 FROM usage_log WHERE profile_id = ?
             """, arguments: [profileId])
             return (row?["up"] as? Int64 ?? 0, row?["dn"] as? Int64 ?? 0)
-        }
+        }) ?? (upload: 0, download: 0)
     }
 
     /// 특정 [from, to) 시간 구간의 총 사용량. profileId가 nil이면 전체 프로필 합계.
@@ -434,16 +434,16 @@ final class ProfileManager: @unchecked Sendable {
             sql += " AND profile_id = ?"
             args.append(pid)
         }
-        return try! db.read { db in
+        return (try? db.read { db in
             (try Row.fetchOne(db, sql: sql, arguments: StatementArguments(args)))?["total"] as? Int64 ?? 0
-        }
+}) ?? 0
     }
 
     // MARK: - IP Change Tracking
 
     func addIPLog(profileId: UUID, ipAddress: String, country: String?, latitude: Double?, longitude: Double?) {
         let now = Date()
-        try! db.write { db in
+        try? db.write { db in
             if let existing = try IPLog
                 .filter(Column("profile_id") == profileId)
                 .filter(Column("ip_address") == ipAddress)
@@ -470,23 +470,23 @@ final class ProfileManager: @unchecked Sendable {
     }
 
     func getIPLogs(profileId: UUID) -> [IPLog] {
-        try! db.read { db in
+        return (try? db.read { db in
             try IPLog
                 .filter(Column("profile_id") == profileId)
                 .order(Column("last_seen_at").desc)
                 .fetchAll(db)
-        }
+        }) ?? []
     }
 
     func getIPForSession(_ session: Session) -> IPLog? {
-        try! db.read { db in
+        return (try? db.read { db in
             try IPLog
                 .filter(Column("profile_id") == session.profileId)
                 .filter(Column("first_seen_at") <= (session.endTime ?? Date()))
                 .filter(Column("last_seen_at") >= session.startTime)
                 .order(Column("first_seen_at").desc)
                 .fetchOne(db)
-        }
+        }) ?? nil
     }
 
     /// 이동 이력 — 위치가 있는 세션(출발 지점)과 IP 변경을 시간순(오래된 → 최신)으로 병합한다.
@@ -508,7 +508,7 @@ final class ProfileManager: @unchecked Sendable {
 
     func getMovementTimeline(profileId: UUID, days: Int) -> [MovementEvent] {
         let from = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date.distantPast
-        return try! db.read { db in
+        return (try? db.read { db in
             let sessions = try Session
                 .filter(Column("profile_id") == profileId && Column("start_time") >= from)
                 .order(Column("start_time").asc)
@@ -555,7 +555,7 @@ final class ProfileManager: @unchecked Sendable {
                 }
             }
             return events
-        }
+}) ?? []
     }
 
     func exportData(profileId: UUID?) -> (csv: String, json: String, markdown: String) {
@@ -581,12 +581,12 @@ final class ProfileManager: @unchecked Sendable {
         var mdBody = ""
 
         for p in profiles {
-            let sessions = try! db.read { db in
+            let sessions = (try? db.read { db in
                 try Session
                     .filter(Column("profile_id") == p.id)
                     .order(Column("start_time").asc)
                     .fetchAll(db)
-            }
+            }) ?? []
             for s in sessions {
                 let usage = getSessionUsage(session: s)
                 let end = s.endTime.map { df.string(from: $0) } ?? ""
@@ -612,12 +612,14 @@ final class ProfileManager: @unchecked Sendable {
             }
         }
 
-        let jsonData = try! JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted)
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted) else {
+            return (csvHeader + csvBody, "[]", mdHeader + mdBody)
+        }
         return (csvHeader + csvBody, String(data: jsonData, encoding: .utf8) ?? "[]", mdHeader + mdBody)
     }
 
     func mergeStaleIPLogs() {
-        try! db.write { db in
+        try? db.write { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT profile_id, ip_address,
                        MIN(first_seen_at) AS min_first,
@@ -659,7 +661,7 @@ final class ProfileManager: @unchecked Sendable {
 
     func startSession(profileId: UUID, latitude: Double? = nil, longitude: Double? = nil, locationSource: String? = nil) -> Session {
         let session = Session(id: UUID(), profileId: profileId, startTime: Date(), endTime: nil, latitude: latitude, longitude: longitude, locationSource: locationSource)
-        try! db.write { db in
+        try? db.write { db in
             try session.insert(db)
         }
         return session
@@ -668,39 +670,39 @@ final class ProfileManager: @unchecked Sendable {
     func endSession(_ session: Session) {
         var updated = session
         updated.endTime = Date()
-        try! db.write { db in
+        try? db.write { db in
             try updated.save(db)
         }
     }
 
     func getActiveSession(profileId: UUID) -> Session? {
-        try! db.read { db in
+        return (try? db.read { db in
             try Session
                 .filter(Column("profile_id") == profileId)
                 .filter(Column("end_time") == nil)
                 .fetchOne(db)
-        }
+        }) ?? nil
     }
 
     func getSessions(profileId: UUID, days: Int) -> [Session] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
-        return try! db.read { db in
+        return (try? db.read { db in
             try Session
                 .filter(Column("profile_id") == profileId)
                 .filter(Column("start_time") >= cutoff)
                 .order(Column("start_time").desc)
                 .fetchAll(db)
-        }
+}) ?? []
     }
 
     func endAllActiveSessions(profileId: UUID) {
-        let active = try! db.read { db in
+        let active = (try? db.read { db in
             try Session
                 .filter(Column("profile_id") == profileId)
                 .filter(Column("end_time") == nil)
                 .fetchAll(db)
-        }
-        try! db.write { db in
+        }) ?? []
+        try? db.write { db in
             for var s in active {
                 s.endTime = Date()
                 try s.save(db)
@@ -709,7 +711,7 @@ final class ProfileManager: @unchecked Sendable {
     }
 
     func endAllActiveSessions() {
-        try! db.write { db in
+        try? db.write { db in
             try Session
                 .filter(Column("end_time") == nil)
                 .updateAll(db, Column("end_time").set(to: Date()))
@@ -717,7 +719,7 @@ final class ProfileManager: @unchecked Sendable {
     }
 
     func getSessionUsage(sessionId: UUID) -> (upload: Int64, download: Int64) {
-        try! db.read { db in
+        return (try? db.read { db in
             let up = try Int64.fetchOne(db, sql: """
                 SELECT COALESCE(SUM(upload_delta), 0) FROM usage_log WHERE session_id = ?
             """, arguments: [sessionId]) ?? 0
@@ -725,7 +727,7 @@ final class ProfileManager: @unchecked Sendable {
                 SELECT COALESCE(SUM(download_delta), 0) FROM usage_log WHERE session_id = ?
             """, arguments: [sessionId]) ?? 0
             return (up, dn)
-        }
+        }) ?? (upload: 0, download: 0)
     }
 
     func getSessionUsage(session: Session) -> (upload: Int64, download: Int64) {
@@ -735,7 +737,7 @@ final class ProfileManager: @unchecked Sendable {
 
     func getAppTrafficLogs(days: Int = 1) -> [(processName: String, uploadBytes: Int64, downloadBytes: Int64)] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
-        let rows = try! db.read { db in
+        let rows = (try? db.read { db in
             try Row.fetchAll(db, sql: """
                 SELECT process_name, SUM(upload_bytes) AS upload, SUM(download_bytes) AS download
                 FROM app_traffic_log
@@ -743,19 +745,19 @@ final class ProfileManager: @unchecked Sendable {
                 GROUP BY process_name
                 ORDER BY upload + download DESC
             """, arguments: [cutoff])
-        }
+        }) ?? []
         return rows.map { row in
             (
-                processName: row["process_name"] as! String,
-                uploadBytes: row["upload"] as! Int64,
-                downloadBytes: row["download"] as! Int64
+                processName: row["process_name"] as? String ?? "",
+                uploadBytes: row["upload"] as? Int64 ?? 0,
+                downloadBytes: row["download"] as? Int64 ?? 0
             )
         }
     }
 
     func cleanupAppTrafficLogs() {
         let cutoff = Calendar.current.date(byAdding: .day, value: -365, to: Date())!
-        try! db.write { db in
+        try? db.write { db in
             try AppTrafficLog.filter(Column("recorded_at") < cutoff).deleteAll(db)
         }
     }

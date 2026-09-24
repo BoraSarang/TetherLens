@@ -52,10 +52,11 @@ struct TetherLensApp: App {
         .defaultSize(width: TLSize.reportWindow.w, height: TLSize.reportWindow.h)
         .windowResizability(.contentMinSize)
 
-        Window(Localized.string("앱 트래픽", "App Traffic"), id: "appTraffic") {
+        Window(Localized.string("시스템 대시보드", "System Dashboard"), id: "appTraffic") {
             AppTrafficWindow()
         }
         .defaultSize(width: TLSize.trafficWindow.w, height: TLSize.trafficWindow.h)
+        .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
 
         Window(Localized.string("알림 목록", "Notifications"), id: "notifications") {

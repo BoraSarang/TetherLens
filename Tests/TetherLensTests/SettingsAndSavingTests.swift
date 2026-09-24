@@ -25,6 +25,23 @@ import Foundation
         #expect(s.autoSwitchProfile == true)
     }
 
+    @Test func 그래프_토글_기본값_CPU_GPU_OFF_메모리_ON() {
+        let s = makeManager()
+        #expect(s.showCPUGraph == false)
+        #expect(s.showGPUGraph == false)
+        #expect(s.showMemGraph == true)
+    }
+
+    @Test func 그래프_토글_저장_조회() {
+        let s = makeManager()
+        s.showCPUGraph = true
+        s.showGPUGraph = true
+        s.showMemGraph = false
+        #expect(s.showCPUGraph == true)
+        #expect(s.showGPUGraph == true)
+        #expect(s.showMemGraph == false)
+    }
+
     @Test func 값_저장_조회() {
         let s = makeManager()
         s.showTotalColumn = false

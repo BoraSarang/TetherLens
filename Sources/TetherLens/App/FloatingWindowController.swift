@@ -62,10 +62,9 @@ final class FloatingWindowController {
         // 폭은 사용자가 리사이즈 가능, 높이는 fitToContent()가 내용에 맞춘다
     }
 
-    /// 설정 창에서 줄 토글이 바뀌면 떠 있는 동안만 즉시 반영한다.
+    /// 설정 창에서 카드 토글이 바뀌면 떠 있는 동안만 즉시 반영한다.
     @objc private func handleFloatingSettingsChanged() {
         guard isVisible else { return }
-        setTrafficMonitoring(SettingsManager.shared.floatingVisibleLines > 0)
         fitToContent()
     }
 
@@ -108,7 +107,7 @@ final class FloatingWindowController {
     /// 수집 결과가 갱신될 때마다 높이 재적합 (수집 중 문구 ↔ 3줄 전환 대응).
     private func observeApps() {
         guard appsCancellable == nil else { return }
-        appsCancellable = TrafficMonitor.shared.$apps
+        appsCancellable = TrafficMonitor.shared.$snapshot
             .sink { [weak self] _ in
                 Task { @MainActor [weak self] in self?.fitToContent() }
             }
@@ -152,7 +151,8 @@ final class FloatingWindowController {
             installDragMonitor(for: win)
             DebugLogger.shared.action("Floating", "창 생성 위치=\(origin) 크기=\(size)")
         }
-        setTrafficMonitoring(SettingsManager.shared.floatingVisibleLines > 0)
+        // 네트워크 카드는 항상 표시 → 플로팅 생존 동안 트래픽 수집 유지
+        setTrafficMonitoring(true)
         panel?.orderFront(nil)
         fitToContent()
         DebugLogger.shared.action("Floating", "플로팅 창 표시")
@@ -241,29 +241,49 @@ final class FloatingWindowController {
 }
 
 /// MenuBarManager가 발행하는 메뉴바 표시 문자열을 플로팅 뷰에 바인딩한다.
+/// v0.38.2: 다중 @Published → 단일 스냅샷 발행 (objectWillChange 1회).
 @MainActor
 final class FloatingWindowViewModel: ObservableObject {
-    @Published var upSpeed = ""
-    @Published var downSpeed = ""
-    @Published var col3Top = ""
-    @Published var col3Bottom = ""
-    @Published var totalRatio: Double = -1
-    @Published var col3IsUsage = false
-    @Published var col3IsLatency = false
-    @Published var rssi = -1000
-    @Published var latencyMS = -1
-    @Published var isReachable = true
+    struct Snapshot: Equatable {
+        var upSpeed = ""
+        var downSpeed = ""
+        var col3Top = ""
+        var col3Bottom = ""
+        var totalRatio: Double = -1
+        var col3IsUsage = false
+        var col3IsLatency = false
+        var rssi = -1000
+        var latencyMS = -1
+        var isReachable = true
+    }
+
+    @Published private(set) var snapshot = Snapshot()
+
+    var upSpeed: String { snapshot.upSpeed }
+    var downSpeed: String { snapshot.downSpeed }
+    var col3Top: String { snapshot.col3Top }
+    var col3Bottom: String { snapshot.col3Bottom }
+    var totalRatio: Double { snapshot.totalRatio }
+    var col3IsUsage: Bool { snapshot.col3IsUsage }
+    var col3IsLatency: Bool { snapshot.col3IsLatency }
+    var rssi: Int { snapshot.rssi }
+    var latencyMS: Int { snapshot.latencyMS }
+    var isReachable: Bool { snapshot.isReachable }
 
     func update(upSpeed: String, downSpeed: String, col3Top: String, col3Bottom: String, totalRatio: Double, col3IsUsage: Bool, col3IsLatency: Bool = false, rssi: Int = -1000, latencyMS: Int = -1, isReachable: Bool = true) {
-        self.upSpeed = upSpeed
-        self.downSpeed = downSpeed
-        self.col3Top = col3Top
-        self.col3Bottom = col3Bottom
-        self.totalRatio = totalRatio
-        self.col3IsUsage = col3IsUsage
-        self.col3IsLatency = col3IsLatency
-        self.rssi = rssi
-        self.latencyMS = latencyMS
-        self.isReachable = isReachable
+        var next = snapshot
+        next.upSpeed = upSpeed
+        next.downSpeed = downSpeed
+        next.col3Top = col3Top
+        next.col3Bottom = col3Bottom
+        next.totalRatio = totalRatio
+        next.col3IsUsage = col3IsUsage
+        next.col3IsLatency = col3IsLatency
+        next.rssi = rssi
+        next.latencyMS = latencyMS
+        next.isReachable = isReachable
+        if next != snapshot {
+            snapshot = next
+        }
     }
 }

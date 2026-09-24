@@ -1,31 +1,49 @@
 import Foundation
 import SystemConfiguration
+import Combine
 
-class NetworkMonitor: @unchecked Sendable {
+/// 네트워크 인터페이스 속도·히스토리. 팝오버/플로팅이 같은 인스턴스를 관찰한다.
+/// @Published 갱신은 메인 디스패치에서만 수행. (v0.38.1) 5필드 → 단일 스냅샷 발행.
+final class NetworkMonitor: ObservableObject, @unchecked Sendable {
+    static let shared = NetworkMonitor()
+
     private var timer: DispatchSourceTimer?
     private var previousBytes: (rx: Int64, tx: Int64) = (0, 0)
     private var lastPollDate = Date.distantPast
 
-    private(set) var currentUploadSpeed: Double = 0
-    private(set) var currentDownloadSpeed: Double = 0
-    private(set) var totalUpload: Int64 = 0
-    private(set) var totalDownload: Int64 = 0
-    private(set) var activeInterfaceName: String?
-
     /// 초 단위 속도 히스토리 (사용 기록 차트용, 최신 120샘플 링버퍼)
-    struct SpeedSample {
+    struct SpeedSample: Equatable {
         let downloadBps: Double
         let uploadBps: Double
     }
-    private(set) var speedHistory: [SpeedSample] = []
+
+    struct Snapshot: Equatable {
+        var currentUploadSpeed: Double = 0
+        var currentDownloadSpeed: Double = 0
+        var totalUpload: Int64 = 0
+        var totalDownload: Int64 = 0
+        var activeInterfaceName: String?
+        var speedHistory: [SpeedSample] = []
+    }
+
+    @Published private(set) var snapshot = Snapshot()
+
+    var currentUploadSpeed: Double { snapshot.currentUploadSpeed }
+    var currentDownloadSpeed: Double { snapshot.currentDownloadSpeed }
+    var totalUpload: Int64 { snapshot.totalUpload }
+    var totalDownload: Int64 { snapshot.totalDownload }
+    var activeInterfaceName: String? { snapshot.activeInterfaceName }
+    var speedHistory: [SpeedSample] { snapshot.speedHistory }
+
     private let speedHistoryLimit = 120
 
     func start() {
+        stop() // 중복 start로 타이머 누수 방지 (v0.38.0 멱등)
         previousBytes = (0, 0)
         lastPollDate = Date.distantPast
         let queue = DispatchQueue(label: "com.tetherlens.network-monitor", qos: .utility)
         timer = DispatchSource.makeTimerSource(queue: queue)
-        timer?.schedule(deadline: .now(), repeating: 1.0)
+        timer?.schedule(deadline: .now(), repeating: 1.0, leeway: .milliseconds(100))
         timer?.setEventHandler { [weak self] in
             self?.pollInterface()
         }
@@ -53,21 +71,24 @@ class NetworkMonitor: @unchecked Sendable {
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            var next = self.snapshot
             if prev.rx > 0 {
-                currentDownloadSpeed = rxSpeed
-                currentUploadSpeed = txSpeed
-                speedHistory.append(SpeedSample(downloadBps: rxSpeed, uploadBps: txSpeed))
-                if speedHistory.count > speedHistoryLimit {
-                    speedHistory.removeFirst(speedHistory.count - speedHistoryLimit)
+                next.currentDownloadSpeed = rxSpeed
+                next.currentUploadSpeed = txSpeed
+                next.speedHistory.append(SpeedSample(downloadBps: rxSpeed, uploadBps: txSpeed))
+                if next.speedHistory.count > self.speedHistoryLimit {
+                    next.speedHistory.removeFirst(next.speedHistory.count - self.speedHistoryLimit)
                 }
             }
-            totalDownload = current.rx
-            totalUpload = current.tx
-            activeInterfaceName = interface
+            next.totalDownload = current.rx
+            next.totalUpload = current.tx
+            next.activeInterfaceName = interface
+            self.snapshot = next // 단일 objectWillChange (v0.38.1)
         }
     }
 
-    private func readInterfaceBytes() -> (bytes: (rx: Int64, tx: Int64)?, interface: String?) {        var interfaceName: String?
+    private func readInterfaceBytes() -> (bytes: (rx: Int64, tx: Int64)?, interface: String?) {
+        var interfaceName: String?
         var totalRX: Int64 = 0
         var totalTX: Int64 = 0
 
@@ -83,7 +104,7 @@ class NetworkMonitor: @unchecked Sendable {
             let addr = ptr.pointee
             let name = String(cString: addr.ifa_name)
 
-            if addr.ifa_addr.pointee.sa_family == AF_LINK {
+            if let sa = addr.ifa_addr, sa.pointee.sa_family == UInt8(AF_LINK) {
                 if let data = addr.ifa_data?.assumingMemoryBound(to: if_data.self).pointee {
                     let isLoopback = (addr.ifa_flags & UInt32(IFF_LOOPBACK)) != 0
                     let isUp = (addr.ifa_flags & UInt32(IFF_UP)) != 0
@@ -122,14 +143,21 @@ class NetworkMonitor: @unchecked Sendable {
         var ptr = start
         while true {
             let addr = ptr.pointee
+            guard let sa = addr.ifa_addr else {
+                guard let next = addr.ifa_next else { break }
+                ptr = next
+                continue
+            }
             if String(cString: addr.ifa_name) == name,
-               addr.ifa_addr.pointee.sa_family == UInt8(AF_LINK) {
-                let sdl = addr.ifa_addr.withMemoryRebound(to: sockaddr_dl.self, capacity: 1) { $0.pointee }
+               sa.pointee.sa_family == UInt8(AF_LINK) {
+                let sdl = sa.withMemoryRebound(to: sockaddr_dl.self, capacity: 1) { $0.pointee }
                 let mac = withUnsafeBytes(of: sdl.sdl_data) { raw -> [UInt8] in
-                    let base = raw.baseAddress!.assumingMemoryBound(to: UInt8.self)
+                    guard let base = raw.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return [] }
                     let offset = Int(sdl.sdl_nlen)
+                    guard offset + 6 <= raw.count else { return [] }
                     return (0..<6).map { base[offset + $0] }
                 }
+                guard mac.count == 6 else { continue }
                 return mac.map { String(format: "%02x", $0) }.joined(separator: ":")
             }
             guard let next = addr.ifa_next else { break }

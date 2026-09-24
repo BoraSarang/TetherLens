@@ -22,11 +22,20 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         var memBytes: Int64 = 0
     }
 
-    @Published private(set) var apps: [AppTraffic] = []
+    /// refresh 1틱마다 단일 스냅샷으로 갱신 — 이전 3×@Published 무효화 통합 (v0.38.1)
+    struct Snapshot {
+        var apps: [AppTraffic] = []
+        var systemLoad: SystemLoad?
+        var allResources: [String: ProcessResource] = [:]
+    }
+
+    @Published private(set) var snapshot = Snapshot()
+
+    var apps: [AppTraffic] { snapshot.apps }
     /// 시스템 전체 부하 요약 (헤더 표시용, v0.32).
-    @Published private(set) var systemLoad: SystemLoad?
+    var systemLoad: SystemLoad? { snapshot.systemLoad }
     /// 전체 프로세스 리소스 스냅샷 — 네트워크 무관 CPU/RAM 랭킹용 (v0.32.4).
-    @Published private(set) var allResources: [String: ProcessResource] = [:]
+    var allResources: [String: ProcessResource] { snapshot.allResources }
 
     private var timer: Timer?
     private var saveTimer: Timer?
@@ -166,9 +175,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             self?.accumulated = [:]
             self?.lastSavedAccumulated = [:]
             DispatchQueue.main.async { [weak self] in
-                self?.apps = []
-                self?.systemLoad = nil
-                self?.allResources = [:]
+                self?.snapshot = Snapshot()
             }
         }
     }
@@ -276,9 +283,13 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             apps.sort { $0.bytesIn + $0.bytesOut > $1.bytesIn + $1.bytesOut }
 
             DispatchQueue.main.async { [weak self] in
-                self?.apps = apps
-                self?.systemLoad = resources.system
-                self?.allResources = resources.perName
+                var next = self?.snapshot ?? Snapshot()
+                next.apps = apps
+                next.systemLoad = resources.system
+                next.allResources = resources.perName
+                self?.snapshot = next // 단일 objectWillChange (v0.38.1)
+                // v0.37 — 시스템 CPU/GPU/MEM 스파크라인 히스토리 (refresh 편승, 추가 타이머 없음)
+                MetricsHistory.shared.push(system: resources.system)
             }
         }
     }

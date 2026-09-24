@@ -38,6 +38,9 @@ import Foundation
         #expect(!Localized.hotspot.isEmpty)
         #expect(!Localized.quit.isEmpty)
         #expect(!Localized.more.isEmpty)
+        #expect(!Localized.showCPUGraph.isEmpty)
+        #expect(!Localized.showGPUGraph.isEmpty)
+        #expect(!Localized.showMemGraph.isEmpty)
     }
 }
 

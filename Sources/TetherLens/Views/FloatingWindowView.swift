@@ -1,54 +1,82 @@
 import SwiftUI
+import Charts
 
-/// 플로팅 창 본체 — 메뉴바 표시(설정 동일 반영) + 3줄 요약(프로세스/CPU/RAM 각 1위).
-/// borderless NSPanel(NonActivating, resizable) 안에서 호스팅된다 (FloatingWindowController 소유).
-/// 콘텐츠는 상단 정렬이고 배경(material)이 패널 크기를 채워 리사이즈에 대응한다.
+/// 플로팅 창 본체 — 네트워크 카드(팝오버 동일 차트+프로세스 Top3) + 켜진 시스템 카드.
+/// borderless NSPanel(NonActivating) 안에서 호스팅된다 (FloatingWindowController 소유).
+/// 네트워크는 항상 표시, 프로세스/그래프 분리 토글 없음 (v0.37.1).
 struct FloatingWindowView: View {
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var model: FloatingWindowViewModel
     @ObservedObject private var trafficMonitor = TrafficMonitor.shared
-    @AppStorage("floatingShowProcess") private var showProcess = true
-    @AppStorage("floatingShowCPU") private var showCPU = true
-    @AppStorage("floatingShowRAM") private var showRAM = true
-    @AppStorage("floatingShowUsage") private var showUsage = true
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @AppStorage("appTraffic_show_system") private var showSystem = false
+    @AppStorage("showCPUGraph") private var showCPUGraph = false
+    @AppStorage("showGPUGraph") private var showGPUGraph = false
+    @AppStorage("showMemGraph") private var showMemGraph = true
     @AppStorage("floatingOpacity") private var opacity: Double = 0.9
     @State private var isHovering = false
 
-    private var anyLine: Bool { showProcess || showCPU || showRAM }
+    private var showMetricCards: Bool { showCPUGraph || showGPUGraph || showMemGraph }
 
     /// 플로팅 전용 모서리 반경 (v0.32.3) — TLRound.medium(10)은 타 화면 공용이라 분리.
-    /// 16pt는 패널 폭 대비 밋밋하다는 실측 피드백으로 24pt로 상향.
     private static let corner: CGFloat = 24
-
-    // 창 드래그는 FloatingWindowController.installDragMonitor(AppKit 로컬 모니터)가 담당
 
     var body: some View {
         // NOTE: 실측 자동 높이(fitToContent)가 동작하려면 콘텐츠가 루트여야 한다.
-        // RoundedRectangle + .overlay{콘텐츠} 구조에서는 overlay가 ideal size에 기여하지 않아
-        // fittingSize가 붕괴한다. 배경·테두리는 background/overlay로만 둔다.
+        let cpu3 = cpuTop3
+        let mem3 = memTop3
         Group {
-            if anyLine {
-                fullLayout
-            } else {
-                compactLayout
+            VStack(spacing: 0) {
+                headerRow
+                networkCard
+                    .padding(.horizontal, 12)
+                    .padding(.top, 6)
+                if showMetricCards {
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(TLPalette.separator)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                    SystemMetricsCards(
+                        detail: .compact,
+                        cpuTop: cpu3,
+                        memTop: mem3,
+                        onShowProcesses: { openWindow(id: "appTraffic") },
+                        backgroundOpacity: opacity
+                    )
+                    .padding(.horizontal, 12)
+                }
+                Spacer(minLength: 0)
             }
+            .padding(.top, 8)
         }
         .background(
             RoundedRectangle(cornerRadius: Self.corner, style: .continuous)
                 .fill(.regularMaterial)
                 .opacity(opacity)
         )
-            .overlay {
-                // 평소에는 테두리 없음(그림자로만 구분), 호버 시에만 경계 표시 (v0.32.1)
-                if isHovering {
-                    RoundedRectangle(cornerRadius: Self.corner, style: .continuous)
-                        .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
-                }
+        .overlay {
+            if isHovering {
+                RoundedRectangle(cornerRadius: Self.corner, style: .continuous)
+                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
             }
-            .overlay(alignment: .bottom) {
-                // 호버 시 투명도 직접 조절 (설정 창과 동일 키·범위, 레이아웃 불변)
-                if isHovering {
+        }
+        .overlay(alignment: .bottom) {
+            if isHovering {
+                HStack(spacing: 8) {
+                    Menu {
+                        Toggle(Localized.showCPUGraph, isOn: $showCPUGraph)
+                        Toggle(Localized.showGPUGraph, isOn: $showGPUGraph)
+                        Toggle(Localized.showMemGraph, isOn: $showMemGraph)
+                    } label: {
+                        Image(systemName: "chart.bar.xaxis")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help(Localized.floatingMetricsMenuHelp)
+
                     HStack(spacing: 6) {
                         Image(systemName: "circle.dashed")
                             .font(.system(size: 10))
@@ -60,82 +88,26 @@ struct FloatingWindowView: View {
                             .foregroundColor(.secondary)
                             .frame(width: 34, alignment: .trailing)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .padding(6)
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(6)
             }
-            .frame(minWidth: 220)
-            .onHover { isHovering = $0 }
-    }
-
-    /// 3칸 ON — 닫기 버튼 + 속도 2줄 + 사용량 중앙 + 프로세스/CPU/RAM Top3 (높이는 자동 맞춤)
-    /// 상단(상태행·속도·구분선)은 창 드래그 영역 — 행 탭·호버 컨트롤과 겹치지 않는다.
-    private var fullLayout: some View {
-        return VStack(spacing: 0) {
-            VStack(spacing: 0) {
-                HStack {
-                    Circle()
-                        .fill(model.isReachable ? TLPalette.success : TLPalette.danger)
-                        .frame(width: 8, height: 8)
-                        .help(model.isReachable ? Localized.statusNormal : Localized.statusCritical)
-                    Spacer()
-                    if isHovering {
-                        Button {
-                            FloatingWindowController.shared.toggle()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 8, weight: .bold))
-                                .foregroundColor(.secondary)
-                                .frame(width: 14, height: 14)
-                                .background(.quaternary, in: Circle())
-                        }
-                        .buttonStyle(.plain)
-                        .help(Localized.floatingWindowHide)
-                    }
-                }
-                .frame(height: 14)
-                .padding(.horizontal, 12)
-
-                menuBarMini
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 4)
-
-                Rectangle()
-                    .frame(height: 1)
-                    .foregroundColor(TLPalette.separator)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 2)
-            }
-            .help(Localized.floatingDragHint)
-
-            blocksView
-                .padding(.horizontal, 12)
-                .padding(.bottom, 6)
-
-            Spacer(minLength: 0)
         }
-        .padding(.top, 8)
+        .frame(minWidth: 240)
+        .onHover { isHovering = $0 }
     }
 
-    /// 줄 전부 OFF — 속도·사용량 한 줄 컴팩트 (세로 40)
-    private var compactLayout: some View {
-        let fontSize = SettingsManager.shared.menuBarFontSize
-        return HStack(spacing: 10) {
+    // MARK: - 헤더 (드래그 영역)
+
+    private var headerRow: some View {
+        HStack {
             Circle()
                 .fill(model.isReachable ? TLPalette.success : TLPalette.danger)
                 .frame(width: 8, height: 8)
                 .help(model.isReachable ? Localized.statusNormal : Localized.statusCritical)
-            speedColumn(icon: "arrow.up", value: model.upSpeed, color: TLPalette.upload, size: fontSize, alignment: .trailing)
-            usageColumn(fontSize: fontSize)
-            speedColumn(icon: "arrow.down", value: model.downSpeed, color: TLPalette.download, size: fontSize, alignment: .leading)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 4)
-        .help(Localized.floatingDragHint)
-        .overlay(alignment: .topTrailing) {
+            Spacer()
             if isHovering {
                 Button {
                     FloatingWindowController.shared.toggle()
@@ -150,133 +122,125 @@ struct FloatingWindowView: View {
                 .help(Localized.floatingWindowHide)
             }
         }
+        .frame(height: 14)
+        .padding(.horizontal, 12)
+        .help(Localized.floatingDragHint)
     }
 
-    // MARK: - 메뉴바 표시 (다운·사용량·업)
+    // MARK: - 네트워크 카드 (항상 표시 — 팝오버 차트 + 프로세스 Top3)
 
-    /// 업/다운은 양 끝, 네트워크 사용량(또는 SSID 등 col3)은 중앙 정렬.
-    private var menuBarMini: some View {
-        let fontSize = SettingsManager.shared.menuBarFontSize
-        return HStack(spacing: 12) {
-            speedColumn(icon: "arrow.up", value: model.upSpeed, color: TLPalette.upload, size: fontSize, alignment: .trailing)
-            usageColumn(fontSize: fontSize)
-            speedColumn(icon: "arrow.down", value: model.downSpeed, color: TLPalette.download, size: fontSize, alignment: .leading)
+    private var networkCard: some View {
+        // sort/filter/share는 본문 1회만 — 행마다 재계산 방지 (v0.38.1)
+        let top3 = networkTop3
+        let share = Double(top3.reduce(Int64(0)) { $0 + $1.bytesIn + $1.bytesOut })
+        return MetricCard(
+            title: Localized.network,
+            compact: true,
+            backgroundOpacity: opacity
+        ) {
+            VStack(alignment: .leading, spacing: 6) {
+                speedHeroRow
+                TLNetworkSpeedChart(
+                    history: networkMonitor.speedHistory,
+                    uploadBitRate: networkMonitor.currentUploadSpeed,
+                    downloadBitRate: networkMonitor.currentDownloadSpeed,
+                    height: 64
+                )
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(TLPalette.separator)
+                processHeader
+                if top3.isEmpty {
+                    Text(Localized.trafficCollecting)
+                        .font(TLFont.caption2)
+                        .foregroundColor(TLPalette.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 2)
+                } else {
+                    ForEach(top3) { app in
+                        netRow(app, shareTotal: share)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 팝오버 상단과 동일한 대형 업/다운 속도 (bit/s → split)
+    private var speedHeroRow: some View {
+        let up = Self.splitSpeed(networkMonitor.currentUploadSpeed)
+        let down = Self.splitSpeed(networkMonitor.currentDownloadSpeed)
+        return HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(up.number)
+                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .monospacedDigit()
+                    Text(up.unit)
+                        .font(TLFont.caption)
+                }
+                .foregroundColor(TLPalette.upload)
+                HStack(spacing: 3) {
+                    Circle().fill(TLPalette.upload).frame(width: 6, height: 6)
+                    Text(Localized.upload)
+                        .font(TLFont.caption2)
+                        .foregroundColor(TLPalette.textSecondary)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(down.number)
+                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .monospacedDigit()
+                    Text(down.unit)
+                        .font(TLFont.caption)
+                }
+                .foregroundColor(TLPalette.download)
+                HStack(spacing: 3) {
+                    Text(Localized.download)
+                        .font(TLFont.caption2)
+                        .foregroundColor(TLPalette.textSecondary)
+                    Circle().fill(TLPalette.download).frame(width: 6, height: 6)
+                }
+            }
+        }
+    }
+
+    private static func splitSpeed(_ bps: Double) -> (number: String, unit: String) {
+        let Bps = bps / 8
+        if Bps >= 1_000_000_000 {
+            return (String(format: "%.1f", Bps / 1_000_000_000), "GB/s")
+        } else if Bps >= 1_000_000 {
+            return (String(format: "%.1f", Bps / 1_000_000), "MB/s")
+        } else if Bps >= 1_000 {
+            return (String(format: "%.0f", Bps / 1_000), "KB/s")
+        } else {
+            return (String(format: "%.0f", Bps), "B/s")
+        }
+    }
+
+    private var processHeader: some View {
+        HStack(spacing: 4) {
+            Text(Localized.process)
+                .font(TLFont.smallBold)
+                .foregroundColor(TLPalette.textSecondary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(Localized.upload)
+                .font(TLFont.smallBold)
+                .foregroundColor(TLPalette.upload)
+                .lineLimit(1)
+                .frame(minWidth: 56, alignment: .trailing)
+            Text(Localized.download)
+                .font(TLFont.smallBold)
+                .foregroundColor(TLPalette.download)
+                .lineLimit(1)
+                .frame(minWidth: 56, alignment: .trailing)
         }
         .frame(maxWidth: .infinity)
     }
 
-    private func speedColumn(icon: String, value: String, color: Color, size: Double, alignment: Alignment) -> some View {
-        VStack(spacing: 2) {
-            Image(systemName: icon)
-                .font(.system(size: size + 1, weight: .semibold))
-                .foregroundColor(color)
-            Text(value)
-                .font(.system(size: size, weight: .bold, design: .monospaced))
-                .foregroundColor(color)
-                .fixedSize()
-        }
-        // 속도 값의 자리수 변화에도 좌/우 위치 흔들림을 줄이되, 좌우 오버플로우 없이 최소 폭만 보장
-        .frame(minWidth: 70, alignment: alignment)
-    }
-
-    /// col3 중앙 표시 — 할당량 설정 시 사용량/잔여(비율 색), 그 외 RSSI(top) + 지연시간(bottom).
-    @ViewBuilder
-    private func usageColumn(fontSize: Double) -> some View {
-        if model.col3IsLatency {
-            VStack(spacing: 2) {
-                Text(model.col3Top)
-                    .font(.system(size: fontSize, weight: .bold))
-                    .foregroundColor(MenuBarManager.rssiColor(model.rssi >= -1000 ? model.rssi : nil))
-                Text(model.col3Bottom)
-                    .font(.system(size: fontSize, weight: .bold))
-                    .foregroundColor(MenuBarManager.latencyColor(model.latencyMS >= 0 ? Double(model.latencyMS) / 1000.0 : nil))
-            }
-            .fixedSize()
-            .frame(maxWidth: .infinity, alignment: .center)
-        } else if model.totalRatio >= 0 && (!model.col3IsUsage || showUsage) {
-            VStack(spacing: 2) {
-                Text(model.col3Top)
-                    .font(.system(size: fontSize, weight: .bold))
-                    .foregroundColor(ratioColor)
-                Text(model.col3Bottom)
-                    .font(.system(size: fontSize, weight: .bold))
-                    .foregroundColor(ratioColor)
-            }
-            .fixedSize()
-            .frame(maxWidth: .infinity, alignment: .center)
-        }
-    }
-
-    private var ratioColor: Color {
-        let green = SavingModeManager.shared.greenThreshold
-        let orange = SavingModeManager.shared.orangeThreshold
-        if model.totalRatio < green {
-            return TLPalette.success
-        } else if model.totalRatio < orange {
-            return TLPalette.upload
-        } else {
-            return TLPalette.danger
-        }
-    }
-
-    // MARK: - 3칸 (프로세스/CPU/RAM 각 Top3, v0.32.2)
-
-    /// 켜진 칸만 표시 — 같은 스냅샷을 기준별로 정렬하므로 추가 폴링 없음.
-    @ViewBuilder
-    private var blocksView: some View {
-        if trafficMonitor.apps.isEmpty && trafficMonitor.allResources.isEmpty {
-            HStack {
-                Spacer()
-                Text(Localized.trafficCollecting)
-                    .font(TLFont.caption2)
-                    .foregroundColor(TLPalette.textSecondary)
-                Spacer()
-            }
-            .padding(.vertical, 2)
-        } else {
-            VStack(spacing: 6) {
-                if showProcess, !networkTop3.isEmpty {
-                    VStack(spacing: 0) {
-                        HStack(spacing: 4) {
-                            Text(Localized.process)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.textSecondary)
-                                .lineLimit(1)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Text(Localized.upload)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.upload)
-                                .lineLimit(1)
-                                .frame(minWidth: 64, maxWidth: 96, alignment: .trailing)
-                            Text(Localized.download)
-                                .font(TLFont.smallBold)
-                                .foregroundColor(TLPalette.download)
-                                .lineLimit(1)
-                                .frame(minWidth: 72, maxWidth: 100, alignment: .trailing)
-                        }
-                        .frame(maxWidth: .infinity)
-                        ForEach(networkTop3) { app in
-                            netRow(app)
-                        }
-                    }
-                }
-                if showCPU, !cpuTop3.isEmpty {
-                    blockSection(title: Localized.cpu) {
-                        ForEach(cpuTop3, id: \.name) { entry in
-                            cpuRow(entry)
-                        }
-                    }
-                }
-                if showRAM, !memTop3.isEmpty {
-                    blockSection(title: Localized.memory) {
-                        ForEach(memTop3, id: \.name) { entry in
-                            memRow(entry)
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // MARK: - 데이터 소스
 
     private var userApps: [TrafficMonitor.AppTraffic] {
         if showSystem { return trafficMonitor.apps }
@@ -287,12 +251,18 @@ struct FloatingWindowView: View {
         Array(userApps.sorted { ($0.bytesIn + $0.bytesOut) > ($1.bytesIn + $1.bytesOut) }.prefix(3))
     }
 
-    /// 전체 프로세스 기준 CPU Top3 — 네트워크 무관, 시스템 제외 (v0.32.4).
+    private var cpuShareTotal: Double {
+        cpuTop3.reduce(0) { $0 + max($1.res.cpuPercent ?? 0, 0) }
+    }
+
+    private var memShareTotal: Double {
+        Double(trafficMonitor.systemLoad?.memTotalBytes ?? -1)
+    }
+
     private var cpuTop3: [(name: String, res: ProcessResource)] {
         SystemResourceMonitor.topResources(userResources, limit: 3) { $0.cpuPercent ?? -1 }
     }
 
-    /// 전체 프로세스 기준 메모리 Top3 — 네트워크 무관, 시스템 제외 (v0.32.4).
     private var memTop3: [(name: String, res: ProcessResource)] {
         SystemResourceMonitor.topResources(userResources, limit: 3) { Double($0.rssBytes) }
     }
@@ -302,15 +272,7 @@ struct FloatingWindowView: View {
         return trafficMonitor.allResources.filter { !SystemProcesses.set.contains($0.key) }
     }
 
-    private func blockSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            Text(title)
-                .font(TLFont.smallBold)
-                .foregroundColor(TLPalette.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            content()
-        }
-    }
+    // MARK: - 행
 
     private func appIcon(_ name: String) -> some View {
         Group {
@@ -326,86 +288,32 @@ struct FloatingWindowView: View {
         .frame(width: 14, height: 14)
     }
 
-    private func symIcon(_ name: String) -> some View {
-        Image(systemName: name)
-            .font(.system(size: 11))
-            .foregroundColor(TLPalette.textSecondary)
-            .frame(width: 14)
-    }
-
-    private func netRow(_ app: TrafficMonitor.AppTraffic) -> some View {
-        HStack(spacing: 4) {
-            appIcon(app.processName)
-            Text(app.processName)
-                .font(TLFont.medium)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(formatByteRate(app.bytesIn))
-                .font(TLFont.mediumMono)
-                .foregroundColor(TLPalette.upload)
-                .lineLimit(1)
-                .frame(minWidth: 64, maxWidth: 96, alignment: .trailing)
-            Text(formatByteRate(app.bytesOut))
-                .font(TLFont.mediumMono)
-                .foregroundColor(TLPalette.download)
-                .lineLimit(1)
-                .frame(minWidth: 72, maxWidth: 100, alignment: .trailing)
+    private func netRow(_ app: TrafficMonitor.AppTraffic, shareTotal: Double) -> some View {
+        let share = TLShare.ratio(Double(app.bytesIn + app.bytesOut), of: shareTotal)
+        return VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                appIcon(app.processName)
+                Text(app.processName)
+                    .font(TLFont.medium)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(ByteRateFormat.string(app.bytesIn))
+                    .font(TLFont.mediumMono)
+                    .foregroundColor(TLPalette.upload)
+                    .lineLimit(1)
+                    .frame(minWidth: 56, alignment: .trailing)
+                Text(ByteRateFormat.string(app.bytesOut))
+                    .font(TLFont.mediumMono)
+                    .foregroundColor(TLPalette.download)
+                    .lineLimit(1)
+                    .frame(minWidth: 56, alignment: .trailing)
+            }
+            TLShareBar(ratio: share, color: TLPalette.download)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 1)
         .contentShape(Rectangle())
         .onTapGesture { openWindow(id: "appTraffic") }
-    }
-
-    private func cpuRow(_ entry: (name: String, res: ProcessResource)) -> some View {
-        HStack(spacing: 4) {
-            symIcon("cpu")
-            Text(entry.name)
-                .font(TLFont.medium)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(SystemResourceMonitor.formatCPU(entry.res.cpuPercent))
-                .font(TLFont.mediumMono)
-                .foregroundColor(TLPalette.cpuHeat(entry.res.cpuPercent))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 1)
-        .contentShape(Rectangle())
-        .onTapGesture { openWindow(id: "appTraffic") }
-    }
-
-    private func memRow(_ entry: (name: String, res: ProcessResource)) -> some View {
-        HStack(spacing: 4) {
-            symIcon("memorychip")
-            Text(entry.name)
-                .font(TLFont.medium)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(SystemResourceMonitor.formatMemory(entry.res.rssBytes))
-                .font(TLFont.mediumMono)
-                .foregroundColor(TLPalette.textSecondary)
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 1)
-        .contentShape(Rectangle())
-        .onTapGesture { openWindow(id: "appTraffic") }
-    }
-
-    private func formatByteRate(_ bytesPerSecond: Int64) -> String {
-        let bps = Double(bytesPerSecond)
-        if bps >= 1_000_000_000 {
-            return String(format: "%.1f GB/s", bps / 1_000_000_000)
-        } else if bps >= 1_000_000 {
-            return String(format: "%.1f MB/s", bps / 1_000_000)
-        } else if bps >= 1_000 {
-            return String(format: "%.1f KB/s", bps / 1_000)
-        } else {
-            return String(format: "%.0f B/s", bps)
-        }
     }
 }

@@ -4,6 +4,8 @@ struct SessionTimelineView: View {
   let sessions: [Session]
   let profileName: String
 
+  @State private var rows: [SessionRowModel] = []
+
   var body: some View {
     Group {
       if sessions.isEmpty {
@@ -14,8 +16,8 @@ struct SessionTimelineView: View {
       } else {
         ScrollView {
           LazyVStack(spacing: 0) {
-            ForEach(sessions) { session in
-              SessionRow(session: session)
+            ForEach(rows) { row in
+              SessionRow(row: row)
               Divider()
             }
           }
@@ -23,19 +25,46 @@ struct SessionTimelineView: View {
         }
       }
     }
+    .onAppear { load() }
+    .onChange(of: sessions) { _, _ in load() }
+  }
+
+  /// 행마다 DB 쿼리 2회 하지 않도록 1회 스냅샷 (v0.38.2).
+  private func load() {
+    let pm = ProfileManager.shared
+    rows = sessions.map { session in
+      let usage = pm.getSessionUsage(session: session)
+      let ip = pm.getIPForSession(session)?.ipAddress
+      return SessionRowModel(session: session, upload: usage.upload, download: usage.download, ipAddress: ip)
+    }
+  }
+}
+
+private struct SessionRowModel: Identifiable {
+  let id: UUID
+  let session: Session
+  let upload: Int64
+  let download: Int64
+  let ipAddress: String?
+
+  init(session: Session, upload: Int64, download: Int64, ipAddress: String?) {
+    self.id = session.id
+    self.session = session
+    self.upload = upload
+    self.download = download
+    self.ipAddress = ipAddress
   }
 }
 
 private struct SessionRow: View {
-  let session: Session
+  let row: SessionRowModel
+  private var session: Session { row.session }
 
-  private var usage: (upload: Int64, download: Int64) {
-    ProfileManager.shared.getSessionUsage(session: session)
-  }
-
-  private var ipAddress: String? {
-    ProfileManager.shared.getIPForSession(session)?.ipAddress
-  }
+  private static let timeFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.setLocalizedDateFormatFromTemplate("HHmm")
+    return f
+  }()
 
   private var durationString: String {
     guard let end = session.endTime else { return "" }
@@ -48,15 +77,14 @@ private struct SessionRow: View {
   }
 
   private var timeRangeString: String {
-    let f = DateFormatter()
-    f.setLocalizedDateFormatFromTemplate("HHmm")
+    let f = Self.timeFormatter
     let start = f.string(from: session.startTime)
     guard let end = session.endTime else { return "\(start) → ..." }
     return "\(start) → \(f.string(from: end))"
   }
 
   private var usageString: String {
-    let total = usage.upload + usage.download
+    let total = row.upload + row.download
     let b = Double(total)
     if b >= 1_000_000_000 { return String(format: "%.1f GB", b / 1_000_000_000) }
     if b >= 1_000_000 { return String(format: "%.0f MB", b / 1_000_000) }
@@ -79,7 +107,7 @@ private struct SessionRow: View {
               .font(TLFont.caption2.monospacedDigit())
               .foregroundColor(TLPalette.textSecondary)
           }
-          if let ip = ipAddress {
+          if let ip = row.ipAddress {
             Text("· \(ip)")
               .font(TLFont.caption2.monospacedDigit())
               .foregroundColor(TLPalette.textSecondary)

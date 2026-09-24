@@ -5,47 +5,14 @@ struct HeatmapMapView: View {
   let sessions: [Session]
   var focusCoordinate: CLLocationCoordinate2D?
 
-  private var markedSessions: [(session: Session, lat: Double, lng: Double)] {
-    sessions.compactMap { s in
-      guard let lat = s.latitude, let lng = s.longitude else { return nil }
-      return (s, lat, lng)
-    }
-  }
-
-  private var lastMarker: (session: Session, lat: Double, lng: Double)? {
-    markedSessions.max { $0.session.startTime < $1.session.startTime }
-  }
-
-  private var latestRegion: MKCoordinateRegion? {
-    guard let last = lastMarker else { return nil }
-    return MKCoordinateRegion(
-      center: CLLocationCoordinate2D(latitude: last.lat, longitude: last.lng),
-      span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-    )
-  }
-
-  private func sourceLabel(_ source: String?) -> String {
-    switch source {
-    case "gps": return Localized.string("GPS", "GPS")
-    case "ip": return Localized.string("IP", "IP")
-    default: return Localized.string("알 수 없음", "Unknown")
-    }
-  }
-
-  private func sourceColor(_ source: String?) -> Color {
-    switch source {
-    case "gps": return TLPalette.success
-    case "ip": return TLPalette.accent
-    default: return TLPalette.textSecondary
-    }
-  }
-
   @State private var cameraPosition: MapCameraPosition = .automatic
+  @State private var markedSessions: [(session: Session, lat: Double, lng: Double)] = []
+  @State private var clusters: [(lat: Double, lng: Double, sessions: [Session])] = []
+  @State private var latestCluster: (lat: Double, lng: Double, sessions: [Session])?
 
-  /// 동일 좌표(정밀도 3자리)로 그룹핑한 클러스터. 세션 수 > 1이면 숫자 배지.
-  private var clusters: [(lat: Double, lng: Double, sessions: [Session])] {
+  private static func buildClusters(from marked: [(session: Session, lat: Double, lng: Double)]) -> [(lat: Double, lng: Double, sessions: [Session])] {
     var groups: [String: (lat: Double, lng: Double, sessions: [Session])] = [:]
-    for item in markedSessions {
+    for item in marked {
       let keyLat = String(format: "%.3f", item.lat)
       let keyLng = String(format: "%.3f", item.lng)
       let key = "\(keyLat),\(keyLng)"
@@ -60,8 +27,15 @@ struct HeatmapMapView: View {
       .sorted { $0.sessions.first?.startTime ?? .distantPast < $1.sessions.first?.startTime ?? .distantPast }
   }
 
-  private var latestCluster: (lat: Double, lng: Double, sessions: [Session])? {
-    clusters.last
+  private func rebuild() {
+    let marked: [(session: Session, lat: Double, lng: Double)] = sessions.compactMap { s in
+      guard let lat = s.latitude, let lng = s.longitude else { return nil }
+      return (s, lat, lng)
+    }
+    markedSessions = marked
+    let built = Self.buildClusters(from: marked)
+    clusters = built
+    latestCluster = built.last
   }
 
   var body: some View {
@@ -118,6 +92,7 @@ struct HeatmapMapView: View {
         }
         .padding(.horizontal, TLSpace.xl)
         .onAppear {
+          rebuild()
           if let latest = latestCluster {
             cameraPosition = .region(MKCoordinateRegion(
               center: CLLocationCoordinate2D(latitude: latest.lat, longitude: latest.lng),
@@ -125,6 +100,7 @@ struct HeatmapMapView: View {
             ))
           }
         }
+        .onChange(of: sessions) { _, _ in rebuild() }
         .onChange(of: focusCoordinate?.latitude) { _ in focusOnFocusCoordinate() }
         .onChange(of: focusCoordinate?.longitude) { _ in focusOnFocusCoordinate() }
       }
@@ -137,6 +113,22 @@ struct HeatmapMapView: View {
       center: focusCoordinate,
       span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
     ))
+  }
+
+  private func sourceLabel(_ source: String?) -> String {
+    switch source {
+    case "gps": return Localized.string("GPS", "GPS")
+    case "ip": return Localized.string("IP", "IP")
+    default: return Localized.string("알 수 없음", "Unknown")
+    }
+  }
+
+  private func sourceColor(_ source: String?) -> Color {
+    switch source {
+    case "gps": return TLPalette.success
+    case "ip": return TLPalette.accent
+    default: return TLPalette.textSecondary
+    }
   }
 
   private func markerColor(_ source: String?) -> Color {

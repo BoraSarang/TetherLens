@@ -7,8 +7,20 @@ struct ReportView: View {
 
   @State private var copied = false
   @State private var showSource = false
+  @State private var cachedMarkdown: String?
+  @State private var cachedKey: String?
 
   private let allProfilesId = UsageReportView.ReportAllProfilesId
+
+  private static let dayFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateFormat = "yyyy-MM-dd"
+    return f
+  }()
+
+  private var cacheKey: String {
+    "\(selectedPeriod.days)|\(selectedProfileId?.uuidString ?? "all")"
+  }
 
   private var effectiveProfiles: [Profile] {
     guard let pid = selectedProfileId, pid != allProfilesId else { return profiles }
@@ -20,8 +32,7 @@ struct ReportView: View {
   }
 
   private var dateRangeLabel: String {
-    let f = DateFormatter()
-    f.dateFormat = "yyyy-MM-dd"
+    let f = Self.dayFormatter
     let to = Date()
     let from = Calendar.current.date(byAdding: .day, value: -selectedPeriod.days + 1, to: to) ?? to
     return "\(f.string(from: from)) ~ \(f.string(from: to))"
@@ -33,7 +44,9 @@ struct ReportView: View {
 
   // MARK: - 마크다운
 
-  private var markdown: String {
+  /// body 재평가마다 DB 쿼리+문자열 합성하지 않도록 프로필/기간 변경 시 1회 갱신 (v0.38.2).
+  private func markdownIfNeeded() -> String {
+    if let cached = cachedMarkdown, cachedKey == cacheKey { return cached }
     let s = summary
     let total = s.totalUpload + s.totalDownload
     var lines: [String] = []
@@ -64,7 +77,7 @@ struct ReportView: View {
     lines.append("## 상위 앱")
     lines.append("")
     if s.topApps.isEmpty {
-      lines.append("앱 트래픽 데이터가 없습니다.")
+      lines.append("트래픽 데이터가 없습니다.")
     } else {
       lines.append("| 앱 | 사용량 |")
       lines.append("|----|--------|")
@@ -72,8 +85,13 @@ struct ReportView: View {
         lines.append("| \(app.name) | \(app.total.formattedBytes) |")
       }
     }
-    return lines.joined(separator: "\n")
+    let text = lines.joined(separator: "\n")
+    cachedMarkdown = text
+    cachedKey = cacheKey
+    return text
   }
+
+  private var markdown: String { markdownIfNeeded() }
 
   var body: some View {
     VStack(spacing: 0) {
@@ -186,7 +204,7 @@ struct ReportView: View {
       }
       renderSection(Localized.string("상위 앱", "Top Apps")) {
         if s.topApps.isEmpty {
-          Text(Localized.string("앱 트래픽 데이터가 없습니다.", "No app traffic data."))
+          Text(Localized.string("트래픽 데이터가 없습니다.", "No traffic data."))
             .font(TLFont.caption)
             .foregroundColor(TLPalette.textSecondary)
         } else {

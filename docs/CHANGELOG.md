@@ -1,10 +1,38 @@
 # Changelog
 
-## [Unreleased]
+## [0.37.0] — 2026-09-24 — iStat 대시보드 + 시스템 대시보드 rename + 안정성·성능 리팩터링
+
+### Added
+- **플로팅 네트워크 카드 (팝오버 동일)** `[macOS]` — 항상 표시. 대형 업/다운 속도 + `TLNetworkSpeedChart`(다운 Area + 업 Line 오버레이, 팝오버 `speedCombinedChart` 공용 추출) + 네트워크 프로세스 Top3. `NetworkMonitor.shared`를 팝오버/플로팅이 공유 관찰
+- **플로팅 카드=그래프+프로세스 통합** `[macOS]` — 설정/호버에서 프로세스·그래프 분리 토글 제거. `showCPUGraph`/`showGPUGraph`/`showMemGraph`는 카드(그래프+아래 Top3) 통합 on/off. 네트워크 카드는 토글 없이 항상
+- **앱 트래픽 창 고정 크기 + 카드 스타일** `[macOS]` — 640×760, `windowResizability(.contentSize)` 리사이즈 금지. 프로세스 목록은 `MetricCard` 셸 통일 + 전체 스크롤. 카드는 플로팅/설정 그래프 토글과 무관하게 항상 전체 표시 (`alwaysShowAll`)
+- **플로팅 호버 지표 토글 메뉴** `[macOS]` — 투명도 슬라이더 옆 차트 아이콘 드롭다운. CPU/RAM 카드 on/off 즉시 반영, 설정 창과 동일 키
+- **플로팅 카드 배경 투명도 연동** `[macOS]` — `MetricCard.backgroundOpacity`. 투명도 슬라이더가 창 배경과 카드 배경·테두리에 함께 적용 (텍스트·게이지·스파크라인은 선명 유지)
+- **앱 트래픽 창 스크롤** `[macOS]` — 카드(코어바·Top5) + 프로세스 15행이 고정 높이 초과로 헤더만 보이던 잘림 수정. 전체 `ScrollView` + `List`→`LazyVStack`
+- **CPU/GPU 카드 수치 trailing 통일** `[macOS]` — 메모리 카드와 동일하게 제목 오른쪽 우측 정렬. hero 텍스트 제거, non-compact는 load 문구 본문 유지
+- **RAM 라벨 통일** `[macOS]` — `Localized.memory`·`sortByMemory`·`showMemGraph`·`systemLoadSummary`에서 "메모리" → "RAM" (한/영)
+- **팝오버 상태행 게이트웨이 칩** `[macOS]` — 외부 IP 칩 왼쪽에 `gatewayIP` 칩 추가. 탭 즉시 복사, 우클릭 메뉴와 동일 경로. 게이트웨이 없으면 칩 숨김
+- **메모리 카드 수치 위치 변경** `[macOS]` — `17 / 32 GB`를 제목 아래 hero 대신 제목 오른쪽(우측 정렬)으로 이동. `MetricCard`에 `trailing` 헤더 지원 추가
+- **iStat 스타일 프로세스 점유율 바** `[macOS]` (bd 4kb) — 플로팅·팝오버·앱 트래픽 3면 Top 행 하단 2pt 가로 바. 네트워크=표시 목록 합 대비(파랑), CPU=Top 합 대비(cpuHeat), RAM=시스템 총메모리 대비(액센트)
+- **시스템 CPU/GPU/MEM 스파크라인** `[macOS]` (bd 4kb) — `MetricsHistory` 60점 링버퍼(refresh 편승, 추가 타이머 0) + `TLSparkline`(Path min-max). GPU는 IOKit `PerformanceStatistics`(IOAccelerator/AGXAccelerator/IOAccelAccelerator, 키 4후보) 실측 — 실패/미지원 시 칸 숨김(info 1회, 오류 아님)
+- **시스템 지표 카드 대시보드 (iStat Menus 스타일)** `[macOS]` (bd 4kb) — `SystemMetricsCards` compact(플로팅)/standard(팝오버: load+Top3)/full(앱 트래픽: 코어바+Top5+더보기). CPU 전체%·1분 load·코어별 `host_processor_info` 델타, GPU 게이지, MEMORY `4.9 / 7 GB`+RSS Top. 카드 셸 `MetricCard`+`TLGaugeBar`+`TLCoreBars`
+- **그래프 개별 표시 토글** `[macOS]` — 설정·플로팅 창 섹션에 CPU/GPU/RAM 카드 on/off. 기본: RAM ON, CPU·GPU OFF (`showCPUGraph`/`showGPUGraph`/`showMemGraph`). 기존 단일 `showSystemGraphs` 토글은 제거
+
+### Changed
+- **메뉴 rename "시스템 대시보드"** `[macOS]` — `프로세스별 트래픽`/`App Traffic` → `시스템 대시보드`/`System Dashboard`. `appTraffic`·`appTrafficButton`·`showAppTrafficLabel`·창 제목 + 관련 안내 문구(리포트 빈 상태·고지·트래픽 갱신). 식별자 `appTraffic`/window id/`@AppStorage` 키는 유지. 리포트 탭명만 `프로세스 트래픽`(Process Traffic)
+- **메뉴·팔레트 순서 동일 그리드** `[macOS]` — 창(리포트·대시보드·알림·정보) → 표면(플로팅·팝오버·…"메뉴) → 도구(진단·프로필) → 시스템(설정·업데이트·디버그). ⌘K 팔레트에 네트워크 진단·프로필 관리 추가, 프로필은 `moreAction`으로 팝오버 오버레이 (메뉴바 더보기와 동일)
+- **성능 리팩터링 (v0.38.1)** `[macOS]` (bd mt9) — `NetworkMonitor` 5×`@Published`·`TrafficMonitor` 3×`@Published`·`MetricsHistory` 3×`@Published` → 단일 스냅샷 발행(무효화 1회). `AppBlockManager` blocked CSV 캐시, `DebugLogger` DateFormatter 재사용 + MainActor 직접 push, `HotspotDetector` route/DNS 프로세스 spawn → utility queue, 앱 트래픽/플로팅 행 sort·filter·share 합계 본문 1회 hoisting
+- **안정성 리팩터링 (v0.38.0)** `[macOS]` (bd hx3) — `NWPathMonitor` stop 시 cancel+재생성, `NetworkMonitor.start()` 멱등, `getifaddrs` `ifa_addr` NULL 가드, `DataStore`/`ProfileManager` `try!` 제거(+영속 실패 시 in-memory 폴백), `LocationManager` 강제언래핑 제거
+- **재점검 조사 (v0.38.2)** `[macOS]` (bd k5o·rsk) — 안정성 P1: `IPResolver` URL! → guard, `isCurrentPathExpensive` continuation resume-once 가드, `DNSManager.currentServersAsync()` 백그라운드(팝오버 DNS 시트·`dnsLeakCheck` 경유). 성능 P1/P2: 팝오버 리소스 섹션·리포트 markdown 캐시·리포트 앱트래픽·히트맵 클러스터·이동/세션 타임라인 body 내 sort·filter·DB 쿼리를 `@State`/`onAppear` 1회 계산으로 이동, `DateFormatter` static 재사용, `NetworkMonitor` 타이머 leeway 100ms, `FloatingWindowViewModel` 다중 `@Published` → 단일 스냅샷
+
+### Removed
+- **플로팅 프로세스/그래프 분리 토글 제거** `[macOS]` — `floatingShowProcess`·`floatingShowCPU`·`floatingShowRAM`·`floatingShowUsage`·`floatingVisibleLines` 제거. 네트워크는 항상, 시스템 카드는 그래프 토글 하나로 통합
+- **팝오버 … 메뉴 사용량 리포트 중복 제거** `[macOS]` — 좌측 주 버튼과 동일 항목이 한 번 더 노출되던 것 제거. 더보기 순서는 메뉴바/팔레트와 동일 그리드
 
 ### Fixed
 - **업데이트 창 제목 "vv" 중복** (bd jcv) — "새 버전 vv0.36.0 사용 가능" 표시. 포맷(`v%@`)에 `v` 포함 태그 전달이 원인, `updateAvailableTitle(_:)`에서 선행 `v` 제거로 중앙 수정 (창 제목·시트 제목·설정 탭)
 - **플로팅 창 드래그 불가** (bd hu9) — 배경 클릭 가로챔으로 시스템 드래그·SwiftUI 제스처 모두 무력화(상단 제스처는 dead zone 스냅으로 밀리는 느낌). AppKit 로컬 모니터로 교체: 마우스다운 즉시 앵커로 첫 픽셀부터 1:1 추적, NSControl 위 시작 제외(슬라이더 보호), 드래그 중 높이 재적합 중단, 이벤트 그대로 전달해 버튼·행 탭 유지
+- `Info.plist` — CFBundleShortVersionString `0.36.0` → `0.37.0`, CFBundleVersion `36` → `37`
 
 ## [0.36.0] — 2026-09-20 — 업데이트 시스템 + 팝오버 레이아웃
 

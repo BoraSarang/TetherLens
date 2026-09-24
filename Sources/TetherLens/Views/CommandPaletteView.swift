@@ -17,30 +17,40 @@ struct CommandPaletteView: View {
     }
 
     private var allItems: [PaletteItem] {
+        // 순서 통일 (메뉴바 더보기/팝오버 … 동일 그리드): 창 → 표면 → 도구 → 시스템
         var items: [PaletteItem] = [
             PaletteItem(title: Localized.usageReport, icon: "chart.bar.fill") {
                 openWindow(id: "usageReport")
             },
-            PaletteItem(title: Localized.appTrafficButton, icon: "arrow.up.arrow.down") {
+            PaletteItem(title: Localized.appTrafficButton, icon: "rectangle.3.group.fill") {
                 openWindow(id: "appTraffic")
             },
             PaletteItem(title: Localized.notificationList, icon: "bell") {
                 openWindow(id: "notifications")
             },
-            PaletteItem(title: Localized.settings, icon: "gearshape") {
-                openSettings()
-            },
-            PaletteItem(title: Localized.about, icon: "info.circle") {
-                openWindow(id: "about")
+            PaletteItem(title: FloatingWindowController.shared.isVisible ? Localized.floatingWindowHide : Localized.floatingWindowShow, icon: "rectangle.on.rectangle") {
+                FloatingWindowController.shared.toggle()
             },
             PaletteItem(title: Localized.popoverToggle, icon: "rectangle.inset.filled.and.person.filled") {
                 NotificationCenter.default.post(name: .init("togglePopover"), object: nil)
             },
-            PaletteItem(title: Localized.floatingWindow, icon: "rectangle.on.rectangle") {
-                FloatingWindowController.shared.toggle()
+            PaletteItem(title: Localized.networkDiagnostics, icon: "stethoscope") {
+                DiagnosticsWindowController.shared.show()
+            },
+            PaletteItem(title: Localized.manageProfiles, icon: "person.2") {
+                NotificationCenter.default.post(name: .init("togglePopover"), object: nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    NotificationCenter.default.post(name: .init("moreAction"), object: nil, userInfo: ["action": "profileManager"])
+                }
+            },
+            PaletteItem(title: Localized.settings, icon: "gearshape") {
+                openSettings()
             },
             PaletteItem(title: Localized.checkUpdates, icon: "arrow.down.circle") {
                 NotificationCenter.default.post(name: .init("manualUpdateCheck"), object: nil)
+            },
+            PaletteItem(title: Localized.about, icon: "info.circle") {
+                openWindow(id: "about")
             },
             PaletteItem(title: Localized.quit, icon: "power") {
                 NSApplication.shared.terminate(nil)

@@ -18,12 +18,11 @@ struct SettingsView: View {
     @State private var fontSize: Double
     @State private var showAppTraffic: Bool
     @State private var showResources: Bool
+    @State private var showCPUGraph: Bool
+    @State private var showGPUGraph: Bool
+    @State private var showMemGraph: Bool
     @State private var floatingShowAtLaunch: Bool
     @State private var floatingOpacity: Double
-    @State private var floatingShowProcess: Bool
-    @State private var floatingShowCPU: Bool
-    @State private var floatingShowRAM: Bool
-    @State private var floatingShowUsage: Bool
     @State private var notiAuthorized = false
     @State private var locationStatus: CLAuthorizationStatus = .notDetermined
     @State private var locationDiagnostics: [String] = []
@@ -54,12 +53,11 @@ struct SettingsView: View {
         _fontSize = State(initialValue: s.menuBarFontSize)
         _showAppTraffic = State(initialValue: UserDefaults.standard.object(forKey: "popover_show_app_traffic") as? Bool ?? true)
         _showResources = State(initialValue: s.popoverShowResources)
+        _showCPUGraph = State(initialValue: s.showCPUGraph)
+        _showGPUGraph = State(initialValue: s.showGPUGraph)
+        _showMemGraph = State(initialValue: s.showMemGraph)
         _floatingShowAtLaunch = State(initialValue: s.floatingShowAtLaunch)
         _floatingOpacity = State(initialValue: s.floatingOpacity)
-        _floatingShowProcess = State(initialValue: s.floatingShowProcess)
-        _floatingShowCPU = State(initialValue: s.floatingShowCPU)
-        _floatingShowRAM = State(initialValue: s.floatingShowRAM)
-        _floatingShowUsage = State(initialValue: s.floatingShowUsage)
         _autoRules = State(initialValue: AutomationManager.shared.rules)
         _updateFrequency = State(initialValue: UpdaterManager.shared.frequency)
     }
@@ -213,27 +211,23 @@ struct SettingsView: View {
                         SettingsManager.shared.floatingShowAtLaunch = newValue
                     }
 
-                Toggle(Localized.floatingShowProcess, isOn: $floatingShowProcess)
-                    .onChange(of: floatingShowProcess) { _, newValue in
-                        SettingsManager.shared.floatingShowProcess = newValue
+                // 네트워크 카드는 플로팅에 항상 표시. 아래 토글은 카드(그래프+프로세스) 통합 on/off.
+                Toggle(Localized.showCPUGraph, isOn: $showCPUGraph)
+                    .onChange(of: showCPUGraph) { _, newValue in
+                        SettingsManager.shared.showCPUGraph = newValue
                         NotificationCenter.default.post(name: .init("floatingSettingsChanged"), object: nil)
                     }
 
-                Toggle(Localized.floatingShowCPU, isOn: $floatingShowCPU)
-                    .onChange(of: floatingShowCPU) { _, newValue in
-                        SettingsManager.shared.floatingShowCPU = newValue
+                Toggle(Localized.showGPUGraph, isOn: $showGPUGraph)
+                    .onChange(of: showGPUGraph) { _, newValue in
+                        SettingsManager.shared.showGPUGraph = newValue
                         NotificationCenter.default.post(name: .init("floatingSettingsChanged"), object: nil)
                     }
 
-                Toggle(Localized.floatingShowRAM, isOn: $floatingShowRAM)
-                    .onChange(of: floatingShowRAM) { _, newValue in
-                        SettingsManager.shared.floatingShowRAM = newValue
+                Toggle(Localized.showMemGraph, isOn: $showMemGraph)
+                    .onChange(of: showMemGraph) { _, newValue in
+                        SettingsManager.shared.showMemGraph = newValue
                         NotificationCenter.default.post(name: .init("floatingSettingsChanged"), object: nil)
-                    }
-
-                Toggle(Localized.floatingShowUsage, isOn: $floatingShowUsage)
-                    .onChange(of: floatingShowUsage) { _, newValue in
-                        SettingsManager.shared.floatingShowUsage = newValue
                     }
 
                 HStack {

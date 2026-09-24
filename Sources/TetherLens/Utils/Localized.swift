@@ -43,7 +43,7 @@ enum Localized {
   static var addressInfo: String { value(kr: "연결 주소", en: "Address Info") }
   static var qosGauge: String { value(kr: "QoS 방지 게이지", en: "QoS Gauge") }
   static var profile: String { value(kr: "프로필", en: "Profile") }
-  static var appTraffic: String { value(kr: "프로세스별 트래픽", en: "App Traffic") }
+  static var appTraffic: String { value(kr: "시스템 대시보드", en: "System Dashboard") }
 
   // MARK: - Connection Detail Labels
   static var type: String { value(kr: "유형", en: "Type") }
@@ -119,6 +119,7 @@ enum Localized {
   // MARK: - App Traffic
   static var process: String { value(kr: "프로세스", en: "Process") }
   static var showMore: String { value(kr: "더보기...", en: "Show More...") }
+  static var processListMore: String { value(kr: "프로세스 목록 더보기", en: "More processes") }
   static var totalSum: String { value(kr: "총 합계", en: "Grand Total") }
   static var userSum: String { value(kr: "사용자 합계", en: "User Total") }
   static var systemSum: String { value(kr: "시스템 합계", en: "System Total") }
@@ -132,7 +133,7 @@ enum Localized {
 
   // MARK: - Bottom Buttons
   static var usageReport: String { value(kr: "사용량 리포트", en: "Usage Report") }
-  static var appTrafficButton: String { value(kr: "프로세스별 트래픽", en: "App Traffic") }
+  static var appTrafficButton: String { value(kr: "시스템 대시보드", en: "System Dashboard") }
   static var notificationList: String { value(kr: "알림 기록", en: "Notifications") }
   static var networkDiagnostics: String { value(kr: "네트워크 진단", en: "Network Diagnostics") }
     static var dnsPresetApply: String { value(kr: "DNS 프리셋", en: "DNS Preset") }
@@ -158,13 +159,13 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var floatingWindowShow: String { value(kr: "플로팅 창 표시", en: "Show Floating Window") }
   static var floatingWindowHide: String { value(kr: "플로팅 창 숨기기", en: "Hide Floating Window") }
   static var floatingOpacity: String { value(kr: "투명도", en: "Opacity") }
-  static var floatingShowProcess: String { value(kr: "프로세스 Top3 표시", en: "Show Top 3 Processes") }
-  static var floatingShowCPU: String { value(kr: "CPU Top3 표시", en: "Show Top 3 CPU") }
-  static var floatingShowRAM: String { value(kr: "RAM Top3 표시", en: "Show Top 3 RAM") }
   static var popoverShowResources: String { value(kr: "시스템 리소스 표시", en: "Show System Resources") }
-  static var floatingShowUsage: String { value(kr: "네트워크 사용량 표시", en: "Show Network Usage") }
+  static var showCPUGraph: String { value(kr: "CPU 카드 표시 (그래프+프로세스)", en: "Show CPU Card (Graph+Processes)") }
+  static var showGPUGraph: String { value(kr: "GPU 카드 표시 (그래프)", en: "Show GPU Card (Graph)") }
+  static var showMemGraph: String { value(kr: "RAM 카드 표시 (그래프+프로세스)", en: "Show RAM Card (Graph+Processes)") }
   static var floatingAtLaunch: String { value(kr: "앱 시작 시 표시", en: "Show at Launch") }
   static var floatingDragHint: String { value(kr: "드래그로 이동", en: "Drag to move") }
+  static var floatingMetricsMenuHelp: String { value(kr: "CPU/GPU/RAM 카드 표시", en: "Show CPU/GPU/RAM cards") }
   static var autoSwitchProfile: String { value(kr: "새 네트워크에 프로필 자동 등록", en: "Auto-Register Profile on New Network") }
   static var automationTitle: String { value(kr: "자동화", en: "Automation") }
   static var automationEmpty: String { value(kr: "등록된 규칙이 없습니다. 아래 버튼으로 추가해 보세요.", en: "No rules yet. Add one below.") }
@@ -181,7 +182,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var fontSize: String { value(kr: "폰트 크기", en: "Font Size") }
   static var defaultParen: String { value(kr: "(기본: %dpt)", en: "(Default: %dpt)") }
   static func defaultParen(_ val: Int) -> String { String(format: defaultParen, val) }
-  static var showAppTrafficLabel: String { value(kr: "프로세스별 트래픽 표시", en: "Show App Traffic") }
+  static var showAppTrafficLabel: String { value(kr: "시스템 대시보드 표시", en: "Show System Dashboard") }
   static var show: String { value(kr: "표시", en: "Show") }
   static var hide: String { value(kr: "숨김", en: "Hide") }
   static var notifications: String { value(kr: "알림", en: "Notifications") }
@@ -203,7 +204,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var resetDefaults: String { value(kr: "기본값 복원", en: "Reset to Defaults") }
   static var menuBarRefresh: String { value(kr: "메뉴바 갱신 주기", en: "Menu Bar Refresh") }
   static var cacheRefresh: String { value(kr: "데이터 캐시 갱신", en: "Data Cache Refresh") }
-  static var trafficRefresh: String { value(kr: "프로세스 트래픽 갱신", en: "App Traffic Refresh") }
+  static var trafficRefresh: String { value(kr: "트래픽 갱신", en: "Traffic Refresh") }
   static var pingIntervalLabel: String { value(kr: "Ping 측정 주기", en: "Ping Interval") }
   static func intervalSec(_ val: Int) -> String { value(kr: "\(val)초", en: "\(val)s") }
 
@@ -281,7 +282,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var chart: String { value(kr: "그래프", en: "Chart") }
   static var detail: String { value(kr: "상세", en: "Detail") }
   static var sessionTab: String { value(kr: "세션", en: "Session") }
-  static var appTrafficTab: String { value(kr: "프로세스별 트래픽", en: "App Traffic") }
+  static var appTrafficTab: String { value(kr: "프로세스 트래픽", en: "Process Traffic") }
   static var date: String { value(kr: "날짜", en: "Date") }
   static var monthLabel: String { value(kr: "월", en: "Month") }
   static var startTime: String { value(kr: "시작 시간", en: "Start Time") }
@@ -326,7 +327,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
     value(kr: "\(app) 사용량 집중", en: "\(app) dominates usage")
   }
   static func insightOffenderBody(_ bytes: String, _ share: Int) -> String {
-    value(kr: "오늘 \(bytes) 중 \(share)% — 탭하여 앱 트래픽 보기", en: "\(share)% of \(bytes) today — tap for app traffic")
+    value(kr: "오늘 \(bytes) 중 \(share)% — 탭하여 시스템 대시보드 보기", en: "\(share)% of \(bytes) today — tap for System Dashboard")
   }
   static var insightSurgeTitle: String { value(kr: "평소보다 급증", en: "Usage surge") }
   static func insightSurgeBody(_ bytes: String, _ ratio: String) -> String {
@@ -404,22 +405,23 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var trafficCollecting: String { value(kr: "트래픽 데이터를 수집 중입니다...", en: "Collecting traffic data...") }
   static var excludeSystem: String { value(kr: "시스템 프로세스 포함", en: "Include System Processes") }
   static var resetTraffic: String { value(kr: "초기화", en: "Reset") }
-  static var trafficResetConfirm: String { value(kr: "누적된 프로세스별 트래픽이 모두 초기화됩니다.", en: "All accumulated per-app traffic will be reset.") }
+  static var trafficResetConfirm: String { value(kr: "누적된 트래픽 데이터가 모두 초기화됩니다.", en: "All accumulated traffic data will be reset.") }
   static var block: String { value(kr: "차단", en: "Block") }
   static var cpu: String { value(kr: "CPU", en: "CPU") }
-  static var memory: String { value(kr: "메모리", en: "Memory") }
+  static var gpu: String { value(kr: "GPU", en: "GPU") }
+  static var memory: String { value(kr: "RAM", en: "RAM") }
+  static var sortByMemory: String { value(kr: "RAM순", en: "By RAM") }
   static var sortByNetwork: String { value(kr: "네트워크순", en: "By Network") }
   static var sortByCPU: String { value(kr: "CPU순", en: "By CPU") }
-  static var sortByMemory: String { value(kr: "메모리순", en: "By Memory") }
   static var systemResources: String { value(kr: "시스템 리소스", en: "System Resources") }
   static func systemLoadSummary(cpu: String, memUsed: String, memTotal: String) -> String {
-    value(kr: "시스템 CPU \(cpu) · 메모리 \(memUsed) / \(memTotal)", en: "System CPU \(cpu) · Memory \(memUsed) / \(memTotal)")
+    value(kr: "시스템 CPU \(cpu) · RAM \(memUsed) / \(memTotal)", en: "System CPU \(cpu) · RAM \(memUsed) / \(memTotal)")
   }
   static var blockingOn: String { value(kr: "차단 중", en: "Blocking") }
   static var includeSystemTooltip: String { value(kr: "시스템 프로세스 포함 전환", en: "Toggle system processes") }
   static var resetTrafficTooltip: String { value(kr: "누적 트래픽 초기화", en: "Reset accumulated traffic") }
   static var activeBlockingTooltip: String { value(kr: "차단 활성", en: "Blocking active") }
-  static var blockedAppNotificationTitle: String { value(kr: "앱 트래픽 차단 감지", en: "App Traffic Blocked") }
+  static var blockedAppNotificationTitle: String { value(kr: "트래픽 차단 감지", en: "Traffic Blocked") }
   static var blockedAppNotificationBody: String { value(kr: "%@가 데이터를 사용하려고 합니다. 차단 목록에 있습니다.", en: "%@ is trying to use data but is on the block list.") }
 
   // MARK: - Notification List
@@ -437,6 +439,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var copySSID: String { value(kr: "SSID 복사", en: "Copy SSID") }
   static var copyBSSID: String { value(kr: "BSSID 복사", en: "Copy BSSID") }
   static var copyExternalIPHelp: String { value(kr: "외부 IP 복사", en: "Copy external IP") }
+  static var copyGatewayHelp: String { value(kr: "게이트웨이 복사", en: "Copy gateway") }
 
   // MARK: - Picker Options
   static let menuBarIntervalOptions: [(String, Double)] = [
