@@ -42,12 +42,59 @@ public enum UpdateCheckFrequency: String, CaseIterable, Identifiable, Sendable {
 enum ReleaseCheckError: Error, LocalizedError {
     case noPublishedRelease
     case fetchFailed
+    case rateLimited
 
     var errorDescription: String? {
         switch self {
         case .noPublishedRelease: return Localized.updateNoRelease
         case .fetchFailed: return Localized.updateCheckFailed
+        case .rateLimited: return Localized.updateRateLimited
         }
+    }
+}
+
+/// 릴리스 태그·버전 비교·리다이렉트 URL 파싱 (네트워크 없이 테스트 가능)
+enum GitHubReleaseParser {
+    /// `/owner/repo/releases/tag/v1.2.3` 최종 URL에서 태그 추출
+    static func tag(fromReleaseURL url: URL) -> String? {
+        let parts = url.pathComponents
+        guard let tagIndex = parts.lastIndex(of: "tag"),
+              parts.index(after: tagIndex) < parts.endIndex else { return nil }
+        return parts[parts.index(after: tagIndex)]
+    }
+
+    /// 태그가 현재 버전보다 새로운지 (`v` 접두 허용, 숫자 비교)
+    static func isNewerVersion(_ tag: String, current: String) -> Bool {
+        let normalized = tag.replacingOccurrences(of: "^v", with: "", options: .regularExpression)
+        return normalized.compare(current, options: .numeric) == .orderedDescending
+    }
+
+    /// releases.atom에서 해당 태그 항목의 본문(HTML) 추출 — raw 노트 파일 없을 때 폴백
+    static func atomBody(forTag tag: String, in atom: String) -> String? {
+        var searchStart = atom.startIndex
+        while let entryStart = atom.range(of: "<entry>", range: searchStart..<atom.endIndex) {
+            guard let entryEnd = atom.range(of: "</entry>", range: entryStart.upperBound..<atom.endIndex) else { return nil }
+            let entry = String(atom[entryStart.lowerBound..<entryEnd.upperBound])
+            searchStart = entryEnd.upperBound
+            guard entry.contains("/releases/tag/\(tag)") || entry.contains(">\(tag)<") || entry.contains(tag) else { continue }
+            guard let contentStart = entry.range(of: "<content"),
+                  let openEnd = entry.range(of: ">", range: contentStart.upperBound..<entry.endIndex),
+                  let contentEnd = entry.range(of: "</content>") else { continue }
+            let raw = String(entry[openEnd.upperBound..<contentEnd.lowerBound])
+            return unescapeHTML(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return nil
+    }
+
+    static func unescapeHTML(_ s: String) -> String {
+        var out = s
+        for (entity, ch) in [
+            ("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&"),
+            ("&quot;", "\""), ("&#39;", "'"), ("&apos;", "'")
+        ] {
+            out = out.replacingOccurrences(of: entity, with: ch)
+        }
+        return out
     }
 }
 
@@ -119,7 +166,7 @@ final class UpdaterManager: ObservableObject {
         do {
             let release = try await fetchLatest()
             lastCheckedAt = Date()
-            if isNewerVersion(release.tagName) {
+            if GitHubReleaseParser.isNewerVersion(release.tagName, current: currentVersion) {
                 state = .updateAvailable(
                     tag: release.tagName,
                     htmlURL: release.htmlURL,
@@ -143,28 +190,73 @@ final class UpdaterManager: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
-    /// releases/latest 조회 — 404는 '게시된 릴리스 없음'으로 구분, User-Agent는 번들 버전 사용 (가이드 실패6 회피)
+    private var currentVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+    }
+
+    private var userAgent: String {
+        "TetherLens/\(currentVersion)"
+    }
+
+    /// 최신 릴리스 조회.
+    /// api.github.com 익명 rate limit(60/h/IP) 회피 위해 HTML 리다이렉트 + raw/atom 사용.
     private func fetchLatest() async throws -> GitHubRelease {
-        let url = URL(string: "https://api.github.com/repos/\(repoOwner)/\(repoName)/releases/latest")!
-        var request = URLRequest(url: url)
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
-        request.setValue("TetherLens/\(version)", forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let latestURL = URL(string: "https://github.com/\(repoOwner)/\(repoName)/releases/latest")!
+        var request = URLRequest(url: latestURL)
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 20
+        let (_, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw ReleaseCheckError.fetchFailed
         }
         if http.statusCode == 404 {
             throw ReleaseCheckError.noPublishedRelease
         }
-        guard (200...299).contains(http.statusCode) else {
+        if http.statusCode == 403 || http.statusCode == 429 {
+            throw ReleaseCheckError.rateLimited
+        }
+        guard (200...299).contains(http.statusCode),
+              let finalURL = response.url,
+              let tag = GitHubReleaseParser.tag(fromReleaseURL: finalURL) else {
             throw ReleaseCheckError.fetchFailed
         }
-        return try JSONDecoder().decode(GitHubRelease.self, from: data)
+        let notes = await fetchNotes(tag: tag)
+        return GitHubRelease(
+            tagName: tag,
+            htmlURL: finalURL.absoluteString,
+            name: tag,
+            body: notes
+        )
     }
 
-    private func isNewerVersion(_ tag: String) -> Bool {
-        let normalized = tag.replacingOccurrences(of: "^v", with: "", options: .regularExpression)
-        let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
-        return normalized.compare(current, options: .numeric) == .orderedDescending
+    /// 릴리스 노트: 우선 raw release-notes/{tag}.md(마크다운), 없으면 atom 본문 폴백
+    private func fetchNotes(tag: String) async -> String? {
+        let rawPath = "https://raw.githubusercontent.com/\(repoOwner)/\(repoName)/\(tag)/release-notes/\(tag).md"
+        if let url = URL(string: rawPath) {
+            var req = URLRequest(url: url)
+            req.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+            req.timeoutInterval = 15
+            if let (data, response) = try? await URLSession.shared.data(for: req),
+               let http = response as? HTTPURLResponse,
+               http.statusCode == 200,
+               let text = String(data: data, encoding: .utf8),
+               !text.isEmpty {
+                return text
+            }
+        }
+        let atomPath = "https://github.com/\(repoOwner)/\(repoName)/releases.atom"
+        if let url = URL(string: atomPath) {
+            var req = URLRequest(url: url)
+            req.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+            req.timeoutInterval = 15
+            if let (data, response) = try? await URLSession.shared.data(for: req),
+               let http = response as? HTTPURLResponse,
+               http.statusCode == 200,
+               let atom = String(data: data, encoding: .utf8),
+               let body = GitHubReleaseParser.atomBody(forTag: tag, in: atom) {
+                return body
+            }
+        }
+        return nil
     }
 }
