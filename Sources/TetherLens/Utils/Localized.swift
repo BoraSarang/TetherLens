@@ -222,6 +222,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var updateCheckNow: String { value(kr: "업데이트 확인", en: "Check Now") }
   static var updateChecking: String { value(kr: "확인 중...", en: "Checking...") }
   static var updateCheckFailed: String { value(kr: "업데이트 확인에 실패했습니다. 네트워크 연결을 확인해 보세요.", en: "Could not check for updates. Check your network connection.") }
+  static var updateRateLimited: String { value(kr: "GitHub 요청 한도에 걸렸습니다. 잠시 후 다시 시도해 주세요.", en: "GitHub rate limit reached. Try again later.") }
   static var updateNoRelease: String { value(kr: "게시된 릴리스가 없습니다", en: "No published releases yet") }
   static var updateUpToDate: String { value(kr: "최신 버전입니다", en: "You're up to date") }
   static var updateFrequency: String { value(kr: "자동 확인 주기", en: "Check Frequency") }

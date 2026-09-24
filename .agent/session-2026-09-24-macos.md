@@ -35,3 +35,8 @@
 33. 문서 정리: README/README_EN 배지 v0.38.0 + 다운로드 링크 TetherLens-v0.38.0.zip + 연결 품질 해소 설명, CHANGELOG [0.38.0], DESIGN §8 해소, 랜딩 v0.38.0 링크+피처, TODO T-227~233, release-notes/v0.38.0.md, Info.plist 0.38.0/38
 34. 검증: swift build OK + test.sh 126개/18 suites 통과
 35. 릴리즈 v0.38.0: 커밋 → 브랜치 → PR → 머지 → 태그 → release CI
+36. 업데이트 확인 실패 보고 (설정 v0.36.0, "네트워크 연결 확인"): 원인 api.github.com 익명 rate limit 403 (60/h/IP)
+37. bd 4fu 생성 + 수정: UpdaterManager → /releases/latest HTML 302 태그 조회 + raw release-notes → atom 폴백, GitHubReleaseParser(태그·버전·atom·HTML 엔티티), 403/429 rateLimited 문구(Localized.updateRateLimited), UpdaterManagerTests 5개
+38. atom 파서 버그 수정: 첫 entry만 보던 것 → 전체 entry 순회
+39. 검증: swift build OK + test 131개/19 suites 통과. CHANGELOG·release-notes v0.38.0에 rate limit 수정 반영
+40. 기존 v0.38.0 릴리즈·태그 삭제 후 재릴리즈 진행

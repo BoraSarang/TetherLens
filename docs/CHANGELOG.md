@@ -8,10 +8,12 @@
 
 ### Fixed
 - **스로틀링/끊김 경고 후속조치 잔류** `[macOS]` — 복구(`pingRecovery`/`connectionRestored`) 시 ①시스템 알림센터에서 경고 제거(`removeDeliveredNotifications`, 발송 identifier 추적) ②앱 알림 목록 경고 전부 해소 마킹. `ConnectionGuardian` 재연결 성공 시 `connectionLost` 해소. 플래핑 가드로 복구 알림이 생략돼도 복구 전환 시점에 해소
+- **업데이트 확인 GitHub API rate limit** `[macOS]` (bd 4fu) — `api.github.com` 익명 60/h/IP 403으로 "네트워크 연결 확인" 실패 → `/releases/latest` HTML 302 리다이렉트로 태그 조회 + raw `release-notes/{tag}.md` → atom 본문 폴백. 403/429는 전용 rate limit 문구. `GitHubReleaseParser`(태그·버전비교·atom·HTML 엔티티) 순수 함수화
 - `Info.plist` — CFBundleShortVersionString `0.37.0` → `0.38.0`, CFBundleVersion `37` → `38`
 
 ### Tests
-- `NotificationManagerTests` 신규 5개 (해소 범위·타입 선별·재해소 시각 유지·legacy JSON 하위호환·isWarningLike 판별) — 전체 126개 통과
+- `NotificationManagerTests` 신규 5개 (해소 범위·타입 선별·재해소 시각 유지·legacy JSON 하위호환·isWarningLike 판별)
+- `UpdaterManagerTests` 신규 5개 (리다이렉트 태그 추출·버전 비교·atom 본문·HTML 엔티티) — 전체 131개 통과
 
 ## [0.37.0] — 2026-09-24 — iStat 대시보드 + 시스템 대시보드 rename + 안정성·성능 리팩터링
 
