@@ -40,3 +40,4 @@
 38. atom 파서 버그 수정: 첫 entry만 보던 것 → 전체 entry 순회
 39. 검증: swift build OK + test 131개/19 suites 통과. CHANGELOG·release-notes v0.38.0에 rate limit 수정 반영
 40. 기존 v0.38.0 릴리즈·태그 삭제 후 재릴리즈 진행
+41. PR #4 fix/update-rate-limit 머지 → 태그 v0.38.0 재푸시 → release CI success (3m10s), 릴리즈 재게시. bd 4fu close
