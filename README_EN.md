@@ -17,11 +17,11 @@
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-6.0-F05138">
   <img alt="Native" src="https://img.shields.io/badge/Native%20App-100%25-2563eb">
-  <img alt="Release" src="https://img.shields.io/badge/Release-v0.36.0-0ea5e9">
+  <img alt="Release" src="https://img.shields.io/badge/Release-v0.38.0-0ea5e9">
 </p>
 
 <p align="center">
-  <a href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip">⬇️ Download for macOS</a>
+  <a href="https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-v0.38.0.zip">⬇️ Download for macOS</a>
   ·
   <a href="https://github.com/BoraSarang/TetherLens/releases/latest">Releases</a>
   ·
@@ -50,7 +50,7 @@ TetherLens puts the **live picture**, **exhaustion forecast**, and the **culprit
 | 🛰️ **Network diagnostics center** | Speed test (down/up measurement) · ping · traceroute · bufferbloat + **Wi-Fi reconnect** on drop (one-shot auto / manual button) |
 | 📈 **Advanced graphs** | Breakdown by hour/day, cumulative lines, quota thresholds |
 | 📍 **GPS/IP location tracking** | Map pin of connection location (GPS·IP) + movement history timeline |
-| 📡 **Connection quality monitor** | Gateway + external (8.8.8.8) Ping RTT. 3-packet cross-validation flags **only real violations, no false disconnects**, with auto recovery detection |
+| 📡 **Connection quality monitor** | Gateway + external (8.8.8.8) Ping RTT. 3-packet cross-validation flags **only real violations, no false disconnects**, with auto recovery detection. On recovery: system notifications cleared + in-app alerts marked **Resolved** (no leftover tips) |
 | 🚫 **Smart saving mode** | On hotspot detection: `softwareupdate` off · `tmutil` off · blocks Apple update servers to save data |
 | 🌐 **DNS presets** | Apply 1.1.1.1 / 8.8.8.8 presets, instantly updating system network settings |
 | 🔌 **Per-app traffic** | Live ranking of which app uses how much (`nettop`-based) + icon toolbar to block/exclude/reset |
@@ -69,7 +69,7 @@ TetherLens puts the **live picture**, **exhaustion forecast**, and the **culprit
 
 ## ⚙️ Installation
 
-1. Download [TetherLens-macOS.zip](https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-macOS.zip) → unzip → move `TetherLens.app` to `Applications`
+1. Download [TetherLens-v0.38.0.zip](https://github.com/BoraSarang/TetherLens/releases/latest/download/TetherLens-v0.38.0.zip) → unzip → move `TetherLens.app` to `Applications`
 2. If you see an **unidentified developer** warning, run this once in Terminal:
    ```bash
    xattr -rd com.apple.quarantine /Applications/TetherLens.app

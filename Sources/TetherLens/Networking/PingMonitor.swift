@@ -26,6 +26,8 @@ class PingMonitor {
     private var lastAlertLevel: Int = 0
     private var lastNotifiedLevel: Int = 0
     private var lastConnectionAlertDate: Date = .distantPast
+    /// 발송된 경고성 시스템 알림의 UNNotification identifier (복구 시 알림센터 일괄 제거용)
+    private var activeSystemNotificationIds: [String] = []
     /// 연속 ping 실패 횟수 (OS가 정상인 동안의 드랍 내성용)
     private var unreachableStrikes = 0
 
@@ -94,6 +96,16 @@ class PingMonitor {
         recoveryStart = nil
         dnsHistory.removeAll()
         gatewayHistory.removeAll()
+        activeSystemNotificationIds.removeAll()
+    }
+
+    /// 복구 시 — 발송한 경고성 시스템 알림을 알림센터에서 제거하고 앱 목록 경고를 해소한다.
+    private func resolveActiveWarningAlerts() {
+        if !activeSystemNotificationIds.isEmpty {
+            notiCenter.removeDeliveredNotifications(withIdentifiers: activeSystemNotificationIds)
+            activeSystemNotificationIds.removeAll()
+        }
+        NotificationManager.shared.resolveWarnings()
     }
 
     private func pingLoop() async {
@@ -150,13 +162,16 @@ class PingMonitor {
             recoveryStart = nil
             let now = Date()
             // 신호 불안정 플래핑 시 알림 폭주를 막기 위한 최소 간격 (30초)
-            if now.timeIntervalSince(lastConnectionAlertDate) >= 30 {
-                lastConnectionAlertDate = now
-                if isReachable {
+            if isReachable {
+                if now.timeIntervalSince(lastConnectionAlertDate) >= 30 {
+                    lastConnectionAlertDate = now
                     await postPingAlert(type: .connectionRestored, level: 0, message: Localized.connectionRestored)
-                } else {
-                    await postPingAlert(type: .connectionLost, level: 0, message: Localized.connectionLost)
                 }
+                // 복구 전환이면 복구 알림 발송 여부와 무관하게 경고 잔류를 해소한다
+                resolveActiveWarningAlerts()
+            } else if now.timeIntervalSince(lastConnectionAlertDate) >= 30 {
+                lastConnectionAlertDate = now
+                await postPingAlert(type: .connectionLost, level: 0, message: Localized.connectionLost)
             }
             return
         }
@@ -202,6 +217,7 @@ class PingMonitor {
                Date().timeIntervalSince(recovery) >= recoveryDuration {
                 let msg = "\(Localized.pingRecoveryTitle)\n\(Localized.pingRecoveryBody)"
                 await postPingAlert(type: .pingRecovery, level: 0, message: msg)
+                resolveActiveWarningAlerts()
                 lastAlertLevel = 0
                 lastNotifiedLevel = 0
                 recoveryStart = nil
@@ -341,12 +357,16 @@ class PingMonitor {
         content.title = "TetherLens"
         content.body = message
         content.sound = .default
+        let identifier = "ping-\(Date().timeIntervalSince1970)"
         let request = UNNotificationRequest(
-            identifier: "ping-\(Date().timeIntervalSince1970)",
+            identifier: identifier,
             content: content,
             trigger: nil
         )
         try? await notiCenter.add(request)
+        if type.isWarningLike {
+            activeSystemNotificationIds.append(identifier)
+        }
     }
 
     private nonisolated func resolveGateway() async -> String? {

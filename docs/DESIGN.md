@@ -121,6 +121,7 @@ DataStore (SQLite via GRDB)
 - `SavingModeManager`: `greenThreshold`/`orangeThreshold`, `shouldAutoActivate(used:quota:)` — v0.23.1부터 오늘 기준
 - `AppBlockManager`: 절약모드 시 /etc/hosts 차단 (sudo 필요)
 - 알림: 임계값(50/80/95/100%) 도달 시 UNUserNotification + 인앱 배너, 프로필별 `quota_notified_thresholds`(UserDefaults)로 중복 방지
+- **해소 (v0.38.0)**: `AppNotification.resolvedAt?` + `isActive` + `isWarningLike`(pingWarning/pingCritical/connectionLost만 true, quota 제외). `NotificationManager` `resolveWarnings()`/`resolve(type:)` — PingMonitor 복구 시 시스템 알림센터 제거(`activeSystemNotificationIds` 추적) + 앱 목록 경고 마킹. ConnectionGuardian 재연결 시 `connectionLost` 해소. UI: 해소 경고 opacity 0.55 + 체크 + "해소됨" + `→ HH:mm`
 
 ## 9. 성능 예산
 

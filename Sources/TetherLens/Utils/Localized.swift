@@ -427,6 +427,7 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   // MARK: - Notification List
   static var notificationListTitle: String { value(kr: "알림 기록", en: "Notifications") }
   static var clearAll: String { value(kr: "전체 지우기", en: "Clear All") }
+  static var resolved: String { value(kr: "해소됨", en: "Resolved") }
   static var noNotifications: String { value(kr: "알림이 없습니다", en: "No notifications") }
 
   // MARK: - Misc

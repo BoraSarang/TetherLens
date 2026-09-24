@@ -31,3 +31,7 @@
 29. v0.38.2 패치: ResumeOnceGate, currentServersAsync, IPResolver URL guard, PopoverView 리소스 섹션/ReportView markdown 캐시/ReportAppTrafficView·Heatmap·Timeline hoisting, static DateFormatter, NetworkMonitor leeway, FloatingWindowViewModel 단일 스냅샷
 30. 최종 검증: swift build OK + test.sh 122개 통과. bd k5o·rsk close, TODO T-223~226 ✅
 31. 릴리즈 v0.37.0: Info.plist 0.37.0/37, CHANGELOG [Unreleased]→[0.37.0], PR·머지·태그·Release CI
+32. 스로틀링 잔류 수정: AppNotification.resolvedAt+isActive+isWarningLike, NotificationManager resolve API, PingMonitor 복구 시 시스템 알림 제거+해소, ConnectionGuardian connectionLost 해소, NotificationListView 해소 UI, Localized.resolved, NotificationManagerTests 5개
+33. 문서 정리: README/README_EN 배지 v0.38.0 + 다운로드 링크 TetherLens-v0.38.0.zip + 연결 품질 해소 설명, CHANGELOG [0.38.0], DESIGN §8 해소, 랜딩 v0.38.0 링크+피처, TODO T-227~233, release-notes/v0.38.0.md, Info.plist 0.38.0/38
+34. 검증: swift build OK + test.sh 126개/18 suites 통과
+35. 릴리즈 v0.38.0: 커밋 → 브랜치 → PR → 머지 → 태그 → release CI
