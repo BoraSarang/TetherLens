@@ -92,9 +92,13 @@ final class FloatingWindowController {
               let hosting = panel.contentViewController else { return }
         hosting.view.layoutSubtreeIfNeeded()
         var h = hosting.view.fittingSize.height
+        // fittingSize가 이전 레이아웃 값을 반환할 수 있으므로 한 번 더 재측정
+        hosting.view.layoutSubtreeIfNeeded()
+        h = hosting.view.fittingSize.height
         guard h > 0, h.isFinite else { return }
         h = min(max(h, 40), 420)
-        guard abs(h - panel.frame.height) > 1 else { return }
+        // 0.5pt까지 반영해 미세한 하단 어긋남 누적 방지
+        guard abs(h - panel.frame.height) > 0.5 else { return }
         let screenFrame = NSScreen.main?.visibleFrame ?? panel.frame
         var origin = panel.frame.origin
         origin.y += panel.frame.height - h
