@@ -508,3 +508,13 @@
 | 231 | 문서 정리 (README/README_EN 배지 v0.38.0 + 다운로드 링크 + 연결 품질 카드 해소 설명, CHANGELOG 0.38.0, DESIGN §8 해소, 랜딩 v0.38.0 링크 + 피처) | P1 | ✅ |
 | 232 | release-notes/v0.38.0.md + Info.plist 0.38.0/38 + 세션 로그 | P1 | ✅ |
 | 233 | 커밋 → 브랜치 → PR → 머지 → 태그 v0.38.0 → release CI 확인 | P0 | ✅ |
+
+## ✅ 플로팅 창 가로 300pt 고정 (2026-09-24)
+
+> RelayConsole 플로팅과 동일한 고정 300pt. minWidth 240만 있어 fitting 시 좁아지던 문제 수정.
+> bd: TetherLens-8z6 (closed)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 234 | `TLSize.floatingWindow=300` 토큰 + SwiftUI 고정 폭 + fitToContent 가로 강제 + NSPanel 초기 폭 토큰 참조 | P1 | ✅ (build OK + test 132 통과, 실측 폭 300 확인) |
+| 235 | 문서 정리 (CHANGELOG [Unreleased] / PLAN 최신 / TODO / 세션 로그) + 커밋·PR·머지 | P1 | ✅ |

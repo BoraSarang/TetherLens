@@ -97,15 +97,17 @@ final class FloatingWindowController {
         h = hosting.view.fittingSize.height
         guard h > 0, h.isFinite else { return }
         h = min(max(h, 40), 420)
-        // 0.5pt까지 반영해 미세한 하단 어긋남 누적 방지
-        guard abs(h - panel.frame.height) > 0.5 else { return }
+        // 가로는 고정 폭으로 강제 — fittingSize/충돌로 폭이 줄어드는 드리프트 방지
+        let w = TLSize.floatingWindow
+        // 0.5pt까지 반영해 미세한 하단·가로 어긋남 누적 방지
+        guard abs(h - panel.frame.height) > 0.5 || abs(w - panel.frame.width) > 0.5 else { return }
         let screenFrame = NSScreen.main?.visibleFrame ?? panel.frame
         var origin = panel.frame.origin
         origin.y += panel.frame.height - h
-        origin.x = min(max(origin.x, screenFrame.minX), max(screenFrame.maxX - panel.frame.width, screenFrame.minX))
+        origin.x = min(max(origin.x, screenFrame.minX), max(screenFrame.maxX - w, screenFrame.minX))
         origin.y = min(max(origin.y, screenFrame.minY), max(screenFrame.maxY - h, screenFrame.minY))
-        panel.setFrame(NSRect(origin: origin, size: NSSize(width: panel.frame.width, height: h)), display: true)
-        DebugLogger.shared.action("Floating", "자동 높이 적용=\(Int(h))")
+        panel.setFrame(NSRect(origin: origin, size: NSSize(width: w, height: h)), display: true)
+        DebugLogger.shared.action("Floating", "자동 크기 적용=\(Int(w))×\(Int(h))")
     }
 
     /// 수집 결과가 갱신될 때마다 높이 재적합 (수집 중 문구 ↔ 3줄 전환 대응).
@@ -125,8 +127,8 @@ final class FloatingWindowController {
         if panel == nil {
             let hosting = NSHostingController(rootView: FloatingWindowView().environmentObject(viewModel))
             let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-            // 기본 크기 — 표시 직후 fitToContent()가 실측으로 맞추므로 추정값으로 시작
-            let size = NSSize(width: 300, height: 132)
+            // 기본 크기 — 가로 고정, 높이는 표시 직후 fitToContent()가 실측으로 맞춤
+            let size = NSSize(width: TLSize.floatingWindow, height: 132)
             var origin = savedOrigin ?? NSPoint(
                 x: screenFrame.maxX - size.width - 20,
                 y: screenFrame.maxY - size.height - 36

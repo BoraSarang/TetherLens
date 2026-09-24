@@ -96,6 +96,7 @@ enum TLSize {
     static let sheetTraffic:   CGFloat = 400   // 프로세스별 트래픽 (v0.27 가로 확장)
     static let sheetWide:      CGFloat = 640   // 사용량 리포트
     static let aboutSheet:     CGFloat = 240   // 정보 시트
+    static let floatingWindow: CGFloat = 300   // 플로팅 창 고정 가로 (RelayConsole 동일)
 
     // 테이블 컬럼
     static let detailLabelWidth:  CGFloat = 96   // detailRow 라벨

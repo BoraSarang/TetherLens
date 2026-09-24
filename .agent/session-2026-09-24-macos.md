@@ -41,3 +41,6 @@
 39. 검증: swift build OK + test 131개/19 suites 통과. CHANGELOG·release-notes v0.38.0에 rate limit 수정 반영
 40. 기존 v0.38.0 릴리즈·태그 삭제 후 재릴리즈 진행
 41. PR #4 fix/update-rate-limit 머지 → 태그 v0.38.0 재푸시 → release CI success (3m10s), 릴리즈 재게시. bd 4fu close
+42. 플로팅 창 가로 300pt 고정 (bd TetherLens-8z6, closed): minWidth 240→TLSize.floatingWindow=300 토큰 + SwiftUI 고정 폭 + fitToContent 가로 강제 + NSPanel 초기 폭 토큰 참조 (RelayConsole 플로팅과 동일)
+43. 검증: build_and_run debug macos OK + test.sh 132개/19 suites 통과. CHANGELOG [Unreleased] 기록
+44. 문서 정리: PLAN 최신 갱신 + TODO T-234/235 + CHANGELOG/세션 → 커밋 → 브랜치 → PR → 머지

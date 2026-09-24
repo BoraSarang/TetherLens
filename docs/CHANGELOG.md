@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased] — 2026-09-24 — 플로팅 창 가로 확장
+
+### Changed
+- **플로팅 창 가로 300pt 고정** `[macOS]` (bd TetherLens-8z6) — `minWidth: 240`만 있어 콘텐츠 fitting 시 약 240pt로 좁아지던 문제. `TLSize.floatingWindow = 300` 토큰 신설(RelayConsole 플로팅과 동일), SwiftUI 고정 폭 + `fitToContent()`가 가로도 강제하도록 수정. NSPanel 초기 크기도 동일 토큰 참조
+
 ## [0.38.0] — 2026-09-24 — 경고 알림 해소 연동 (스로틀링 팁 잔류 수정)
 
 ### Added

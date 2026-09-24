@@ -96,7 +96,7 @@ struct FloatingWindowView: View {
                 .padding(6)
             }
         }
-        .frame(minWidth: 240)
+        .frame(width: TLSize.floatingWindow)
         .onHover { isHovering = $0 }
     }
 
