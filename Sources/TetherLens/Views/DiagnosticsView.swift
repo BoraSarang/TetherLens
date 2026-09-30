@@ -2,7 +2,9 @@ import SwiftUI
 
 /// 네트워크 진단 센터 패널 뷰.
 struct DiagnosticsView: View {
-    @Environment(\.dismiss) private var dismiss
+    /// 이 뷰는 Raw `NSWindow` + `NSHostingController`에 호스팅되어 `\dismiss`가 no-op이다.
+    /// (시트/팝오버로 제시된 컨텍스트가 아니므로) 창 닫기를 컨트롤러에 직접 위임한다.
+    var onClose: () -> Void = { DiagnosticsWindowController.shared.hide() }
 
     @State private var entries: [DiagnosticsEntry] = []
     @State private var isRunning = false
@@ -26,7 +28,7 @@ struct DiagnosticsView: View {
                     .disabled(isRunning || speedRunning)
                 Button("전체 실행") { runAll() }
                     .disabled(isRunning)
-                Button("닫기") { dismiss() }
+                Button(Localized.string("닫기", "Close")) { onClose() }
             }
 
             if speedArmed {

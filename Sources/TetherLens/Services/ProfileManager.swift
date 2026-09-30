@@ -362,6 +362,34 @@ final class ProfileManager: @unchecked Sendable {
 }) ?? []
     }
 
+    /// **오늘 자정 이후** 로그만 시간대별로 집계 (0~23시, 24칸)
+    ///
+    /// `getHourlyUsage(profileId:days:)` 는 `now - days` 를 기준이라
+    /// `days: 1` 이면 **어제 같은 시각 이후**가 섞인다. 그 결과를 오늘 총량(`getTodayUsage`)과
+    /// 나누면 분모/분자 기간이 어긋나 **100%를 넘는 비율**(심야 소모 186% 등)이 나온다.
+    /// `nightDrain` 인사이트와 대시보드 24시 막대가 이 버전을 쓰고 있었다 (v0.39 수정).
+    func getHourlyUsageToday(profileId: UUID) -> [HourlyUsage] {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        return (try? db.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT CAST(strftime('%H', recorded_at, 'localtime') AS INTEGER) AS hour,
+                       COALESCE(SUM(upload_delta), 0) AS up,
+                       COALESCE(SUM(download_delta), 0) AS dn
+                FROM usage_log
+                WHERE profile_id = ? AND recorded_at >= ?
+                GROUP BY hour
+                ORDER BY hour ASC
+            """, arguments: [profileId, startOfToday])
+            .compactMap { (row) -> HourlyUsage? in
+                guard let hour = row["hour"] as? Int64,
+                      let up = row["up"] as? Int64,
+                      let dn = row["dn"] as? Int64
+                else { return nil }
+                return HourlyUsage(id: Int(hour), hour: Int(hour), upload: up, download: dn)
+            }
+        }) ?? []
+    }
+
     func getDailySessionSummary(profileId: UUID, days: Int) -> [DailySessionSummary] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
         let dateFormatter = DateFormatter()

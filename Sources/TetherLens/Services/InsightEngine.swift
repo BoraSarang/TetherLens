@@ -132,7 +132,10 @@ enum InsightEngine {
         guard todayTotal >= nightMinimum else { return nil }
         let night = hourlyTotals.filter { $0.hour >= 0 && $0.hour < 6 }.reduce(0) { $0 + $1.total }
         let share = Double(night) / Double(todayTotal)
-        return share >= nightShare ? share : nil
+        // 방어적 클램프 — 분자·분모의 집계 기간이 어긋나면 100% 를 넘는 값이 나올 수 있다
+        // (예: 분자에 어제 야간이 섞인 경우). 비율 UI에 100% 초과가 노출되지 않게 막는다.
+        guard share >= nightShare else { return nil }
+        return min(share, 1)
     }
 
     /// 오늘 업로드 비중이 uploadShare 이상이면 비중 반환.

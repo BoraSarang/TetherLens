@@ -241,7 +241,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             defer { self.isRefreshing = false }
 
             let output = self.runNettop()
-            let result = self.parse(output)
+            let result = Self.parse(output)
             // CPU/MEM은 같은 주기에 편승해 1회만 조회한다 (추가 wakeup 없음, v0.32).
             let resources = SystemResourceMonitor.shared.fetchResources()
 
@@ -295,9 +295,13 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     }
 
     private func runNettop() -> String {
-        // 화면 표시는 "최근 delta"만 필요하므로 샘플 윈도우를 최소화한다.
-        // -l 2 = 기준 포인트 + 1초 델타 1개 → 실행 시간 ~2초 (v0.28.1, 이전엔 interval+1로 최대 11초)
-        let samples = 2
+        // 측정 윈도우는 재조회 주기와 맞춰야 누적값이 정확하다.
+        // 이전엔 `-l 2`(1초) 고정이라 기본 10초 주기 중 1초만 측정해
+        // 표시값과 app_traffic_log 총합이 실제 전송량의 약 1/10로 과소 계상되었다.
+        // nettop은 샘플 1개당 1초가 걸리므로 samples == interval로 두면 전 구간을 커버한다.
+        // (TrafficMonitor는 참조 카운팅으로 소비자가 보일 때만 돌므로 부하도 그 구간으로 제한된다)
+        let interval = max(SettingsManager.shared.trafficMonitorInterval, 1)
+        let samples = max(2, min(Int(interval.rounded()), 30))
         let task = Process()
         task.launchPath = "/usr/bin/nettop"
         task.arguments = ["-P", "-J", "bytes_in,bytes_out", "-x", "-d", "-l", "\(samples)", "-n", "-s", "1"]
@@ -312,7 +316,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             }
             return ""
         }
-        DispatchQueue.global().asyncAfter(deadline: .now() + Double(max(samples + 2, 8))) { [weak task] in
+        DispatchQueue.global().asyncAfter(deadline: .now() + Double(samples + 5)) { [weak task] in
             if task?.isRunning == true {
                 task?.terminate()
             }
@@ -322,30 +326,37 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    private func parse(_ output: String) -> [(name: String, bytesIn: Int64, bytesOut: Int64)] {
-        let lines = output.components(separatedBy: .newlines)
-        var current: [(String, Int64, Int64)] = []
-        var last: [(String, Int64, Int64)] = []
+    /// nettop 출력의 모든 델타 블록을 합산한다.
+    ///
+    /// `-d` 델타 모드의 첫 블록은 기준점(모두 0)이고, 이후 블록이 1초 구간별 델타다.
+    /// 마지막 블록만 쓰면 그 이전 구간이 통째로 사라지므로 전 블록을 합산한다.
+    ///
+    /// nettop 컬럼 순서는 `time process.pid bytes_in bytes_out` 이고,
+    /// 반환 튜플의 bytesIn 슬롯이 UI에서 업로드로 표시되므로(AppTrafficView가 TLPalette.upload 사용)
+    /// 이 대응을 유지한다.
+    static func parse(_ output: String) -> [(name: String, bytesIn: Int64, bytesOut: Int64)] {
+        var totals: [String: (bytesIn: Int64, bytesOut: Int64)] = [:]
 
-        for rawLine in lines {
+        for rawLine in output.components(separatedBy: .newlines) {
             let line = rawLine.trimmingCharacters(in: .whitespaces)
             if line.isEmpty { continue }
-            if line.hasPrefix("time") {
-                if !current.isEmpty {
-                    last = current
-                    current = []
-                }
-                continue
-            }
+            if line.hasPrefix("time") { continue }  // 블록 헤더
             let parts = line.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
             guard parts.count >= 4 else { continue }
-            let procPid = parts[1]
-            let name = procPid.components(separatedBy: ".").dropLast().joined(separator: ".")
-            let downloadBytes = Int64(parts[parts.count - 2]) ?? 0
-            let uploadBytes = Int64(parts[parts.count - 1]) ?? 0
-            current.append((name.isEmpty ? procPid : name, uploadBytes, downloadBytes))
+            // 프로세스명은 공백을 포함할 수 있다("OpenCode Helper.56898").
+            // 따라서 첫 칸만 떼어내지 않고 시간 컬럼과 마지막 2개 바이트 컬럼 사이를 전부 이름으로 묶은 뒤
+            // 끝에 붙은 PID(마지막 점 성분)만 제거한다.
+            let nameWithPid = parts[1..<(parts.count - 2)].joined(separator: " ")
+            let name = nameWithPid.components(separatedBy: ".").dropLast().joined(separator: ".")
+            let key = name.isEmpty ? nameWithPid : name
+            let bytesIn = Int64(parts[parts.count - 1]) ?? 0
+            let bytesOut = Int64(parts[parts.count - 2]) ?? 0
+            var acc = totals[key] ?? (0, 0)
+            acc.bytesIn += bytesIn
+            acc.bytesOut += bytesOut
+            totals[key] = acc
         }
-        if !current.isEmpty { last = current }
-        return last
+
+        return totals.map { (name: $0.key, bytesIn: $0.value.bytesIn, bytesOut: $0.value.bytesOut) }
     }
 }

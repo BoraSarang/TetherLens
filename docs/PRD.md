@@ -1,8 +1,13 @@
 # TetherLens — Product Requirements Document
 
-**Version**: 0.1.0-draft  
-**Last Updated**: 2026-07-24  
-**Author**: TetherLens Team
+- **버전**: 0.1.0-draft (기능 범위 원본) / **현행 반영 2026-09-27**  
+- **Last Updated**: 2026-09-27  
+- **Author**: TetherLens Team
+
+> **2026-09-27 정정 노트** — 본 문서는 2026-07-24 작성 이후 기능 추가가 반영되지 않았다.
+> v0.26~v0.38에서 실제로 구현·대체된 항목과, 구현되지 않은 채 "✅"로 기재돼 있던 항목을 함께 정정했다.
+> 특히 **FR-24(메뉴바 필드 토글)와 Sparkle 자동 업데이트는 구현된 적이 없으며**,
+> 각각 v0.31의 3열 자동 전환 설계와 자체 `UpdaterManager`로 대체되었다.
 
 ---
 
@@ -76,11 +81,11 @@ macOS 메뉴바에서 실시간 속도와 사용량을 표시하고, 연결 상�
 | ID | Feature | Description |
 |----|---------|-------------|
 | FR-19 | **VPN/프록시 감지** | `scutil --proxy` 기반 활성 프록시 감지 — ✅ v0.26.0 (진단 센터) |
-| FR-20 | **발열/거리 경고** | Ping 200ms 이상 지속 시 알림 |
-| FR-21 | **앱별 대역폭 제한** | 특정 앱의 속도 제한 (throttle) |
+| FR-20 | **발열/거리 경고** | ⚠️ **부분 구현(2026-09-27 정정)**. 발열(thermal) 자체 감지는 없음(NSThermalState 미사용). Ping RTT 기반 간접 경고만 존재하며 임계값은 코드가 100ms(주의)/250ms(심각) — 본 문서의 "200ms"와 불일치 |
+| FR-21 | **앱별 대역폭 제한** | ❌ **미구현(2026-09-27 정정)**. per-app 패킷 shaping은 `NEFilterDataProvider`(유료 계정 + 시스템 확장) 종속이라 FR-14와 동일 사유로 보류. 코드에 throttle/limit 구현 0건 |
 | FR-22 | **네트워크 진단 센터** | DNS 누수 · traceroute · bufferbloat · 커스텀 ping · Markdown 리포트 — ✅ v0.26.0 |
 | FR-23 | **SSID 자동화 트리거** | SSID 전환 시 앱 실행/종료 · 절약 모드 자동 적용 (쿨다운 60s) — ✅ v0.26.0 |
-| FR-24 | **메뉴바 표시 옵션 확장** | BSSID/링크 속도/DNS 필드 토글 — ✅ v0.26.0 |
+| FR-24 | **메뉴바 표시 옵션 확장** | BSSID/링크 속도/DNS 필드 토글 — ❌ **미구현(2026-09-27 정정)**. v0.26.0에 추가됐다고 기재했으나 코드에 없었음. v0.31에서 3열 컬럼을 "할당량 유무에 따른 자동 전환"으로 재설계하며 요구를 충족하므로, 별도 토글 재도입은 불필요로 확정 |
 | FR-25 | **사용 내역 export** | CSV/JSON/Markdown 내보내기 — ✅ v0.26.0 (markdown 추가) |
 
 ---
@@ -146,11 +151,11 @@ macOS 메뉴바에서 실시간 속도와 사용량을 표시하고, 연결 상�
 | Net Monitoring | getifaddrs(), Network.framework |
 | WiFi Info | CoreWLAN + CoreLocation |
 | Hotspot Detection | NWPathMonitor + CoreWLAN |
-| Per-App Tracking (P2) | NEFilterDataProvider |
-| Auto Update | Sparkle 2 |
+| Per-App Tracking (P2) | ~~NEFilterDataProvider~~ → **보류** (FR-14 참조: 유료 개발자 계정 + 시스템 확장 필요) |
+| Auto Update | **자체 구현 `UpdaterManager`** (GitHub Releases API + `/releases/latest` 폴백) — ~~Sparkle 2~~ 미사용 |
 | CI/CD | GitHub Actions |
 | Distribution | GitHub Releases |
-| Donation | Buy Me a Coffee |
+| Donation | 미도입 (후원 버튼은 v0.14에서 제거) |
 
 ---
 
