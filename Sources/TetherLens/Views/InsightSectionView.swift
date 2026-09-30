@@ -66,12 +66,8 @@ struct InsightSectionView: View {
         .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture { handleTap(insight) }
-        .onHover { inside in
-            if tappable(insight.kind) {
-                if inside { NSCursor.pointingHand.push() }
-                else { NSCursor.pop() }
-            }
-        }
+        // onHover(false) 없이 뷰가 사라지면 pop 이 남는다 → 균형 보장 modifier 로 교체
+        .pointingHandCursor(isOn: tappable(insight.kind))
     }
 
     private func tappable(_ kind: InsightKind) -> Bool {

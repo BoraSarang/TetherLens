@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-struct Profile: Identifiable, Codable, Equatable, FetchableRecord, PersistableRecord {
+struct Profile: Identifiable, Codable, Equatable, FetchableRecord, PersistableRecord, Sendable {
     static let databaseTableName = "profile"
 
     let id: UUID

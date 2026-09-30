@@ -547,7 +547,7 @@
 | # | Task | Priority | Status |
 |---|------|----------|--------|
 | 249 | GUI 육안 검증 — ⌘1~⌘4·⌘⇧F·⌘⇧P·⌘K 동작, 진단 창 닫기, 핀 고정 후 재오픈, 절약모드 ON→OFF 후 `/etc/hosts` 정합 (bd u23/uwk/zvo/fif 관련) | P0 | ⬜ 수동 필요 |
-| 250 | 아래 11건 중간 강도 버그 (P2) — `ReportView` ForEach 중복 ID, `NetworkMonitor.macAddress` `continue` 무한루프, `PingMonitor` 게이트웨이 RTT 폴백·교대 판정, `TrafficMonitor` 종료 시 `queue.sync` 8초 블로킹, 리포트 N+1 쿼리 3건, `HeatmapGridView` hover O(168×N), `IPResolver` GeoIP country 필드 | P2 | ⬜ |
+| 250 | 아래 11건 중간 강도 버그 (P2) — `ReportView` ForEach 중복 ID, `NetworkMonitor.macAddress` `continue` 무한루프, `PingMonitor` 게이트웨이 RTT 폴백·교대 판정, `TrafficMonitor` 종료 시 `queue.sync` 8초 블로킹, 리포트 N+1 쿼리 3건, `HeatmapGridView` hover O(168×N), `IPResolver` GeoIP country 필드 | P2 | ✅ (2026-09-30 전건 해결, bd TetherLens-axc) |
 | 251 | `Info.plist` 죽은 키 `SUFeedURL`/`SUPublicEDKey` 제거 (릴리즈 시점) | P2 | ⬜ 사용자 승인 필요 |
 | 252 | DESIGN.md v0.28~v0.38 절 추가(16개 파일 누락분) + PLAN.md 버전표 v0.28~v0.38 보충 | P2 | ⬜ |
 | 253 | 경고 25건 정리 — `AutomationManager` 비-Sendable 캡처, `MovementTimelineView` 결정론적 ID, `init(cString:)` 4건, `try?` 무효 3건, 미사용 변수 4건 | P2 | ⬜ |
@@ -590,10 +590,45 @@
 |---|------|----------|--------|
 | 272 | ⑤ 눈여겨볼 점 카드 — 인사이트 6종 상시화 (`InsightEngine`를 차트 탭 조건에서 분리, `DashboardStore`로 이동) | P2 | ⬜ |
 | 273 | ⑥ 오늘 사용 패턴 — 24시 바 + 8일 스파크 + 세션 요약 + 시간대 Top3 앱 | P2 | ⬜ |
-| 274 | 카드 On/Off 설정 UI (`SettingsManager.isCardEnabled` 키는 배선 완료, 토글 UI만 없음) | P3 | ⬜ |
+| 274 | 카드 On/Off 설정 UI (`SettingsManager.isCardEnabled` 키는 배선 완료, 토글 UI만 없음) | P3 | ✅ (274와 278이 중복 — 278에서 처리) |
 | 275 | GUI 육안 검증 — ⌘5 / 8칸 렌더 / 행 높이 정합 / KPI / ②③ 데이터 — **완료** (스크린샷 `docs/images/dashboard/dashboard-8cells.png`) | P0 | ✅ |
-| 276 | ② 연결 품질 카드 하단 여백 정리 (정보량 대비 빈 공간) | P3 | ⬜ 장식 금지 원칙상 값 있는 정보만 추가 |
+| 276 | ② 연결 품질 카드 하단 여백 정리 (정보량 대비 빈 공간) | P3 | ✅ — `PingMonitor.recentLatencies` 추가 + "지연 추이" 스파크라인 & min/avg/max (장식이 아닌 실측값) |
 | 277 | ⑨ 눈여겨볼 점 카드(전폭) + `InsightProvider`/`InsightPresenter` 분리 + 인사이트 상시화 | P2 | ✅ |
 | 277b | **기존 버그 수정: 심야 소모 비율 100% 초과(186% 관측)** — `getHourlyUsage(days:1)` 의 `now-1day` 기준이 분자에 어제 야간을 섞고, 분모 `getTodayUsage` 는 오늘 자정 이후라 기간 불일치. `getHourlyUsageToday` 추가 + `nightDrainShare` 100% 클램프 + 회귀 4개 | P1 | ✅ |
-| 278 | 카드 On/Off 설정 UI (`SettingsManager.isCardEnabled` 키는 배선·동작 확인 완료, 토글 UI만 없음) | P3 | ⬜ |
+| 278 | 카드 On/Off 설정 UI (`SettingsManager.isCardEnabled` 키는 배선·동작 확인 완료, 토글 UI만 없음) | P3 | ✅ — 설정 > 대시보드 탭 신설, 9카드 토글 + "모든 카드 표시" |
 | 279 | v0.38.3 부수 개선: nettop `samples == interval` 로 넓혀 첫 앱 트래픽 데이터가 창 열림 후 ~10초 소요 — 스켈레톤/로딩 표기 검토 | P2 | ⬜ |
+
+## 🔔 2026-09-30 — v0.39 P3 마감 (카드 설정 UI + ② 카드 하단)
+
+> bd: TetherLens-44t
+> 검증: `swift build` OK(신규 경고 0) + `scripts/test.sh` **188개/22스위트 통과** (기존 183개/22스위트)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 280 | 설정 > **대시보드 탭 신설** — 9카드 토글, `DashboardCard.ordered` 로 표시 순서 미러링 | P3 | ✅ |
+| 281 | "모든 카드 표시" 버튼 — 전부 OFF 상태에서 한 번에 복원 (전부 ON 시 비활성) | P3 | ✅ |
+| 282 | 카드 토글 → `settingsChanged` 발신 — 열려 있는 대시보드가 60초 대기 없이 즉시 반영 | P3 | ✅ |
+| 283 | ② 연결 품질 카드 하단 — `PingMonitor.recentLatencies` 신규 + "지연 추이" 스파크라인 & min/avg/max | P3 | ✅ |
+| 284 | 회귀 테스트 5개 (기본 전부 ON · 저장/조회 · 전체 복원 · 같은 행 독립 토글 · 재실행 유지) | P3 | ✅ |
+
+## 🔔 2026-09-30 — P2 버그 11건 일괄 해결 (T-250)
+
+> bd: TetherLens-axc · 검증: `swift build` OK + `scripts/test.sh` **197개/23스위트 통과**
+> (±11건 전부 코드 수정. GUI 육안 검증은 별도 — `docs/TODO.md` T-249)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 285 | `NetworkMonitor.macAddress` 무한루프 — `continue` 가 `ptr = next` 를 건너뜀. 7자 이상 인터페이스명에서 실제 관측됨. `ifa_name` nil 가드도 함께 추가 | P2 | ✅ |
+| 286 | `PingMonitor` 게이트웨이 RTT 위장 — 미해석 시 8.8.8.8 결과를 `gatewayRTT` 에 써서 OR 판정이 항상 통과, 게이트웨이 단절 미감지. 미측정은 `nil` 로 남김 | P2 | ✅ |
+| 287 | `TrafficMonitor` 종료 시 8초 블로킹 — nettop 이 queue 를 최대 30초 점유. 진행 중 프로세스를 먼저 종료시키고 상한 2초만 대기 | P2 | ✅ |
+| 288 | `ReportView.renderedBody` N+1 — `summary` 계산 프로퍼티가 body 평가마다 DB 재조회. `cacheKey` 기준 `@State` 캐시 + `onAppear`/`onChange` 로만 갱신 | P2 | ✅ |
+| 289 | `UsageReportView.loadData` 메인 스레드 동기 쿼리 (전체 프로필 1년 ≈ SELECT 100회). 계산은 `nonisolated static` 로 분리해 `Task.detached` 에서 수행, 결과만 `MainActor` 로 적용. 늦게 도착한 이전 요청은 token 으로 폐기 | P2 | ✅ |
+| 290 | `HeatmapGridView.gridData` O(168×N) — 계산 프로퍼티라 셀마다 재집계. 순수 `static buildGridData` + `@State` 1회 계산, hover 는 실제 변화가 있을 때만 반영 | P2 | ✅ |
+| 291 | `IPResolver` GeoIP country 필드 — ipapi.co 의 `country`(국가명)를 2자리 코드로 착각해 잘못된 국기 렌더링. `country_code` 디코딩 + alpha-2 검증 + 강제 해제 크래시 제거. 회귀 테스트 9개 | P2 | ✅ |
+| 292 | `MovementTimelineView` 행 ID `UUID()` — 재계산마다 전 행 재생성. 프로필+시각+종류+IP 조합의 결정론적 ID 로 교체(중복 시 출현 순번) | P2 | ✅ |
+| 293 | `ReportView` ForEach `id: .element.profileName` — 이름 중복 시 중복 ID. `quotaEntries` 에 `profileId` 추가해 UUID 사용 | P2 | ✅ |
+| 294 | `PopoverView` 1Hz tick — 읽는 계산 프로퍼티가 v0.39 에서 대시보드로 옮겨져 **죽었는데** 타이머가 남아 매초 body 전체 재평가. 1Hz 제거 + 죽은 `sessionDurationString` 삭제 | P2 | ✅ |
+| 295 | 커서 push/pop 불균형 — hover-out 없이 뷰가 사라지면 pointingHand 가 스택에 남아 앱 전체에 고정. `pointingHandCursor()` modifier 로 3곳 교체 | P2 | ✅ |
+
+> 부수: `DailyUsage`/`MonthlyUsage`/`HourlyUsage`/`DailySessionSummary`/`MonthlySessionSummary`/`Session`/`Profile`/`InsightItem`/`InsightKind` 에 `Sendable` 추가 (T-289 의 백그라운드 이동 전제)
+> 신규: `scripts/tlbuild.sh` — swift build 출력에서 컴파일러 커맨드라인을 걷어낸 압축 출력 스크립트

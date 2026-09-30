@@ -269,126 +269,180 @@ struct UsageReportView: View {
 
     // MARK: - Helpers
 
+    /// DB 조회는 메인 스레드에서 하면 안 된다.
+    ///
+    /// 예전엔 `onChange` 에서 동기 쿼리를 돌려, 전체 프로필 + 1년 기간이면
+    /// SELECT 100회 이상이 메인 스레드에서 직렬로 실행돼 창이 잠겼다 (T-250 #5).
+    /// 계산은 백그라운드에서 하고, 결과만 `@MainActor` 로 돌아와 반영한다.
     private func loadData() {
-        guard let pid = selectedProfileId else {
-            dailyUsage = []
-            monthlyUsage = []
-            sessions = []
-            dailySessionSummary = []
-            monthlySessionSummary = []
-            previousPeriodTotal = 0
-            insights = []
-            return
+        // 값 타입 스냅샷을 먼저 떼어낸다 — 계산 중 상태가 바뀌어도 결과가 섞이지 않는다.
+        let request = LoadRequest(
+            profileId: selectedProfileId,
+            period: selectedPeriod,
+            mode: viewMode,
+            profiles: profiles,
+            allProfilesId: allProfilesId
+        )
+        loadToken &+= 1
+        let token = loadToken
+
+        Task.detached(priority: .userInitiated) {
+            let snapshot = Self.compute(request)
+            await MainActor.run {
+                // 프로필/기간을 연달아 바꾸면 이전 요청이 늦게 도착할 수 있다.
+                // 가장 최근 요청 결과만 반영한다.
+                guard token == self.loadToken else { return }
+                self.apply(snapshot)
+            }
         }
-        let loadAllSessions = viewMode == .heatmap || (viewMode == .session && selectedPeriod.days == 1)
-        let loadAppTraffic = viewMode == .appTraffic
-        if pid == allProfilesId {
+    }
+
+    /// 계산을 수행하는 입력 — Sendable 값만 담아 백그라운드로 넘긴다
+    private struct LoadRequest: Sendable {
+        let profileId: UUID?
+        let period: UsageReportView.Period
+        let mode: UsageReportView.ViewMode
+        let profiles: [Profile]
+        let allProfilesId: UUID
+    }
+
+    /// 계산 결과 — `@State` 와 분리해 스레드를 넘나들 수 있게 한다
+    private struct DataSnapshot: Sendable {
+        var isEmptySelection = false
+        var dailyUsage: [ProfileManager.DailyUsage] = []
+        var monthlyUsage: [ProfileManager.MonthlyUsage] = []
+        var hourlyUsage: [ProfileManager.HourlyUsage] = []
+        var sessions: [Session] = []
+        var dailySessionSummary: [ProfileManager.DailySessionSummary] = []
+        var monthlySessionSummary: [ProfileManager.MonthlySessionSummary] = []
+        var appTrafficData: [(processName: String, uploadBytes: Int64, downloadBytes: Int64)] = []
+        var previousPeriodTotal: Int64 = 0
+        var insights: [InsightItem] = []
+    }
+
+    /// 진행 중인 요청 구분자 — 늦게 도착한 이전 결과를 버린다
+    @State private var loadToken = 0
+
+    // MARK: - 계산 (백그라운드)
+
+    private nonisolated static func compute(_ r: LoadRequest) -> DataSnapshot {
+        var out = DataSnapshot()
+        guard let pid = r.profileId else {
+            out.isEmptySelection = true
+            return out
+        }
+        let pm = ProfileManager.shared
+        let period = r.period
+        let loadAllSessions = r.mode == .heatmap || (r.mode == .session && period.days == 1)
+        let loadAppTraffic = r.mode == .appTraffic
+
+        if pid == r.allProfilesId {
             var allUsage: [String: ProfileManager.DailyUsage] = [:]
             var allMonthly: [String: ProfileManager.MonthlyUsage] = [:]
             var allSessions: [Session] = []
             var allDailySess: [String: ProfileManager.DailySessionSummary] = [:]
             var allMonthlySess: [String: ProfileManager.MonthlySessionSummary] = [:]
-            for profile in profiles {
-                let usage = ProfileManager.shared.getDailyUsage(profileId: profile.id, days: selectedPeriod.days)
-                for u in usage {
+            for profile in r.profiles {
+                for u in pm.getDailyUsage(profileId: profile.id, days: period.days) {
                     let existing = allUsage[u.id, default: ProfileManager.DailyUsage(id: u.id, date: u.date, upload: 0, download: 0)]
                     allUsage[u.id] = ProfileManager.DailyUsage(id: u.id, date: u.date, upload: existing.upload + u.upload, download: existing.download + u.download)
                 }
                 if loadAllSessions {
-                    allSessions.append(contentsOf: ProfileManager.shared.getSessions(profileId: profile.id, days: selectedPeriod.days))
+                    allSessions.append(contentsOf: pm.getSessions(profileId: profile.id, days: period.days))
                 }
-                if selectedPeriod.isLongPeriod {
-                    let months = selectedPeriod.months
-                    let mu = ProfileManager.shared.getMonthlyUsage(profileId: profile.id, months: months)
-                    for u in mu {
+                if period.isLongPeriod {
+                    let months = period.months
+                    for u in pm.getMonthlyUsage(profileId: profile.id, months: months) {
                         let existing = allMonthly[u.id, default: ProfileManager.MonthlyUsage(id: u.id, date: u.date, upload: 0, download: 0)]
                         allMonthly[u.id] = ProfileManager.MonthlyUsage(id: u.id, date: u.date, upload: existing.upload + u.upload, download: existing.download + u.download)
                     }
-                    let ms = ProfileManager.shared.getMonthlySessionSummary(profileId: profile.id, months: months)
-                    for s in ms {
-                        let existing = allMonthlySess[s.id, default: ProfileManager.MonthlySessionSummary(id: s.id, date: s.date, sessionCount: 0, totalDuration: 0)]
-                        allMonthlySess[s.id] = ProfileManager.MonthlySessionSummary(id: s.id, date: s.date, sessionCount: existing.sessionCount + s.sessionCount, totalDuration: existing.totalDuration + s.totalDuration)
+                    for sm in pm.getMonthlySessionSummary(profileId: profile.id, months: months) {
+                        let existing = allMonthlySess[sm.id, default: ProfileManager.MonthlySessionSummary(id: sm.id, date: sm.date, sessionCount: 0, totalDuration: 0)]
+                        allMonthlySess[sm.id] = ProfileManager.MonthlySessionSummary(id: sm.id, date: sm.date, sessionCount: existing.sessionCount + sm.sessionCount, totalDuration: existing.totalDuration + sm.totalDuration)
                     }
-                } else if selectedPeriod.days > 1 {
-                    let ds = ProfileManager.shared.getDailySessionSummary(profileId: profile.id, days: selectedPeriod.days)
-                    for s in ds {
-                        let existing = allDailySess[s.id, default: ProfileManager.DailySessionSummary(id: s.id, date: s.date, sessionCount: 0, totalDuration: 0)]
-                        allDailySess[s.id] = ProfileManager.DailySessionSummary(id: s.id, date: s.date, sessionCount: existing.sessionCount + s.sessionCount, totalDuration: existing.totalDuration + s.totalDuration)
+                } else if period.days > 1 {
+                    for sm in pm.getDailySessionSummary(profileId: profile.id, days: period.days) {
+                        let existing = allDailySess[sm.id, default: ProfileManager.DailySessionSummary(id: sm.id, date: sm.date, sessionCount: 0, totalDuration: 0)]
+                        allDailySess[sm.id] = ProfileManager.DailySessionSummary(id: sm.id, date: sm.date, sessionCount: existing.sessionCount + sm.sessionCount, totalDuration: existing.totalDuration + sm.totalDuration)
                     }
                 }
             }
-            dailyUsage = allUsage.values.sorted { $0.date < $1.date }
-            monthlyUsage = allMonthly.values.sorted { $0.date < $1.date }
-            if selectedPeriod.days == 1 {
+            out.dailyUsage = allUsage.values.sorted { $0.date < $1.date }
+            out.monthlyUsage = allMonthly.values.sorted { $0.date < $1.date }
+            if period.days == 1 {
                 var allHourly: [Int: ProfileManager.HourlyUsage] = [:]
-                for profile in profiles {
-                    for h in ProfileManager.shared.getHourlyUsage(profileId: profile.id, days: 1) {
+                for profile in r.profiles {
+                    for h in pm.getHourlyUsage(profileId: profile.id, days: 1) {
                         let existing = allHourly[h.hour, default: ProfileManager.HourlyUsage(id: h.hour, hour: h.hour, upload: 0, download: 0)]
                         allHourly[h.hour] = ProfileManager.HourlyUsage(id: h.hour, hour: h.hour, upload: existing.upload + h.upload, download: existing.download + h.download)
                     }
                 }
-                hourlyUsage = allHourly.values.sorted { $0.hour < $1.hour }
-            } else {
-                hourlyUsage = []
+                out.hourlyUsage = allHourly.values.sorted { $0.hour < $1.hour }
             }
-            sessions = allSessions.sorted { $0.startTime > $1.startTime }
-            dailySessionSummary = allDailySess.values.sorted { $0.date < $1.date }
-            monthlySessionSummary = allMonthlySess.values.sorted { $0.date < $1.date }
-            appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
-            loadPreviousPeriod()
-            refreshInsights()
-            return
-        }
-        dailyUsage = ProfileManager.shared.getDailyUsage(profileId: pid, days: selectedPeriod.days)
-        if selectedPeriod.isLongPeriod {
-            monthlyUsage = ProfileManager.shared.getMonthlyUsage(profileId: pid, months: selectedPeriod.months)
-            monthlySessionSummary = ProfileManager.shared.getMonthlySessionSummary(profileId: pid, months: selectedPeriod.months)
-            sessions = loadAllSessions ? ProfileManager.shared.getSessions(profileId: pid, days: selectedPeriod.days) : []
-            dailySessionSummary = []
-        } else if selectedPeriod.days > 1 {
-            sessions = loadAllSessions ? ProfileManager.shared.getSessions(profileId: pid, days: selectedPeriod.days) : []
-            dailySessionSummary = ProfileManager.shared.getDailySessionSummary(profileId: pid, days: selectedPeriod.days)
-            monthlySessionSummary = []
+            out.sessions = allSessions.sorted { $0.startTime > $1.startTime }
+            out.dailySessionSummary = allDailySess.values.sorted { $0.date < $1.date }
+            out.monthlySessionSummary = allMonthlySess.values.sorted { $0.date < $1.date }
         } else {
-            sessions = ProfileManager.shared.getSessions(profileId: pid, days: selectedPeriod.days)
-            dailySessionSummary = []
-            monthlySessionSummary = []
+            out.dailyUsage = pm.getDailyUsage(profileId: pid, days: period.days)
+            if period.isLongPeriod {
+                out.monthlyUsage = pm.getMonthlyUsage(profileId: pid, months: period.months)
+                out.monthlySessionSummary = pm.getMonthlySessionSummary(profileId: pid, months: period.months)
+                out.sessions = loadAllSessions ? pm.getSessions(profileId: pid, days: period.days) : []
+            } else if period.days > 1 {
+                out.sessions = loadAllSessions ? pm.getSessions(profileId: pid, days: period.days) : []
+                out.dailySessionSummary = pm.getDailySessionSummary(profileId: pid, days: period.days)
+            } else {
+                out.sessions = pm.getSessions(profileId: pid, days: period.days)
+            }
+            out.hourlyUsage = period.days == 1 ? pm.getHourlyUsage(profileId: pid, days: 1) : []
         }
-        hourlyUsage = selectedPeriod.days == 1 ? ProfileManager.shared.getHourlyUsage(profileId: pid, days: 1) : []
-        appTrafficData = loadAppTraffic ? ProfileManager.shared.getAppTrafficLogs(days: selectedPeriod.days) : []
-        loadPreviousPeriod()
-        refreshInsights()
+
+        out.appTrafficData = loadAppTraffic ? pm.getAppTrafficLogs(days: period.days) : []
+        out.previousPeriodTotal = previousPeriodTotal(days: period.days, profileId: pid, allProfilesId: r.allProfilesId)
+        // ⚠️ 프로필별로 쪼개서 합치지 않는다. `topOffender` 같은 인사이트는
+        // 전체 프로필을 한 번에 넘겨야 계산되므로(전역 집계) 대상을 통째로 넘긴다.
+        out.insights = r.mode == .chart ? InsightProvider.build(profiles: insightTargets(for: r)) : []
+        return out
     }
 
-    // MARK: - Insights (v0.36)
+    private nonisolated static func previousPeriodTotal(days: Int, profileId: UUID, allProfilesId: UUID) -> Int64 {
+        let cal = Calendar.current
+        let now = Date()
+        guard let prevTo = cal.date(byAdding: .day, value: -days, to: now),
+              let prevFrom = cal.date(byAdding: .day, value: -days * 2, to: now) else { return 0 }
+        let effectivePid = profileId == allProfilesId ? nil : profileId
+        return ProfileManager.shared.getUsageTotal(profileId: effectivePid, from: prevFrom, to: prevTo)
+    }
 
-    /// 차트 탭에서만 계산 (v0.39 — 조립 로직은 `InsightProvider` 로 분리, 대시보드와 공용)
-    private func refreshInsights() {
-        guard viewMode == .chart else {
+    /// 차트 탭에서 인사이트를 볼 대상 프로필 (인사이트는 프로필 단위로 계산된다)
+    private nonisolated static func insightTargets(for r: LoadRequest) -> [Profile] {
+        r.profileId == r.allProfilesId ? r.profiles : r.profiles.filter { $0.id == r.profileId }
+    }
+
+    // MARK: - 적용 (메인 스레드)
+
+    private func apply(_ out: DataSnapshot) {
+        if out.isEmptySelection {
+            dailyUsage = []
+            monthlyUsage = []
+            hourlyUsage = []
+            sessions = []
+            dailySessionSummary = []
+            monthlySessionSummary = []
+            appTrafficData = []
+            previousPeriodTotal = 0
             insights = []
             return
         }
-        let targets: [Profile]
-        if selectedProfileId == allProfilesId {
-            targets = profiles
-        } else {
-            targets = profiles.filter { $0.id == selectedProfileId }
-        }
-        insights = InsightProvider.build(profiles: targets)
-    }
-
-    // MARK: - Previous Period
-
-    /// 차트 헤더용 전기간 합계 (v0.34.2 인사이트 섹션 제거 후 잔여)
-    private func loadPreviousPeriod() {
-        let pid = selectedProfileId
-        let days = selectedPeriod.days
-        let cal = Calendar.current
-        let now = Date()
-        let prevTo = cal.date(byAdding: .day, value: -days, to: now)!
-        let prevFrom = cal.date(byAdding: .day, value: -days * 2, to: now)!
-        let effectivePid = pid == allProfilesId ? nil : pid
-        previousPeriodTotal = ProfileManager.shared.getUsageTotal(profileId: effectivePid, from: prevFrom, to: prevTo)
+        dailyUsage = out.dailyUsage
+        monthlyUsage = out.monthlyUsage
+        hourlyUsage = out.hourlyUsage
+        sessions = out.sessions
+        dailySessionSummary = out.dailySessionSummary
+        monthlySessionSummary = out.monthlySessionSummary
+        appTrafficData = out.appTrafficData
+        previousPeriodTotal = out.previousPeriodTotal
+        insights = out.insights
     }
 
     /// 최근 3일(오늘 포함) 평균 — 기간 전체 평균보다 현재 페이스에 가까움

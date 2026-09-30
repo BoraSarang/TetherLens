@@ -57,19 +57,11 @@ struct ConnectionDetailView: View {
 
     private var externalIPString: String {
         if let ip = detail.externalIP {
-            if let code = detail.countryCode {
-                return "\(ip)  \(flag(from: code))"
+            if let flag = GeoIPInfo.flagEmoji(forCountryCode: detail.countryCode) {
+                return "\(ip)  \(flag)"
             }
             return ip
         }
         return "-"
-    }
-
-    private func flag(from countryCode: String) -> String {
-        let base: UInt32 = 127_397
-        return countryCode
-            .unicodeScalars
-            .map { String(UnicodeScalar(base + $0.value)!) }
-            .joined()
     }
 }

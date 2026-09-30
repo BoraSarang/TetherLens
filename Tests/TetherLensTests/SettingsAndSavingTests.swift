@@ -65,6 +65,56 @@ import Foundation
         #expect(s.showRSSI == false)
     }
 
+    // MARK: - 대시보드 카드 토글 (v0.39)
+
+    /// 설정 화면이 처음 열렸을 때 9칸이 전부 켜져 있어야 한다 (토글 안 누르고 창만 닫아도 상태가 바뀌면 안 됨)
+    @Test func 카드_토글_기본값은_전부_ON() {
+        let s = makeManager()
+        for card in DashboardCard.ordered {
+            #expect(s.isCardEnabled(card) == true)
+        }
+    }
+
+    @Test func 카드_토글_저장_조회() {
+        let s = makeManager()
+        s.setCardEnabled(.cpu, false)
+        s.setCardEnabled(.process, false)
+        #expect(s.isCardEnabled(.cpu) == false)
+        #expect(s.isCardEnabled(.process) == false)
+        // 다른 카드는 영향받지 않는다 (키가 카드별로 격리됨)
+        #expect(s.isCardEnabled(.gpu) == true)
+        #expect(s.isCardEnabled(.memory) == true)
+    }
+
+    /// "모든 카드 표시" 버튼은 꺼진 카드를 전부 되돌린다
+    @Test func 모든카드표시_동작() {
+        let s = makeManager()
+        for card in DashboardCard.ordered { s.setCardEnabled(card, false) }
+        for card in DashboardCard.ordered { s.setCardEnabled(card, true) }
+        for card in DashboardCard.ordered {
+            #expect(s.isCardEnabled(card) == true)
+        }
+    }
+
+    /// 행 전체가 OFF 면 그 행이 사라지므로, 한 행의 두 카드는 서로 독립적으로 꺼야 한다
+    @Test func 같은행의_두카드는_독립적으로_토글된다() {
+        let s = makeManager()
+        let firstRow = DashboardCard.rows[0]
+        #expect(firstRow.count == 2)
+        s.setCardEnabled(firstRow[0], false)
+        #expect(s.isCardEnabled(firstRow[0]) == false)
+        #expect(s.isCardEnabled(firstRow[1]) == true)
+    }
+
+    /// 새 인스턴스로도 유지되어야 한다 (앱 재실행 후 설정이 살아있어야 함)
+    @Test func 카드_토글은_새인스턴스에서도_유지된다() {
+        let suite = "test-settings-\(UUID().uuidString)"
+        let d = UserDefaults(suiteName: suite)!
+        d.removePersistentDomain(forName: suite)
+        SettingsManager(defaults: d).setCardEnabled(.insight, false)
+        #expect(SettingsManager(defaults: d).isCardEnabled(.insight) == false)
+    }
+
     @Test func resetPollingIntervals_기본값_복원() {
         let s = makeManager()
         s.menuBarRefreshInterval = 10

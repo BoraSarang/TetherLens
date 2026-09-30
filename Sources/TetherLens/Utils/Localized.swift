@@ -566,6 +566,13 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var constrainedPath: String { value(kr: "저대역폭", en: "Low Data") }
   static var automation: String { value(kr: "자동화", en: "Automation") }
   static var linkSpeedLabel: String { value(kr: "링크", en: "Link") }
+  static var dashboardCards: String { value(kr: "표시할 카드", en: "Visible Cards") }
+  static var showAllCards: String { value(kr: "모든 카드 표시", en: "Show All Cards") }
+  static var latencyTrend: String { value(kr: "지연 추이", en: "Latency Trend") }
+  static var dashboardCardsHint: String {
+    value(kr: "같은 행의 카드를 모두 끄면 그 행 자체가 사라집니다. 사용 패턴·프로세스처럼 이 창에만 있는 정보도 여기서 숨길 수 있습니다.",
+          en: "Turning off every card in a row removes that row. You can also hide info shown only here, such as usage pattern and processes.")
+  }
 
   static func value(kr: String, en: String) -> String {
     isKorean ? kr : en

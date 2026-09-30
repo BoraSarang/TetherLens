@@ -208,7 +208,7 @@ final class ProfileManager: @unchecked Sendable {
 
     // MARK: - Usage Report
 
-    struct DailyUsage: Identifiable {
+    struct DailyUsage: Identifiable, Sendable {
         let id: String
         let date: Date
         let upload: Int64
@@ -216,7 +216,7 @@ final class ProfileManager: @unchecked Sendable {
         var total: Int64 { upload + download }
     }
 
-    struct MonthlyUsage: Identifiable {
+    struct MonthlyUsage: Identifiable, Sendable {
         let id: String
         let date: Date
         let upload: Int64
@@ -224,7 +224,7 @@ final class ProfileManager: @unchecked Sendable {
         var total: Int64 { upload + download }
     }
 
-    struct HourlyUsage: Identifiable {
+    struct HourlyUsage: Identifiable, Sendable {
         let id: Int
         let hour: Int
         let upload: Int64
@@ -232,14 +232,14 @@ final class ProfileManager: @unchecked Sendable {
         var total: Int64 { upload + download }
     }
 
-    struct DailySessionSummary: Identifiable {
+    struct DailySessionSummary: Identifiable, Sendable {
         let id: String
         let date: Date
         let sessionCount: Int
         let totalDuration: TimeInterval
     }
 
-    struct MonthlySessionSummary: Identifiable {
+    struct MonthlySessionSummary: Identifiable, Sendable {
         let id: String
         let date: Date
         let sessionCount: Int
@@ -253,7 +253,7 @@ final class ProfileManager: @unchecked Sendable {
         let totalSessions: Int
         let movementCount: Int
         let topApps: [(name: String, total: Int64)]
-        let quotaEntries: [(profileName: String, used: Int64, quotaBytes: Int64?)]
+        let quotaEntries: [(profileId: UUID, profileName: String, used: Int64, quotaBytes: Int64?)]
     }
 
     func reportSummary(profileIds: [UUID], days: Int) -> ReportSummary {
@@ -273,11 +273,13 @@ final class ProfileManager: @unchecked Sendable {
             .sorted { $0.uploadBytes + $0.downloadBytes > $1.uploadBytes + $1.downloadBytes }
             .prefix(5)
             .map { ($0.processName, $0.uploadBytes + $0.downloadBytes) })
-        let quotas: [(profileName: String, used: Int64, quotaBytes: Int64?)] = profileIds.compactMap { pid in
+        // profileId 를 같이 담아 둔다 — `name` 은 사용자 편집 가능이라 중복될 수 있고,
+        // ForEach id 로 쓰면 중복 ID 가 된다 (T-250 #9)
+        let quotas: [(profileId: UUID, profileName: String, used: Int64, quotaBytes: Int64?)] = profileIds.compactMap { pid in
             guard let p = getProfile(id: pid) else { return nil }
             let used = getUsageTotal(profileId: pid, from: Calendar.current.date(byAdding: .day, value: -(days - 1), to: Date()) ?? Date(), to: Date())
-            guard let quota = p.quotaGB else { return (p.name, used, nil) }
-            return (p.name, used, Int64(quota * 1_000_000_000))
+            guard let quota = p.quotaGB else { return (pid, p.name, used, nil) }
+            return (pid, p.name, used, Int64(quota * 1_000_000_000))
         }
         return ReportSummary(
             totalUpload: up,

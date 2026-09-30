@@ -44,6 +44,10 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     private var isRefreshing = false
     private let queue = DispatchQueue(label: "com.tetherlens.traffic", qos: .utility)
 
+    /// 진행 중인 nettop 프로세스 — **queue 안에서만** 접근한다.
+    /// 종료 시 즉시 죽여 큐 점유를 해제하기 위한 핸들.
+    private var activeTask: Process?
+
     // 지연 시작 상태 — 모두 main actor 스레드에서 접근해 NSLock 없이 유지한다.
     private var usageRefs: [Usage: Bool] = [:]
     private var lowPowerOverride = false
@@ -180,11 +184,28 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         }
     }
 
-    /// 앱 종료 시 마지막 구간 로그 유실을 막기 위한 동기 flush.
-    /// queue.sync로 nettop 점유 작업이 끝날 때까지 대기하므로 종료 시점에만 호출해야 한다.
+    /// 앱 종료 시 마지막 구간 로그 유실을 막기 위한 flush.
+    ///
+    /// ⚠️ nettop 은 `-l <interval>` 만큼(기본 10초, 최대 30초) serial queue 를 점유한다.
+    /// 예전처럼 `queue.sync` 만 걸면 메인 스레드(종료 알림)가 그만큼 블로킹돼
+    /// 앱이 종료되지 않는 것처럼 보였다 (T-250 #3).
+    /// 진행 중인 nettop 을 먼저 죽여 큐를 비우고, 그래도 안 비면 상한 시간만 기다린다.
     func flushBeforeTermination() {
-        queue.sync { [weak self] in
+        // serial queue 는 FIFO — 아래 종료 블록이 flush 보다 **먼저** 실행된다.
+        queue.async { [weak self] in
+            self?.activeTask?.terminate()
+        }
+        let done = DispatchSemaphore(value: 0)
+        queue.async { [weak self] in
             self?.persistAccumulated()
+            done.signal()
+        }
+        // 이미 큐에 들어간 저장은 신호가 오지 않아도 실행된다. 여기서는
+        // 메인 스레드가 무한정 붙잡히지 않을 상한만 정한다.
+        if done.wait(timeout: .now() + 2.0) == .timedOut {
+            Task { @MainActor in
+                DebugLogger.shared.info("Traffic", "종료 flush 상한 초과 — 저장만 미완료(앱 종료 지연 방지)")
+            }
         }
     }
 
@@ -316,6 +337,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             }
             return ""
         }
+        activeTask = task  // 종료 시 terminate() 로 큐 점해를 빨리 끝내기 위함
         DispatchQueue.global().asyncAfter(deadline: .now() + Double(samples + 5)) { [weak task] in
             if task?.isRunning == true {
                 task?.terminate()
@@ -323,6 +345,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
+        activeTask = nil
         return String(data: data, encoding: .utf8) ?? ""
     }
 

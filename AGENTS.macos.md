@@ -22,7 +22,7 @@
 ./build_and_run.sh debug macos     # 디스패처 → scripts/build-macos.sh
 ./build_and_run.sh release macos   # 릴리스 (strip + 코드 서명)
 ./scripts/build-macos.sh debug     # 실제 빌드 로직 (스킵 금지, 디스패처 경유 권장)
-./scripts/test.sh                  # 자동화 테스트 (183개 / 22스위트)
+./scripts/test.sh                  # 자동화 테스트 (197개 / 23스위트)
 ./scripts/package.sh               # 배포 패키징 (해당 시)
 ```
 
@@ -44,7 +44,8 @@
 ## 4. 테스트 표준
 
 - 위치: `Tests/TetherLensTests/` (Swift Testing)
-- 실행: `./scripts/test.sh` — 현재 **183개 테스트 / 22개 스위트** (2026-09-27 실측)
+- 실행: `./scripts/test.sh` — 현재 **197개 테스트 / 23개 스위트** (2026-09-30 실측)
+  - 번거로우면 `./scripts/tlbuild.sh` — swift build 출력을 압축해 진단만 보여준다
   (DataStore, ProfileManager, SavingModeManager, SettingsManager, SystemProcesses, HotspotDetector, Localized,
   InsightEngine, MenuBarSignal, MetricsHistory, SystemLoadFormat, TLShare, GPUParse, ReachabilityPolicy,
   SpeedTest, ProxyParse, TrafficParse, DashboardLayout, ConnectionGuardian, NotificationManager, UpdaterManager, SystemResourceMonitor)

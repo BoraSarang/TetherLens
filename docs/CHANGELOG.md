@@ -1,5 +1,100 @@
 # Changelog
 
+## [Unreleased — Part 4] — 2026-09-30 — P2 버그 11건 일괄 해결 (T-250)
+
+> bd: TetherLens-axc · docs/TODO.md T-250, T-285~295
+> 검증: `swift build` OK (신규 경고 0) + `scripts/test.sh` **197개/23스위트 통과**
+> GUI 육안 검증은 미수행 (T-249 에 남김)
+
+### Fixed — 정확성
+
+- **`NetworkMonitor.macAddress` 무한루프** `[macOS]` — `guard mac.count == 6 else { continue }` 가
+  `ptr = next` 를 건너뛰어 같은 노드를 영원히 다시 읽었다. 7자 이상 인터페이스명에서 실제 관측된 결함.
+  다음 노드로 진행시키고 `ifa_name` nil 가드도 함께 넣었다
+- **`PingMonitor` 게이트웨이 RTT 위장** `[macOS]` — 게이트웨이 주소를 못 얻었을 때 8.8.8.8 로 대체해
+  그 RTT 를 `gatewayRTT` 에 기록했다. 두 지표가 같은 호스트를 재게 되어 `pingAlive` 의 OR 판정이
+  항상 통과해 게이트웨이 단절을 감지하지 못했다. 미측정은 `nil` 로 남긴다
+- **`IPResolver` 잘못된 국기** `[macOS]` — ipapi.co 의 `country` 는 **국가명**("South Korea")인데
+  2자리 코드로 취급해 지역 표시기 문자로 변환했다. `country_code` 를 디코딩하고 alpha-2를 검증한다.
+  기존 구현은 `UnicodeScalar(...)!` 강제 해제라 범위를 벗어나면 크래시했다 — 이제 `nil` 반환
+- **`ReportView` ForEach 중복 ID** `[macOS]` — `id: \.element.profileName` 은 이름이 중복되면 ID 가 겹친다
+  (`profile.name` 에 UNIQUE 제약 없음). `quotaEntries` 에 `profileId` 를 담아 UUID 로 식별한다
+
+### Fixed — 응답성 / 리소스
+
+- **앱 종료가 최대 8초 멈추던 문제** `[macOS]` — nettop 이 serial queue 를 최대 30초 점유하는데
+  `flushBeforeTermination` 이 `queue.sync` 로 끝까지 기다렸다. 진행 중인 nettop 을 먼저 종료시키고
+  상한 2초만 기다린다 (저장 작업 자체는 큐에 남아 그대로 실행된다)
+- **`UsageReportView.loadData` 메인 스레드 블로킹** `[macOS]` — 전체 프로필 + 1년 기간이면
+  SELECT 100회 이상이 `onChange` 에서 동기 실행돼 창이 잠겼다. 계산을 `nonisolated static` 으로 분리해
+  `Task.detached` 에서 수행하고, 결과만 `@MainActor` 에서 반영한다.
+  프로필/기간을 연달아 바꾸면 늦게 도착한 이전 요청이 덮어쓸 수 있어 token 으로 폐기한다
+- **`ReportView` N+1 쿼리** `[macOS]` — `summary` 가 계산 프로퍼티라 `renderedBody` 평가마다
+  (프로필당 3쿼리 + 세션별 N+1) 를 다시 돌렸다. `cacheKey` 기준 `@State` 캐시로 바꾸고
+  등장/키 변경에서만 갱신한다. 캐시 키에 대상 프로필 목록을 넣어 프로필 추가·삭제도 무효화된다
+- **`HeatmapGridView` O(168×N)** `[macOS]` — `gridData` 계산 프로퍼티를 셀 168개가 각각 읽어
+  body 평가 1회당 168회 재집계됐다. 순수 함수로 분리해 `@State` 에 1회만 계산하고,
+  hover 도 실제 선택이 바뀔 때만 상태를 쓴다
+- **`PopoverView` 매초 body 전체 재평가** `[macOS]` — 1Hz 타이머가 갱신하던 `tick` 을 읽는 계산 프로퍼티가
+  v0.39 대시보드 도입으로 **쓰이지 않게 됐다.** 타이머는 그대로 남아 매초 팝오버를 다시 그렸다.
+  1Hz 를 제거하고 알림 기반 신호로 바꾼다 (1초 갱신이 필요한 값은 `DashboardClock` 처럼 하위 뷰로 격리)
+- **`MovementTimelineView` 행 ID** `[macOS]` — `UUID()` 라 타임라인을 다시 계산할 때마다 모든 행의 ID 가 새로
+  만들어져 전 행이 재생성됐다. 프로필 + 발생시각 + 종류 + IP + 출처 조합의 결정론적 ID 로 교체했다
+  (실제로 겹치면 출현 순번을 붙여 유일성 확보)
+- **커서 push/pop 불균형** `[macOS]` — hover 진입 시 `push` 하고, 뷰가 제거되면 `onHover(false)` 가 오지 않아
+  `pop` 이 영영 호출되지 않았다. 남은 `pointingHand` 가 커서 스택에 쌓이면 **앱 전체**에서 손가락 커서가 고정된다.
+  `pointingHandCursor()` modifier 로 교체하고 3곳에 적용
+
+### Added
+
+- **`pointingHandCursor()`** `[macOS]` — push/pop 짝을 `@State` 로 보장하는 뷰 modifier.
+  조건부 적용 변형(`isOn:`) 포함
+- **`GeoIPInfo.normalizedAlpha2` / `flagEmoji(forCountryCode:)`** `[macOS]` — alpha-2 검증과 국기 변환을
+  한곳으로 모음. 중복 구현 2곳 제거
+- **`GeoIPTests`** — 9개 회귀 테스트 (country_code 디코딩 · 국가명을 코드로 승격시키지 않음 · alpha-2 검증 ·
+  범위 밖 입력 크래시 회귀). 총 **197개/23스위트**
+- **`PingMonitor.recentLatencies`** — 대표 지연 최근 기록 (`jitter` 와 동일 기준)
+- **`scripts/tlbuild.sh`** — `swift build` 출력에서 컴파일러 커맨드라인(수천 자)을 걷어낸 압축 출력 스크립트
+
+### Changed
+
+- **Sendable conformance 9종 추가** — `DailyUsage` `MonthlyUsage` `HourlyUsage` `DailySessionSummary`
+  `MonthlySessionSummary` `Session` `Profile` `InsightItem` `InsightKind`.
+  전부 순수 값 타입이며, `loadData` 백그라운드 이동의 전제 조건
+
+---
+
+## [Unreleased — Part 3] — 2026-09-30 — v0.39 P3 마감 (카드 설정 UI + ② 카드 하단)
+
+> bd: TetherLens-44t · docs/TODO.md T-274/276/278, T-280~284
+> 검증: `swift build` OK (신규 경고 0) + `scripts/test.sh` **188개/22스위트 통과** (기존 183개/22스위트)
+
+### Added
+- **설정 > 대시보드 탭** `[macOS]` — 9개 카드 On/Off 토글.
+  `DashboardCard.ordered` 로 **표시 순서를 그대로 미러링**해 대시보드와 설정이 어긋나지 않게 했다
+- **"모든 카드 표시" 버튼** — 전부 OFF 상태에서 한 번에 복원. 전부 켜져 있으면 비활성
+- **`PingMonitor.recentLatencies`** `[macOS]` — 대표 지연 최근 기록(게이트웨이 우선, 없으면 8.8.8.8).
+  `jitter` 와 **동일한 기준**을 써야 카드 안에서 두 지표가 서로 다른 대상을 재지 않는다
+- **② 연결 품질 카드 "지연 추이"** `[macOS]` — 스파크라인 + `min · avg · max`.
+  ① 속도 카드의 차트가 행 높이를 결정해 ② 하단이 비어 보이던 것을 **실측값으로** 채웠다
+- **로컬라이제이션 4종** — `dashboardCards`·`showAllCards`·`latencyTrend`·`dashboardCardsHint`
+- **회귀 테스트 5개** — 카드 기본 전부 ON · 저장/조회 · 전체 복원 · 같은 행 독립 토글 · 재실행 유지. 총 **188개/22스위트**
+
+### Changed
+- **설정 탭 6 → 7개** — `대시보드`(tag 5) 신설, `업데이트` 는 tag 6으로 이동
+
+### 설계
+- **장식 금지 원칙을 지켰다** — ② 카드 하단을 늘리는 대신 실제로 없는 값을 그리지 않고,
+  측정된 지연 기록만 표시한다. 미측정이면 스파크라인 자리를 "측정 중"으로 대체한다
+- **카드 토글은 `settingsChanged` 로 전파** — `DashboardView` 가 이미 이 알림을 받으므로
+  60초 폴링을 기다리지 않고 레이아웃이 즉시 바뀐다. 저장 → 알림 → `cardConfigVersion` 증가
+- **`SettingsManager` 는 `@Published` 가 아니다** — 그래서 설정 화면이 `UserDefaults` 를
+  `init` 에서 1회 스냅샷해 `@State` 로 들고 있다. 카드 목록이 늘어날 때 설정 화면을 함께 고칠 필요가 없다
+
+> 스크린샷: (GUI 육안 검증은 별도 — `docs/TODO.md` T-249)
+
+---
+
 ## [Unreleased] — 2026-09-27 — v0.39 대시보드 창 (P0+P1) · 팝오버 상세보기 통합
 
 > RelayConsole 콘솔 대시보드 패턴(`DashboardLayout`/`DroidDashboardView`)을 TetherLens에 이식.

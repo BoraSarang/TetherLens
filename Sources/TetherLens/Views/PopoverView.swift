@@ -16,7 +16,13 @@ struct PopoverView: View {
         let type: AppNotification.NotificationType
     }
 
-    @State private var tick = Date()
+    /// 설정·연결 변화로 body 를 다시 평가시키기 위한 신호.
+    ///
+    /// 예전엔 1Hz Timer 로 `tick` 을 갱신했는데, 그 값을 읽는 계산 프로퍼티
+    /// (`sessionDurationString`) 가 v0.39 에서 대시보드로 옮겨져 **쓰이지 않게 됐다**.
+    /// 그 결과 매초 팝오버 body 전체가 재평가될 뿐 세션 경과는 어디에도 안 보였다 (T-250 #10).
+    /// 1초마다 갱신이 필요한 값은 `DashboardClock` 처럼 하위 서브뷰로 격리한다.
+    @State private var refreshToken = 0
     @State private var showDNSPicker = false
     @State private var dnsStatusMessage: String?
     @State private var confirmPreset: DNSPreset?
@@ -41,10 +47,7 @@ struct PopoverView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
-    // publisher 정체성 고정 (body 재평가마다 새 Timer가 만들어지는 것을 방지)
-    // 자동 시작(autoconnect) 대신 onAppear에서 connect, 닫힘(onDisappear)에서 cancel해 배터리 절감
-    @State private var tickPublisher = Timer.publish(every: 1, on: .main, in: .common)
-    @State private var tickSubscription: Cancellable?
+
 
     var body: some View {
         mainContent
@@ -79,7 +82,7 @@ struct PopoverView: View {
                 }
             }
         .onReceive(NotificationCenter.default.publisher(for: .init("settingsChanged"))) { _ in
-            tick = Date()
+            refreshToken &+= 1
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("quotaAlert"))) { notification in
             if let msg = notification.userInfo?["message"] as? String {
@@ -108,7 +111,7 @@ struct PopoverView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("savingModeChanged"))) { _ in
                 savingModeActive = SavingModeManager.shared.isEnabled
-                tick = Date()
+                refreshToken &+= 1
             }
         .onReceive(NotificationCenter.default.publisher(for: .init("moreAction"))) { notification in
             guard let action = notification.userInfo?["action"] as? String else { return }
@@ -127,7 +130,11 @@ struct PopoverView: View {
     }
 
     private var mainContent: some View {
-        VStack(spacing: 0) {
+        // `refreshToken` 은 읽는 곳이 없다 — 의도적으로 "쓰기 전용"이다.
+        // @AppStorage 가 아닌 설정값은 값이 바뀐 걸 알 수가 없어, 알림마다 이 신호로
+        // body 재평가를 강제한다. 제거하면 설정 변경이 화면에 반영되지 않는다.
+        let _ = refreshToken
+        return VStack(spacing: 0) {
             VStack(spacing: TLSpace.xl) {
                 headerView
                 statusRow
@@ -163,26 +170,16 @@ struct PopoverView: View {
                 .padding(.horizontal, TLSpace.inset)
                 .padding(.top, TLSpace.sm)
         }
-        .onReceive(tickPublisher) { _ in
-            tick = Date()
-        }
         .onReceive(NotificationCenter.default.publisher(for: .init("connectionChanged"))) { _ in
             hotspotDetector.refreshNow()
-            tick = Date()
+            refreshToken &+= 1
             profiles = ProfileManager.shared.getAllProfiles()
             updateSessionStartTime()
         }
         .onAppear {
             updateSessionStartTime()
-            if tickSubscription == nil {
-                tickSubscription = tickPublisher.connect()
-            }
             // TrafficMonitor 제어는 MenuBarManager(NSPopoverDelegate)에서 담당한다.
             // (SwiftUI onAppear/onDisappear는 transient 닫힘에서 onDisappear 미호출 → acquire 누수 발생)
-        }
-        .onDisappear {
-            tickSubscription?.cancel()
-            tickSubscription = nil
         }
         .onReceive(NotificationCenter.default.publisher(for: .init("popoverWillShow"))) { _ in
             resetPopoverState()
@@ -379,10 +376,7 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.plain)
                 .help(Localized.copyGatewayHelp)
-                .onHover { inside in
-                    if inside { NSCursor.pointingHand.push() }
-                    else { NSCursor.pop() }
-                }
+                .pointingHandCursor()
             }
         }
     }
@@ -395,8 +389,8 @@ struct PopoverView: View {
                     copyToPasteboard(extIP, source: "statusChip")
                 } label: {
                     HStack(spacing: 3) {
-                        if let code = ipResolver.geoInfo?.countryCode {
-                            Text(flag(from: code))
+                        if let flag = GeoIPInfo.flagEmoji(forCountryCode: ipResolver.geoInfo?.countryCode) {
+                            Text(flag)
                                 .font(TLFont.detail)
                         }
                         Text(extIP)
@@ -410,10 +404,7 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.plain)
                 .help(Localized.copyExternalIPHelp)
-                .onHover { inside in
-                    if inside { NSCursor.pointingHand.push() }
-                    else { NSCursor.pop() }
-                }
+                .pointingHandCursor()
             } else {
                 Text("—")
                     .font(TLFont.detail.monospacedDigit())
@@ -591,18 +582,6 @@ struct PopoverView: View {
         return Localized.measuring
     }
 
-    private var sessionDurationString: String? {
-        guard let startTime = sessionStartTime else { return nil }
-        let _ = tick
-        let interval = Date().timeIntervalSince(startTime)
-        let hours = Int(interval) / 3600
-        let minutes = (Int(interval) % 3600) / 60
-        let seconds = Int(interval) % 60
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        }
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
     @ViewBuilder
     private var qosGaugeBody: some View {
         let ssid = hotspotDetector.currentConnection?.ssid
@@ -1121,14 +1100,6 @@ struct PopoverView: View {
         editingProfile = nil
         showSavingMode = false
         showIPHistory = false
-    }
-
-    private func flag(from countryCode: String) -> String {
-        let base: UInt32 = 127_397
-        return countryCode
-            .unicodeScalars
-            .map { String(UnicodeScalar(base + $0.value)!) }
-            .joined()
     }
 
     private func updateSessionStartTime() {

@@ -40,6 +40,15 @@ class PingMonitor {
         zip(gatewayHistory, dnsHistory).map { $0 ?? $1 != nil }
     }
 
+    /// 대표 지연 최근 기록(초) — 대시보드 ② 연결 품질 카드의 "지연 추이" 스파크라인용 (v0.39)
+    ///
+    /// `jitter` 와 **동일한 기준**(게이트웨이 우선, 없으면 8.8.8.8)을 쓴다.
+    /// 두 지표가 서로 다른 대상을 재면 카드 안에서 값이 어긋나 보이기 때문이다.
+    var recentLatencies: [TimeInterval] {
+        let gw = gatewayHistory.compactMap { $0 }
+        return gw.isEmpty ? dnsHistory.compactMap { $0 } : gw
+    }
+
     /// Jitter — 대표 지연(primaryLatency 기준) 최근 기록의 표준편차 (초)
     var jitter: TimeInterval? {
         let samples = gatewayHistory.compactMap { $0 }
@@ -112,12 +121,21 @@ class PingMonitor {
         var useDNS = true
         while !Task.isCancelled {
             let interval = effectiveInterval
-            let target = useDNS ? "8.8.8.8" : (gatewayAddress ?? "8.8.8.8")
-            let rtt = await performPing(host: target)
-            if useDNS {
-                dnsRTT = rtt
+            // 게이트웨이 라운드에서 주소를 못 얻었으면 **측정 대상이 없다**.
+            // 예전 코드는 8.8.8.8 으로 대체해 그 RTT 를 gatewayRTT 에 기록했는데,
+            // 그 결과 두 지표가 같은 호스트를 재게 되고 `pingAlive` 의 OR 판정이
+            // 항상 통과해 게이트웨이 단절을 감지하지 못했다 (T-250 #2).
+            // 미측정은 0 이 아니라 "없음"으로 남긴다.
+            let target = useDNS ? "8.8.8.8" : gatewayAddress
+            if let target {
+                let rtt = await performPing(host: target)
+                if useDNS {
+                    dnsRTT = rtt
+                } else {
+                    gatewayRTT = rtt
+                }
             } else {
-                gatewayRTT = rtt
+                gatewayRTT = nil
             }
             applyReachability()
             // 상태 전환 감지는 매 루프에서 수행 (useDNS일 때만 하면 끊김/복구 알림이 누락될 수 있음)

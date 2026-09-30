@@ -1,7 +1,7 @@
 import Foundation
 
 /// 인사이트 종류 (v0.36). UI는 kind별 문구를 조합한다 — 엔진은 수치만 반환.
-enum InsightKind: String {
+enum InsightKind: String, Sendable {
     case pace          // 한도 소진 예측 (오늘 페이스)
     case topOffender   // 오늘 소모 주범 앱
     case surge         // 평소 대비 급증
@@ -11,7 +11,7 @@ enum InsightKind: String {
 }
 
 /// UI에 구애받지 않는 인사이트 데이터. 발동 조건을 만족할 때만 생성된다.
-struct InsightItem: Identifiable, Equatable {
+struct InsightItem: Identifiable, Equatable, Sendable {
     let id = UUID()
     let kind: InsightKind
     var profileName: String?

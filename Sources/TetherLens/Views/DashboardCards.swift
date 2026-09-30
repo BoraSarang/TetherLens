@@ -259,11 +259,53 @@ struct DashboardQualityCard: View {
                 Divider().overlay(TLPalette.separator.opacity(0.4))
 
                 healthRows
+
+                Divider().overlay(TLPalette.separator.opacity(0.4))
+
+                latencyTrend
                 Spacer(minLength: 0)
             }
         }
         .onReceive(ticker) { now = $0 }
     }
+
+    /// 카드 하단 — **실측 지연 기록**의 추이. ① 속도 카드의 차트가 행 높이를 결정해
+    /// ② 하단이 비어 보이는데, 장식으로 채우지 않고 값 있는 정보(지연 추이 + 최소/평균/최대)를 넣는다.
+    /// 미측정이면 0으로 그리지 않고 "측정 중"으로 표기한다.
+    @ViewBuilder
+    private var latencyTrend: some View {
+        let samples = ping?.recentLatencies ?? []
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: TLSpace.sm) {
+                Text(Localized.latencyTrend)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.copyHint)
+                Spacer(minLength: TLSpace.sm)
+                if let stat = latencyStat(samples) {
+                    Text("min \(Self.ms(stat.min)) · avg \(Self.ms(stat.avg)) · max \(Self.ms(stat.max))")
+                        .font(TLFont.badgeMono)
+                        .foregroundColor(TLPalette.textSecondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
+            }
+            if samples.isEmpty {
+                Text(Localized.measuring)
+                    .font(TLFont.caption2)
+                    .foregroundColor(TLPalette.copyHint)
+            } else {
+                TLSparkline(points: samples, color: TLPalette.download, height: 22)
+            }
+        }
+    }
+
+    private func latencyStat(_ samples: [TimeInterval]) -> (min: TimeInterval, avg: TimeInterval, max: TimeInterval)? {
+        guard !samples.isEmpty else { return nil }
+        let sum = samples.reduce(0, +)
+        return (samples.min() ?? 0, sum / Double(samples.count), samples.max() ?? 0)
+    }
+
+    private static func ms(_ t: TimeInterval) -> String { "\(Int(t * 1000))ms" }
 
     /// 패킷 손실 · 경고 · 자동화 · 절약모드 — 카드 하단 상태 요약
     @ViewBuilder
@@ -991,7 +1033,7 @@ struct DashboardPatternCard: View {
 /// ⑨ 눈여겨볼 점 — 인사이트 6종을 전폭으로.
 ///
 /// v0.39 이전엔 인사이트가 **리포트 차트 탭에 진입해야만** 계산됐다
-/// (`UsageReportView.refreshInsights` 의 `viewMode == .chart` 조건).
+/// (`UsageReportView` 의 `viewMode == .chart` 조건 — 현재는 `compute` 안에 있다).
 /// 이제 `DashboardStore` 가 60초 주기로 상시 계산하므로 대시보드에서 바로 보인다.
 ///
 /// 표시 규칙(아이콘·색·히어로·문구)은 `InsightPresenter` 를 리포트와 공유한다.
