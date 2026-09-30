@@ -8,6 +8,7 @@ struct FloatingWindowView: View {
     @Environment(\.openWindow) private var openWindow
     @EnvironmentObject private var model: FloatingWindowViewModel
     @ObservedObject private var trafficMonitor = TrafficMonitor.shared
+    @State private var isMeasuringProcesses = false
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @AppStorage("appTraffic_show_system") private var showSystem = false
     @AppStorage("showCPUGraph") private var showCPUGraph = false
@@ -20,6 +21,13 @@ struct FloatingWindowView: View {
 
     /// 플로팅 전용 모서리 반경 (v0.32.3) — TLRound.medium(10)은 타 화면 공용이라 분리.
     private static let corner: CGFloat = 24
+
+    /// 요청 1회 측정이 끝나면 버튼 상태를 되돌린다.
+    /// `measureProcessList` 이 queue 에서 몇 초간 nettop 을 돌린 뒤 스냅샷을 갱신하므로
+    /// `networkMeasuredAt` 이 한 번 더 갱신되는 시점이 완료 시점이다.
+    private func finishProcessMeasureIfNeeded() {
+        isMeasuringProcesses = false
+    }
 
     var body: some View {
         // NOTE: 실측 자동 높이(fitToContent)가 동작하려면 콘텐츠가 루트여야 한다.
@@ -56,6 +64,7 @@ struct FloatingWindowView: View {
                 .fill(.regularMaterial)
                 .opacity(opacity)
         )
+        .onChange(of: trafficMonitor.networkMeasuredAt) { _, _ in finishProcessMeasureIfNeeded() }
         .overlay {
             if isHovering {
                 RoundedRectangle(cornerRadius: Self.corner, style: .continuous)
@@ -153,7 +162,9 @@ struct FloatingWindowView: View {
                     windowSeconds: trafficMonitor.windowSeconds,
                     limit: 3,
                     showSystem: showSystem,
-                    onShowMore: { openWindow(id: "appTraffic") }
+                    onShowMore: { openWindow(id: "appTraffic") },
+                    onMeasure: { isMeasuringProcesses = true; TrafficMonitor.shared.measureProcessList() },
+                    isMeasuring: isMeasuringProcesses
                 )
             }
         }

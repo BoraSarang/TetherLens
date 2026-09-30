@@ -34,6 +34,12 @@ struct NetworkProcessList: View {
     var showSystem: Bool = false
     /// "더보기" 버튼 — nil 이면 숨긴다
     var onShowMore: (() -> Void)?
+    /// 네트워크 측정 요청 — nettop 이 꺼져 있을 때 "프로세스 보기" 를 제공
+    var onMeasure: (() -> Void)?
+    /// 측정 중인지 (버튼 비활성 + 진행 표시)
+    var isMeasuring: Bool = false
+    /// 마지막 측정 시각 — 오래되면 "다시 측정" 을 안내한다
+    var measuredAt: Date?
 
     private var visible: [TrafficMonitor.AppTraffic] {
         let base = showSystem ? apps : apps.filter { !SystemProcesses.set.contains($0.processName) }
@@ -49,15 +55,20 @@ struct NetworkProcessList: View {
         VStack(alignment: .leading, spacing: TLSpace.xs) {
             header
 
-            if visible.isEmpty {
-                Text(Localized.trafficCollecting)
-                    .font(TLFont.caption2)
-                    .foregroundColor(TLPalette.textSecondary)
-                    .frame(maxWidth: .infinity, minHeight: 20)
+            if isMeasuring {
+                measuringRow
+            } else if visible.isEmpty {
+                // 아무 프로세스도 트래픽이 없다 — 빈 상태가 정답이다.
+                // 예전엔 여기서 22 MB/s 인 프로세스가 떠 있었다(첫 블록 누적값 버그).
+                emptyRow
             } else {
                 ForEach(visible) { app in
                     row(app)
                 }
+            }
+
+            if let onMeasure, !isMeasuring {
+                measureButton
             }
 
             if let onShowMore {
@@ -68,6 +79,50 @@ struct NetworkProcessList: View {
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
+    }
+
+    // MARK: - 상태 행
+
+    /// nettop 을 켜지 않으면 평상시 프로세스 트래픽이 없다 — 이유를 밝히고 재게 한다
+    private var emptyRow: some View {
+        HStack(spacing: 6) {
+            Text(Localized.noProcessTraffic)
+                .font(TLFont.caption2)
+                .foregroundColor(TLPalette.textSecondary)
+            Spacer(minLength: 0)
+            if onMeasure != nil {
+                Button(Localized.measureNow, action: { onMeasure?() })
+                    .buttonStyle(.plain)
+                    .font(TLFont.caption)
+                    .foregroundColor(TLPalette.download)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 18)
+    }
+
+    private var measureButton: some View {
+        Button {
+            onMeasure?()
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "arrow.clockwise").font(TLFont.badge)
+                Text(Localized.measureNow).font(TLFont.caption)
+            }
+            .foregroundColor(TLPalette.textSecondary)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var measuringRow: some View {
+        HStack(spacing: 6) {
+            ProgressView().controlSize(.mini)
+            Text(Localized.measuringProcessList)
+                .font(TLFont.caption2)
+                .foregroundColor(TLPalette.textSecondary)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 18)
     }
 
     // MARK: - 헤더 (컬럼 라벨)

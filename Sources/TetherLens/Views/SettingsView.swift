@@ -40,6 +40,7 @@ struct SettingsView: View {
     /// 대시보드 카드 표시 상태 스냅샷 (v0.39).
     /// `SettingsManager` 는 `@Published` 가 아니라서 이 `@State` 가 설정 화면의 단일 진실원처다.
     @State private var enabledCards: Set<DashboardCard>
+    @State private var processListEnabled: Bool
     @ObservedObject private var updater = UpdaterManager.shared
 
     init() {
@@ -64,6 +65,7 @@ struct SettingsView: View {
         _autoRules = State(initialValue: AutomationManager.shared.rules)
         _updateFrequency = State(initialValue: UpdaterManager.shared.frequency)
         _enabledCards = State(initialValue: Set(DashboardCard.ordered.filter { s.isCardEnabled($0) }))
+        _processListEnabled = State(initialValue: s.processListEnabled)
     }
 
     private var menuBarOptions: [(String, Double)] { Localized.menuBarIntervalOptions }
@@ -448,6 +450,21 @@ struct SettingsView: View {
     /// 순서를 여기서 따로 관리하면 대시보드와 설정이 어긋나므로 `DashboardLayout` 을 단일 진실원처로 삼는다.
     private var dashboardTab: some View {
         Form {
+            Section {
+                Toggle(Localized.keepProcessList, isOn: $processListEnabled)
+                    .onChange(of: processListEnabled) { _, newValue in
+                        SettingsManager.shared.processListEnabled = newValue
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+            } header: {
+                Text(Localized.processTraffic)
+            } footer: {
+                Text(Localized.keepProcessListHint)
+                    .font(.caption)
+                    .foregroundColor(TLPalette.copyHint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Section {
                 ForEach(DashboardCard.ordered) { card in
                     Toggle(isOn: cardBinding(card)) {

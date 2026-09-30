@@ -30,8 +30,8 @@ final class SettingsManager: @unchecked Sendable {
     static let defaultMenuBarRefreshInterval: Double = 3.0
     static let defaultCacheRefreshInterval: Double = 5.0
     static let defaultTrafficMonitorInterval: Double = 10.0
-    /// 창을 보고 있을 때의 프로세스 리스트 갱신 주기 (초)
-    static let defaultProcessListInterval: Double = 2.0
+    /// 요청 1회 측정 시 관측 구간 (초)
+    static let defaultProcessListInterval: Double = 3.0
     static let defaultPingInterval: Double = 5.0
     static let defaultMenuBarFontSize: Double = 9.0
     static let defaultQuotaWarningThreshold: Double = 1.0
@@ -76,10 +76,25 @@ final class SettingsManager: @unchecked Sendable {
         set { defaults.set(newValue, forKey: "trafficMonitorInterval") }
     }
 
-    /// 프로세스 리스트가 **보이는 창을 열고 있을 때** 쓰는 짧은 구간(초).
+    /// **상시** 프로세스 트래픽 측정 여부 — 기본 `false`.
     ///
-    /// "대역폭이 왜 이렇게 나오지? → 지금 누가 쓰지?" 는 그 창을 보고 있는 동안에만 의미가 있다.
-    /// 그때만 2초로 재고, 창을 닫으면 `trafficMonitorInterval`(=기본 10초)로 돌아간다.
+    /// ## 왜 기본으로 꺼 둔다
+    ///
+    /// `nettop` 은 프로세스별 네트워크의 유일한 소스인데, 이 머신에서
+    /// `-l`/`-s` 와 무관하게 **약 135% CPU** 를 쓴다 (2026-09-30 실측).
+    /// 켜 두면 nettop 이 사실상 상시 실행되어 배터리를 크게 먹는다.
+    ///
+    /// 그래서 기본은 끄고, 필요할 때만 **1회 측정**( `TrafficMonitor.measureProcessList` ) 으로
+    /// "지금 뭐가 쓰지?" 에 답한다. 켜고 싶으면 사용자가 명시적으로 ON 한다.
+    var processListEnabled: Bool {
+        get { defaults.object(forKey: "processListEnabled") as? Bool ?? false }
+        set { defaults.set(newValue, forKey: "processListEnabled") }
+    }
+
+    /// 요청 1회 측정 시 관측 구간(초).
+    ///
+    /// "어? 지금 뭐가 쓰지?" 에는 3초 스냅샷이면 답할 수 있다.
+    /// 평상시에는 nettop 이 돌지 않으니 이 값이 배터리 비용에 영향을 주는 건 아니다.
     var processListInterval: Double {
         get {
             let v = defaults.double(forKey: "processListInterval")

@@ -117,11 +117,11 @@ import Foundation
 
     // MARK: - 프로세스 리스트 실시간 구간 (v0.39)
 
-    /// 창을 보고 있을 때만 짧은 구간을 쓴다 — 기본값은 2초
-    @Test func 프로세스리스트_구간_기본값은_2초() {
+    /// 요청 1회 측정 구간 — 기본 3초
+    @Test func 프로세스리스트_구간_기본값은_3초() {
         let s = makeManager()
-        #expect(s.processListInterval == 2.0)
-        #expect(SettingsManager.defaultProcessListInterval == 2.0)
+        #expect(s.processListInterval == 3.0)
+        #expect(SettingsManager.defaultProcessListInterval == 3.0)
     }
 
     /// 배터리 보호: 창을 안 볼 때는 기존 10초 주기를 그대로 쓴다
@@ -142,6 +142,37 @@ import Foundation
         let s = makeManager()
         s.processListInterval = 0
         #expect(s.processListInterval == SettingsManager.defaultProcessListInterval)
+    }
+
+    // MARK: - 프로세스 트래픽 상시 측정 (A: 기본 OFF)
+
+    /// nettop 이 이 머신에서 ~135% CPU 라 기본은 꺼 둔다 (2026-09-30 실측)
+    @Test func 프로세스트래픽_상시측정_기본값은_OFF() {
+        let s = makeManager()
+        #expect(s.processListEnabled == false)
+    }
+
+    @Test func 프로세스트래픽_상시측정_토글_저장_조회() {
+        let s = makeManager()
+        s.processListEnabled = true
+        #expect(s.processListEnabled == true)
+        s.processListEnabled = false
+        #expect(s.processListEnabled == false)
+    }
+
+    /// 새 인스턴스에서도 유지되어야 한다 (재실행 후 설정 유지)
+    @Test func 프로세스트래픽_상시측정은_새인스턴스에서도_유지된다() {
+        let suite = "test-settings-\(UUID().uuidString)"
+        let d = UserDefaults(suiteName: suite)!
+        d.removePersistentDomain(forName: suite)
+        SettingsManager(defaults: d).processListEnabled = true
+        #expect(SettingsManager(defaults: d).processListEnabled == true)
+    }
+
+    /// 요청 1회 측정 구간은 3초 — "지금 뭐가 쓰지?" 에 충분한 스냅샷
+    @Test func 요청1회_측정구간은_3초() {
+        let s = makeManager()
+        #expect(s.processListInterval == 3.0)
     }
 
     @Test func resetPollingIntervals_기본값_복원() {

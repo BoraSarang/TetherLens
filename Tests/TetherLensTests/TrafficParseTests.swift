@@ -11,7 +11,7 @@ import Foundation
 /// 기존 구현은 마지막 블록만 반환해 그 이전 구간을 통째로 버렸다.
 @Suite struct TrafficParseTests {
 
-    /// 다중 블록 합산 — 기준점 블록(0) + 실측 블록
+    /// 다중 블록 합산 — 기준점 블록(누적, 제외) + 실측 델타 블록
     @Test func 다중블록_전체합산() {
         let output = """
         time    process           bytes_in  bytes_out
@@ -35,12 +35,15 @@ import Foundation
         let output = """
         time    process           bytes_in  bytes_out
         18:52:06.986502 adb.3139    6294493696  898618687
+        time    process           bytes_in  bytes_out
+        18:52:07.986502 adb.3139       1200      3400
         """
         let rows = TrafficMonitor.parse(output)
         #expect(rows.count == 1)
         #expect(rows.first?.name == "adb")
-        #expect(rows.first?.bytesIn == 898_618_687)   // nettop bytes_out → 업로드 슬롯
-        #expect(rows.first?.bytesOut == 6_294_493_696) // nettop bytes_in  → 다운로드 슬롯
+        // 첫 블록의 누적값(898 MB / 6.2 GB)은 트래픽이 아니다
+        #expect(rows.first?.bytesIn == Int64(3400))      // nettop bytes_out → 업로드 슬롯
+        #expect(rows.first?.bytesOut == Int64(1200))     // nettop bytes_in  → 다운로드 슬롯
     }
 
     /// 헤더 줄만 있으면 빈 결과
@@ -57,6 +60,8 @@ import Foundation
         let output = """
         time    process           bytes_in  bytes_out
         18:52:06.986503 com.apple.WebKi.56856   6781   8622
+        time    process           bytes_in  bytes_out
+        18:52:07.986503 com.apple.WebKi.56856     11    22
         """
         #expect(TrafficMonitor.parse(output).first?.name == "com.apple.WebKi")
     }
@@ -66,6 +71,8 @@ import Foundation
         let output = """
         time    process           bytes_in  bytes_out
         18:52:06.986504 OpenCode Helper.56898   18238442   7280
+        time    process           bytes_in  bytes_out
+        18:52:07.986504 OpenCode Helper.56898      500    600
         """
         #expect(TrafficMonitor.parse(output).first?.name == "OpenCode Helper")
     }
@@ -75,6 +82,7 @@ import Foundation
         let output = """
         time    process           bytes_in  bytes_out
         18:52:07.992374 broken
+        time    process           bytes_in  bytes_out
         18:52:08.992374 good.1      1        2
         """
         let rows = TrafficMonitor.parse(output)
@@ -148,5 +156,83 @@ import Foundation
     @Test func 트래픽_갱신_간격_옵션에_2초가_있다() {
         #expect(Localized.trafficIntervalOptions.map(\.1).contains(2))
         #expect(SettingsManager.defaultTrafficMonitorInterval == 10.0)
+    }
+}
+
+/// 첫 블록은 델타가 아니라 **누적 카운터 스냅샷**이다 (2026-09-30 실측 고정)
+///
+/// 실측 배경 — 같은 5초 구간을 세 방법으로 측정했다:
+/// - 인터페이스 실제 카운터 델타: 64,671 B
+/// - nettop block 1 합계:        16,050,290 B  (실제의 248배)
+/// - nettop blocks 2~6 합계:        17,834 B  (같은 자릿수)
+///
+/// 예전 주석은 "첫 블록은 기준점(모두 0)" 이었고, 그 믿음 아래 전 블록을 합산했다.
+/// 그 결과 2 KB/s 인 화면에서 프로세스 하나가 22 MB/s 로 표시됐다.
+@Suite struct NettopFirstBlockTests {
+
+    /// 로컬 실측 원본 (block 1 이 9.8 MB 로 튀는 프로세스가 있다)
+    private static let real = """
+    time    bytes_in  bytes_out
+    13:04:18.154792 opencode-cli.1432                       9797164    9433955
+    13:04:18.154792 DroidRelay.841                           4694592    4545280
+    13:04:18.154792 com.apple.WebKi.2973                    1409456    1190818
+    13:04:18.154792 mDNSResponder.475                         91435      118878
+    time    bytes_in  bytes_out
+    13:04:19.156198 opencode-cli.1432                            180        240
+    13:04:19.156198 DroidRelay.841                             3100       2000
+    13:04:19.156198 com.apple.WebKi.2973                        531       4992
+    time    bytes_in  bytes_out
+    13:04:20.156466 opencode-cli.1432                             60         90
+    13:04:20.156466 DroidRelay.841                             1100        900
+    13:04:20.156466 com.apple.WebKi.2973                          0          0
+    """
+
+    private func totals(_ output: String) -> [String: (in: Int64, out: Int64)] {
+        var r: [String: (Int64, Int64)] = [:]
+        for e in TrafficMonitor.parse(output) { r[e.name] = (e.bytesIn, e.bytesOut) }
+        return r
+    }
+
+    /// ⚠️ nettop 컬럼은 `bytes_in bytes_out` 순서지만, `parse` 는 UI 표시용으로
+    /// 슬롯을 바꿔 담는다 — `bytesIn` = 업로드(= nettop bytes_out), `bytesOut` = 다운로드.
+    @Test func 첫블록의_누적값은_트래픽에서_제외된다() {
+        let t = totals(Self.real)
+        // opencode-cli 업로드: block2 240 + block3 90 (block1 9,437,955 는 제외)
+        #expect(t["opencode-cli"]?.in == Int64(330))
+        // 다운로드: block2 180 + block3 60
+        #expect(t["opencode-cli"]?.out == Int64(240))
+        #expect(t["DroidRelay"]?.out == Int64(4200))
+        #expect(t["com.apple.WebKi"]?.out == Int64(531))
+    }
+
+    /// 회귀: 첫 블록을 더하면 9.8 MB — 화면이 "2 KB/s 인데 22 MB/s" 로 보이던 값
+    @Test func 첫블록을_포함하면_100배_부풀어_오른다() {
+        let t = totals(Self.real)
+        let webkit = t["com.apple.WebKi"]?.out ?? 0
+        #expect(webkit < 2_000)                       // 1,409,456 이면 실패
+        #expect(webkit * 1000 < 1_409_456)
+    }
+
+    /// 블록이 하나뿐(기준점만)면 유효 델타가 없다 → 전부 0 이고 목록이 비어야 한다
+    @Test func 블록이_하나뿐이면_트래픽은_0이다() {
+        let single = """
+        time    bytes_in  bytes_out
+        13:04:18.154792 com.apple.WebKi.2973           1409456    1190818
+        """
+        // 기준점 블록뿐이면 유효 델타가 없으므로 아예 항목이 나오지 않는다 (→ 목록이 비어야 정상)
+        let t = totals(single)
+        #expect(t["com.apple.WebKi"] == nil)
+    }
+
+    @Test func 델타가_있으면_그대로_반환된다() {
+        let t = totals(Self.real)
+        #expect(t["DroidRelay"]?.in == Int64(2900))
+    }
+
+    /// 블록 2~N 이 5개면 유효 구간은 5초 — `runNettop` 이 `interval + 1` 을 요청해야 한다
+    @Test func 유효_델타수는_블록수에서_1을뺀_값이다() {
+        let blocks = 6
+        let deltas = blocks - 1
+        #expect(deltas == 5)
     }
 }

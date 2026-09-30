@@ -569,6 +569,16 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var constrainedPath: String { value(kr: "저대역폭", en: "Low Data") }
   static var automation: String { value(kr: "자동화", en: "Automation") }
   static var linkSpeedLabel: String { value(kr: "링크", en: "Link") }
+  static var processTraffic: String { value(kr: "프로세스 트래픽", en: "Process Traffic") }
+  static var keepProcessList: String { value(kr: "항상 측정", en: "Always measure") }
+  static var keepProcessListHint: String {
+    value(kr: "꺼 두면 평상시 CPU 를 쓰지 않습니다. 필요할 때 프로세스 리스트의 \"지금 측정\" 을 누르면 3초간만 측정합니다.",
+          en: "Off by default so it costs no CPU. Press \"Measure now\" in the process list to sample for 3 seconds.")
+  }
+  /// nettop 이 꺼져 있을 때 프로세스 리스트가 비어 있는 이유
+  static var noProcessTraffic: String { value(kr: "네트워크를 쓰는 프로세스 없음", en: "No process using network") }
+  static var measureNow: String { value(kr: "지금 측정", en: "Measure now") }
+  static var measuringProcessList: String { value(kr: "3초간 측정 중…", en: "Measuring for 3s…") }
   static var dashboardCards: String { value(kr: "표시할 카드", en: "Visible Cards") }
   static var showAllCards: String { value(kr: "모든 카드 표시", en: "Show All Cards") }
   static var latencyTrend: String { value(kr: "지연 추이", en: "Latency Trend") }

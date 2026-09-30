@@ -35,6 +35,7 @@ struct PopoverView: View {
     @State private var savingModeActive = SavingModeManager.shared.isEnabled
     @State private var showIPHistory = false
     @ObservedObject private var trafficMonitor = TrafficMonitor.shared
+    @State private var isMeasuringProcesses = false
     @ObservedObject private var updater = UpdaterManager.shared
     @State private var sessionStartTime: Date?
     @State private var quotaAlertMessage: String?
@@ -49,11 +50,20 @@ struct PopoverView: View {
 
 
 
+
+    /// 요청 1회 측정이 끝나면 버튼 상태를 되돌린다.
+    /// `measureProcessList` 이 queue 에서 몇 초간 nettop 을 돌린 뒤 스냅샷을 갱신하므로
+    /// `networkMeasuredAt` 이 한 번 더 갱신되는 시점이 완료 시점이다.
+    private func finishProcessMeasureIfNeeded() {
+        isMeasuringProcesses = false
+    }
+
     var body: some View {
         mainContent
             .sheet(isPresented: $showDNSPicker) {
                 dnsPresetPicker
-                    .onAppear {
+                    .onChange(of: trafficMonitor.networkMeasuredAt) { _, _ in finishProcessMeasureIfNeeded() }
+        .onAppear {
                         applyingPresetID = nil
                         dnsStatusMessage = nil
                         Task {
@@ -147,7 +157,9 @@ struct PopoverView: View {
                     windowSeconds: trafficMonitor.windowSeconds,
                     limit: 3,
                     showSystem: showSystemProcesses,
-                    onShowMore: { openWindow(id: "appTraffic") }
+                    onShowMore: { openWindow(id: "appTraffic") },
+                    onMeasure: { isMeasuringProcesses = true; TrafficMonitor.shared.measureProcessList() },
+                    isMeasuring: isMeasuringProcesses
                 )
                 qosGaugeBody
             }
