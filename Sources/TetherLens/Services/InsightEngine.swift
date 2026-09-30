@@ -1,7 +1,7 @@
 import Foundation
 
 /// 인사이트 종류 (v0.36). UI는 kind별 문구를 조합한다 — 엔진은 수치만 반환.
-enum InsightKind: String {
+enum InsightKind: String, Sendable {
     case pace          // 한도 소진 예측 (오늘 페이스)
     case topOffender   // 오늘 소모 주범 앱
     case surge         // 평소 대비 급증
@@ -11,7 +11,7 @@ enum InsightKind: String {
 }
 
 /// UI에 구애받지 않는 인사이트 데이터. 발동 조건을 만족할 때만 생성된다.
-struct InsightItem: Identifiable, Equatable {
+struct InsightItem: Identifiable, Equatable, Sendable {
     let id = UUID()
     let kind: InsightKind
     var profileName: String?
@@ -132,7 +132,10 @@ enum InsightEngine {
         guard todayTotal >= nightMinimum else { return nil }
         let night = hourlyTotals.filter { $0.hour >= 0 && $0.hour < 6 }.reduce(0) { $0 + $1.total }
         let share = Double(night) / Double(todayTotal)
-        return share >= nightShare ? share : nil
+        // 방어적 클램프 — 분자·분모의 집계 기간이 어긋나면 100% 를 넘는 값이 나올 수 있다
+        // (예: 분자에 어제 야간이 섞인 경우). 비율 UI에 100% 초과가 노출되지 않게 막는다.
+        guard share >= nightShare else { return nil }
+        return min(share, 1)
     }
 
     /// 오늘 업로드 비중이 uploadShare 이상이면 비중 반환.

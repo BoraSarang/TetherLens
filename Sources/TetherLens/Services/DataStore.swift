@@ -37,8 +37,19 @@ final class DataStore: @unchecked Sendable {
         Task { @MainActor in
             DebugLogger.shared.error("DB", "disk restore failed — falling back to in-memory (data will not persist)")
         }
-        // GRDB DatabaseQueue() 기본이 in-memory
-        dbQueue = (try? DatabaseQueue()) ?? (try! DatabaseQueue())
+        // 최후 폴백: in-memory DB (GRDB DatabaseQueue() 기본이 in-memory).
+        // 마이그레이션을 적용하지 않으면 테이블이 하나도 없어 모든 쿼리가 조용히 실패하고,
+        // '앱은 정상 실행인데 프로필·사용량·세션이 전부 0으로 보이는' 최악 상태가 된다.
+        let memory: DatabaseQueue
+        do {
+            let queue = try DatabaseQueue()
+            try migrator.migrate(queue)
+            memory = queue
+        } catch {
+            // in-memory 생성/마이그레이션마저 실패할 경로는 없다. 방어적으로 중단한다.
+            fatalError("DataStore: in-memory DB migration failed - " + String(describing: error))
+        }
+        dbQueue = memory
     }
 
     init(dbQueue: DatabaseQueue) {

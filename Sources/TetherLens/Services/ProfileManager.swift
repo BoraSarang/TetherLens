@@ -208,7 +208,7 @@ final class ProfileManager: @unchecked Sendable {
 
     // MARK: - Usage Report
 
-    struct DailyUsage: Identifiable {
+    struct DailyUsage: Identifiable, Sendable {
         let id: String
         let date: Date
         let upload: Int64
@@ -216,7 +216,7 @@ final class ProfileManager: @unchecked Sendable {
         var total: Int64 { upload + download }
     }
 
-    struct MonthlyUsage: Identifiable {
+    struct MonthlyUsage: Identifiable, Sendable {
         let id: String
         let date: Date
         let upload: Int64
@@ -224,7 +224,7 @@ final class ProfileManager: @unchecked Sendable {
         var total: Int64 { upload + download }
     }
 
-    struct HourlyUsage: Identifiable {
+    struct HourlyUsage: Identifiable, Sendable {
         let id: Int
         let hour: Int
         let upload: Int64
@@ -232,14 +232,14 @@ final class ProfileManager: @unchecked Sendable {
         var total: Int64 { upload + download }
     }
 
-    struct DailySessionSummary: Identifiable {
+    struct DailySessionSummary: Identifiable, Sendable {
         let id: String
         let date: Date
         let sessionCount: Int
         let totalDuration: TimeInterval
     }
 
-    struct MonthlySessionSummary: Identifiable {
+    struct MonthlySessionSummary: Identifiable, Sendable {
         let id: String
         let date: Date
         let sessionCount: Int
@@ -253,7 +253,7 @@ final class ProfileManager: @unchecked Sendable {
         let totalSessions: Int
         let movementCount: Int
         let topApps: [(name: String, total: Int64)]
-        let quotaEntries: [(profileName: String, used: Int64, quotaBytes: Int64?)]
+        let quotaEntries: [(profileId: UUID, profileName: String, used: Int64, quotaBytes: Int64?)]
     }
 
     func reportSummary(profileIds: [UUID], days: Int) -> ReportSummary {
@@ -273,11 +273,13 @@ final class ProfileManager: @unchecked Sendable {
             .sorted { $0.uploadBytes + $0.downloadBytes > $1.uploadBytes + $1.downloadBytes }
             .prefix(5)
             .map { ($0.processName, $0.uploadBytes + $0.downloadBytes) })
-        let quotas: [(profileName: String, used: Int64, quotaBytes: Int64?)] = profileIds.compactMap { pid in
+        // profileId 를 같이 담아 둔다 — `name` 은 사용자 편집 가능이라 중복될 수 있고,
+        // ForEach id 로 쓰면 중복 ID 가 된다 (T-250 #9)
+        let quotas: [(profileId: UUID, profileName: String, used: Int64, quotaBytes: Int64?)] = profileIds.compactMap { pid in
             guard let p = getProfile(id: pid) else { return nil }
             let used = getUsageTotal(profileId: pid, from: Calendar.current.date(byAdding: .day, value: -(days - 1), to: Date()) ?? Date(), to: Date())
-            guard let quota = p.quotaGB else { return (p.name, used, nil) }
-            return (p.name, used, Int64(quota * 1_000_000_000))
+            guard let quota = p.quotaGB else { return (pid, p.name, used, nil) }
+            return (pid, p.name, used, Int64(quota * 1_000_000_000))
         }
         return ReportSummary(
             totalUpload: up,
@@ -360,6 +362,34 @@ final class ProfileManager: @unchecked Sendable {
                 return HourlyUsage(id: Int(hour), hour: Int(hour), upload: up, download: dn)
             }
 }) ?? []
+    }
+
+    /// **오늘 자정 이후** 로그만 시간대별로 집계 (0~23시, 24칸)
+    ///
+    /// `getHourlyUsage(profileId:days:)` 는 `now - days` 를 기준이라
+    /// `days: 1` 이면 **어제 같은 시각 이후**가 섞인다. 그 결과를 오늘 총량(`getTodayUsage`)과
+    /// 나누면 분모/분자 기간이 어긋나 **100%를 넘는 비율**(심야 소모 186% 등)이 나온다.
+    /// `nightDrain` 인사이트와 대시보드 24시 막대가 이 버전을 쓰고 있었다 (v0.39 수정).
+    func getHourlyUsageToday(profileId: UUID) -> [HourlyUsage] {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        return (try? db.read { db in
+            try Row.fetchAll(db, sql: """
+                SELECT CAST(strftime('%H', recorded_at, 'localtime') AS INTEGER) AS hour,
+                       COALESCE(SUM(upload_delta), 0) AS up,
+                       COALESCE(SUM(download_delta), 0) AS dn
+                FROM usage_log
+                WHERE profile_id = ? AND recorded_at >= ?
+                GROUP BY hour
+                ORDER BY hour ASC
+            """, arguments: [profileId, startOfToday])
+            .compactMap { (row) -> HourlyUsage? in
+                guard let hour = row["hour"] as? Int64,
+                      let up = row["up"] as? Int64,
+                      let dn = row["dn"] as? Int64
+                else { return nil }
+                return HourlyUsage(id: Int(hour), hour: Int(hour), upload: up, download: dn)
+            }
+        }) ?? []
     }
 
     func getDailySessionSummary(profileId: UUID, days: Int) -> [DailySessionSummary] {

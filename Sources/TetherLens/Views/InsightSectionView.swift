@@ -66,12 +66,8 @@ struct InsightSectionView: View {
         .background(TLPalette.cardBackground, in: RoundedRectangle(cornerRadius: TLRound.medium, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture { handleTap(insight) }
-        .onHover { inside in
-            if tappable(insight.kind) {
-                if inside { NSCursor.pointingHand.push() }
-                else { NSCursor.pop() }
-            }
-        }
+        // onHover(false) 없이 뷰가 사라지면 pop 이 남는다 → 균형 보장 modifier 로 교체
+        .pointingHandCursor(isOn: tappable(insight.kind))
     }
 
     private func tappable(_ kind: InsightKind) -> Bool {
@@ -86,68 +82,11 @@ struct InsightSectionView: View {
         }
     }
 
-    private func icon(for kind: InsightKind) -> String {
-        switch kind {
-        case .pace: return "speedometer"
-        case .topOffender: return "flame.fill"
-        case .surge: return "exclamationmark.triangle.fill"
-        case .nightDrain: return "moon.fill"
-        case .uploadHeavy: return "arrow.up.circle.fill"
-        case .ipChurn: return "arrow.triangle.2.circlepath"
-        }
-    }
+    // MARK: - 표시 규칙은 InsightPresenter 로 이동 (v0.39 — 대시보드 카드와 공용)
 
-    private func color(for kind: InsightKind) -> Color {
-        switch kind {
-        case .pace: return TLPalette.upload
-        case .topOffender: return TLPalette.upload
-        case .surge: return TLPalette.danger
-        case .nightDrain: return TLPalette.download
-        case .uploadHeavy: return TLPalette.download
-        case .ipChurn: return TLPalette.accent
-        }
-    }
-
-    private func hero(for insight: InsightItem) -> String {
-        switch insight.kind {
-        case .pace:
-            if let d = insight.date { return Self.timeFormatter.string(from: d) }
-            return "--:--"
-        case .topOffender, .nightDrain, .uploadHeavy:
-            return "\(Int((insight.ratio ?? 0) * 100))%"
-        case .surge:
-            return String(format: "%.1f×", insight.ratio ?? 0)
-        case .ipChurn:
-            return "\(insight.count ?? 0)회"
-        }
-    }
-
-    private func title(for insight: InsightItem) -> String {
-        switch insight.kind {
-        case .pace: return Localized.insightPaceTitle(insight.profileName ?? "-")
-        case .topOffender: return Localized.insightOffenderTitle(insight.appName ?? "-")
-        case .surge: return Localized.insightSurgeTitle
-        case .nightDrain: return Localized.insightNightTitle
-        case .uploadHeavy: return Localized.insightUploadTitle
-        case .ipChurn: return Localized.insightIPTitle
-        }
-    }
-
-    private func body(for insight: InsightItem) -> String {
-        switch insight.kind {
-        case .pace:
-            let t = insight.date.map { Self.timeFormatter.string(from: $0) } ?? "--:--"
-            return Localized.insightPaceBody(t, Int((insight.ratio ?? 0) * 100))
-        case .topOffender:
-            return Localized.insightOffenderBody((insight.bytes ?? 0).formattedBytes, Int((insight.ratio ?? 0) * 100))
-        case .surge:
-            return Localized.insightSurgeBody((insight.bytes ?? 0).formattedBytes, String(format: "%.1f", insight.ratio ?? 0))
-        case .nightDrain:
-            return Localized.insightNightBody(Int((insight.ratio ?? 0) * 100))
-        case .uploadHeavy:
-            return Localized.insightUploadBody(Int((insight.ratio ?? 0) * 100))
-        case .ipChurn:
-            return Localized.insightIPBody(insight.count ?? 0)
-        }
-    }
+    private func icon(for kind: InsightKind) -> String { InsightPresenter.icon(for: kind) }
+    private func color(for kind: InsightKind) -> Color { InsightPresenter.color(for: kind) }
+    private func hero(for insight: InsightItem) -> String { InsightPresenter.hero(for: insight) }
+    private func title(for insight: InsightItem) -> String { InsightPresenter.title(for: insight) }
+    private func body(for insight: InsightItem) -> String { InsightPresenter.body(for: insight) }
 }

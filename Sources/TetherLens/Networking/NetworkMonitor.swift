@@ -148,7 +148,7 @@ final class NetworkMonitor: ObservableObject, @unchecked Sendable {
                 ptr = next
                 continue
             }
-            if String(cString: addr.ifa_name) == name,
+            if let ifaName = addr.ifa_name, String(cString: ifaName) == name,
                sa.pointee.sa_family == UInt8(AF_LINK) {
                 let sdl = sa.withMemoryRebound(to: sockaddr_dl.self, capacity: 1) { $0.pointee }
                 let mac = withUnsafeBytes(of: sdl.sdl_data) { raw -> [UInt8] in
@@ -157,8 +157,12 @@ final class NetworkMonitor: ObservableObject, @unchecked Sendable {
                     guard offset + 6 <= raw.count else { return [] }
                     return (0..<6).map { base[offset + $0] }
                 }
-                guard mac.count == 6 else { continue }
-                return mac.map { String(format: "%02x", $0) }.joined(separator: ":")
+                // `continue` 로 빠지면 `ptr = next` 를 건너뛰어 같은 노드를 영원히 다시 읽는다
+                // (인터페이스명이 7자 이상일 때 실제 관측된 무한루프).
+                // 여기서는 다음 노드로 진행시켜야 한다.
+                if mac.count == 6 {
+                    return mac.map { String(format: "%02x", $0) }.joined(separator: ":")
+                }
             }
             guard let next = addr.ifa_next else { break }
             ptr = next

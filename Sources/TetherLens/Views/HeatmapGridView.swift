@@ -6,12 +6,17 @@ struct HeatmapGridView: View {
   @State private var selectedDay: Int?
   @State private var selectedHour: Int?
 
-  private struct CellData {
+  struct CellData: Equatable {
     let totalMinutes: Int
     let count: Int
   }
 
-  private var gridData: [[CellData]] {
+  /// 7일 × 24시간 집계 — 순수 함수로 분리해 한 번만 계산한다.
+  ///
+  /// 예전엔 `var gridData` 계산 프로퍼티였는데, body 가 셀 168개마다 `gridData[day][hour]`
+  /// 로 접근해 **body 평가 1회당 168회 재집계**가 일어났다 (T-250 #6).
+  /// hover 로 body 가 무효화될 때마다 또 그 반복이 일어난다.
+  static func buildGridData(sessions: [Session]) -> [[CellData]] {
     var data = Array(repeating: Array(repeating: CellData(totalMinutes: 0, count: 0), count: 24), count: 7)
     let calendar = Calendar.current
     for session in sessions {
@@ -25,6 +30,9 @@ struct HeatmapGridView: View {
     }
     return data
   }
+
+  /// `sessions` 가 바뀔 때만 다시 계산되는 집계 결과
+  @State private var gridData: [[CellData]] = HeatmapGridView.buildGridData(sessions: [])
 
 @Environment(\.colorScheme) private var colorScheme
 
@@ -46,6 +54,10 @@ struct HeatmapGridView: View {
       legendView
     }
     .padding(.horizontal, TLSpace.xl)
+    .onAppear { gridData = Self.buildGridData(sessions: sessions) }
+    .onChange(of: sessions) { _, newValue in
+      gridData = Self.buildGridData(sessions: newValue)
+    }
   }
 
   private var headerView: some View {
@@ -105,7 +117,9 @@ struct HeatmapGridView: View {
               .frame(width: cellWidth, height: 18)
               .overlay(selectedDay == day && selectedHour == hour ? RoundedRectangle(cornerRadius: 4).stroke(colorScheme == .dark ? Color.white : Color.black, lineWidth: 1) : nil)
               .onHover { hovering in
-                if hovering {
+                // onHover 는 마우스가 움직일 때마다 불린다. 이미 선택된 셀이면
+                // 상태를 다시 쓰지 않아 body 무효화를 한 번 더 만들지 않는다.
+                if hovering, selectedDay != day || selectedHour != hour {
                   select(day: day, hour: hour)
                 }
               }

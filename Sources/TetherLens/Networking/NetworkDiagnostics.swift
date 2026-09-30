@@ -77,6 +77,39 @@ final class NetworkDiagnostics {
 
     // MARK: - 항목 진단
 
+    /// `scutil --proxy` 출력 파싱 — 활성 프록시 유형과 서버 (테스트 가능하도록 분리)
+    ///
+    /// 실제 출력 형식은 따옴표가 없는 `HTTPEnable : 1` 이다.
+    /// (따옴표가 있다고 가정하면 모든 줄이 걸러져 프록시가 있어도 항상 '비활성'으로 보고된다)
+    nonisolated static func parseProxyOutput(_ raw: String) -> (enables: [String], servers: [String]) {
+        var values: [String: String] = [:]
+        for rawLine in raw.split(separator: "\n") {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            guard line.contains(":") else { continue }
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            let key = String(line[..<colon]).trimmingCharacters(in: .whitespaces)
+            // 배열 인덱스("0", "1")와 플레이스홀더(<dictionary> 등)는 무시
+            guard !key.isEmpty, Int(key) == nil else { continue }
+            let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+            guard !value.hasPrefix("<") else { continue }
+            values[key] = value
+        }
+
+        var enables: [String] = []
+        var servers: [String] = []
+        for key in values.keys.sorted() where key.hasSuffix("Enable") {
+            guard values[key] == "1" else { continue }
+            let proto = key.replacingOccurrences(of: "Enable", with: "")
+            enables.append(proto)
+            // 활성화된 프로토콜의 서버/포트만 보고한다 (비활성 항목에 남은 설정은 제외)
+            for suffix in ["Server", "Proxy", "Port"] {
+                guard let value = values[proto + suffix], value != "0" else { continue }
+                servers.append(proto + suffix + "=" + value)
+            }
+        }
+        return (enables, servers)
+    }
+
     /// scutil --proxy 파싱 — 활성 프록시/시스템 네트워크 설정 요약
     func proxyCheck() async -> DiagnosticsEntry {
         let output = await run("/usr/sbin/scutil", ["--proxy"])
@@ -84,31 +117,7 @@ final class NetworkDiagnostics {
             return DiagnosticsEntry(title: "프록시 / 시스템 설정", status: .fail, detail: "scutil --proxy 실행 불가")
         }
 
-        // <dictionary> { "HTTPEnable" : 1 / "HTTPServer" : "proxy.local:8080" / "SOCKSEnable" : 0 }
-        var enables: [String] = []
-        var servers: [String] = []
-        for rawLine in raw.split(separator: "\n") {
-            let line = rawLine.trimmingCharacters(in: .whitespaces)
-            guard line.contains("\"") && line.contains(":") else { continue }
-
-            guard let colon = line.firstIndex(of: ":") else { continue }
-            let key = String(line[..<colon])
-                .replacingOccurrences(of: "\"", with: "")
-                .trimmingCharacters(in: .whitespaces)
-            let value = line[line.index(after: colon)...]
-                .trimmingCharacters(in: .whitespaces)
-            guard !key.isEmpty else { continue }
-
-            if key.hasSuffix("Enable") {
-                let proto = key.replacingOccurrences(of: "Enable", with: "")
-                if value.trimmingCharacters(in: .whitespaces) == "1" {
-                    enables.append(proto)
-                }
-            } else if value != "0", !value.isEmpty {
-                servers.append("\(key)=\(value)")
-            }
-        }
-
+        let (enables, servers) = Self.parseProxyOutput(raw)
         if enables.isEmpty {
             return DiagnosticsEntry(
                 title: "프록시 / 시스템 설정",

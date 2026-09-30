@@ -456,6 +456,9 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
     (value(kr: "30초", en: "30s"), 30),
   ]
   static let trafficIntervalOptions: [(String, Double)] = [
+    // 2초는 프로세스 리스트 체감 실시간성 최대화. 단 nettop 이 2초 주기로 **상시 실행**하므로
+    // 기본값(10초)은 그대로 두고 선택지로만 둔다 (배터리 부담).
+    (value(kr: "2초", en: "2s"), 2),
     (value(kr: "3초", en: "3s"), 3),
     (value(kr: "5초", en: "5s"), 5),
     (value(kr: "10초", en: "10s"), 10),
@@ -541,6 +544,48 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static var noIPHistory: String { value(kr: "IP 변경 이력이 없습니다", en: "No IP history") }
   static func firstSeen(_ date: String) -> String { value(kr: "첫 발견: \(date)", en: "First seen: \(date)") }
   static func lastSeen(_ date: String) -> String { value(kr: "마지막: \(date)", en: "Last seen: \(date)") }
+
+  // MARK: - v0.39 대시보드
+
+  /// 상대 시각 (초) — 상태바 "갱신 N초 전"
+  static func relativeSeconds(_ sec: Int) -> String {
+    switch sec {
+    case ..<1: return value(kr: "방금", en: "just now")
+    case 1..<60: return value(kr: "\(sec)초 전", en: "\(sec)s ago")
+    case 60..<3600: return value(kr: "\(sec / 60)분 전", en: "\(sec / 60)m ago")
+    default: return value(kr: "\(sec / 3600)시간 전", en: "\(sec / 3600)h ago")
+    }
+  }
+
+  /// 할당량 소진 예측 — 오늘 자정까지 현재 속도 기준
+  static func projectedTomorrow(_ percent: Int) -> String {
+    value(kr: "내일 자정 \(percent)% 예상", en: "\(percent)% by tomorrow")
+  }
+
+  static var dashboard: String { value(kr: "대시보드", en: "Dashboard") }
+  static var remainingLabel: String { value(kr: "남은", en: "Remaining") }
+  static var todayUsage: String { value(kr: "오늘 사용량", en: "Today") }
+  static var expensivePath: String { value(kr: "고가 경로", en: "Metered") }
+  static var constrainedPath: String { value(kr: "저대역폭", en: "Low Data") }
+  static var automation: String { value(kr: "자동화", en: "Automation") }
+  static var linkSpeedLabel: String { value(kr: "링크", en: "Link") }
+  static var processTraffic: String { value(kr: "프로세스 트래픽", en: "Process Traffic") }
+  static var keepProcessList: String { value(kr: "항상 측정", en: "Always measure") }
+  static var keepProcessListHint: String {
+    value(kr: "꺼 두면 평상시 CPU 를 쓰지 않습니다. 필요할 때 프로세스 리스트의 \"지금 측정\" 을 누르면 3초간만 측정합니다.",
+          en: "Off by default so it costs no CPU. Press \"Measure now\" in the process list to sample for 3 seconds.")
+  }
+  /// nettop 이 꺼져 있을 때 프로세스 리스트가 비어 있는 이유
+  static var noProcessTraffic: String { value(kr: "네트워크를 쓰는 프로세스 없음", en: "No process using network") }
+  static var measureNow: String { value(kr: "지금 측정", en: "Measure now") }
+  static var measuringProcessList: String { value(kr: "3초간 측정 중…", en: "Measuring for 3s…") }
+  static var dashboardCards: String { value(kr: "표시할 카드", en: "Visible Cards") }
+  static var showAllCards: String { value(kr: "모든 카드 표시", en: "Show All Cards") }
+  static var latencyTrend: String { value(kr: "지연 추이", en: "Latency Trend") }
+  static var dashboardCardsHint: String {
+    value(kr: "같은 행의 카드를 모두 끄면 그 행 자체가 사라집니다. 사용 패턴·프로세스처럼 이 창에만 있는 정보도 여기서 숨길 수 있습니다.",
+          en: "Turning off every card in a row removes that row. You can also hide info shown only here, such as usage pattern and processes.")
+  }
 
   static func value(kr: String, en: String) -> String {
     isKorean ? kr : en

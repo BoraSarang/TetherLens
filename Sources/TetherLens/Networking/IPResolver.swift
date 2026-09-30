@@ -2,14 +2,53 @@ import Foundation
 
 struct GeoIPInfo: Codable {
     let ip: String
+    /// ipapi.co 가 주는 **국가명** ("South Korea") — 국기 글리프로 바꿀 수 없다
     let country: String
+    /// ipapi.co 가 함께 주는 ISO 3166-1 alpha-2 코드 ("KR")
+    let countryCodeRaw: String?
     let latitude: Double?
     let longitude: Double?
 
-    var countryCode: String { country }
+    enum CodingKeys: String, CodingKey {
+        case ip, country, latitude, longitude
+        case countryCodeRaw = "country_code"
+    }
+
+    /// ISO 3166-1 alpha-2 대문자 코드. 값이 없으면 nil.
+    ///
+    /// ⚠️ 예전에는 `country`(국가명)를 그대로 코드처럼 썼다가 국가명 전체를
+    ///    지역 표시기 문자로 변환해 잘못된 국기가 렌더링되었다(T-250 #7).
+    ///    코드가 아닌 문자열은 **nil 로 두고 국기를 생략**한다.
+    var countryCode: String? { Self.normalizedAlpha2(countryCodeRaw) }
+
     var location: (latitude: Double, longitude: Double)? {
         guard let lat = latitude, let lng = longitude else { return nil }
         return (lat, lng)
+    }
+
+    /// alpha-2 코드 검증 — 대문자 A-Z 2자만 통과
+    static func normalizedAlpha2(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let up = raw.uppercased()
+        guard up.count == 2,
+              up.unicodeScalars.allSatisfy({ $0.value >= 65 && $0.value <= 90 }) else { return nil }
+        return up
+    }
+
+    /// alpha-2 코드 → 국기 이모지. 코드가 아니면 nil.
+    ///
+    /// 지역 표시기 기호는 U+1F1E6(A) + (문자 - 'A') 이므로, 두 글자가 유효한
+    /// 대문자 ASCII 여야 한다. 예전 구현은 `UnicodeScalar(...)!` 강제 해제라
+    /// 입력 범위를 벗어나면 크래시했다 — 여기서는 nil 을 돌려준다.
+    static func flagEmoji(forCountryCode raw: String?) -> String? {
+        guard let code = normalizedAlpha2(raw) else { return nil }
+        let base: UInt32 = 127_397  // U+1F1E6
+        var out = String.UnicodeScalarView()
+        for scalar in code.unicodeScalars {
+            guard let s = UnicodeScalar(base + scalar.value) else { return nil }
+            out.append(s)
+        }
+        return String(out)
     }
 }
 

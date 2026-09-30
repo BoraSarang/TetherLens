@@ -3,7 +3,10 @@ import Foundation
 final class SavingModeController: @unchecked Sendable {
     static let shared = SavingModeController()
 
-    private let hostFileMarker = "# TetherLens SavingMode"
+    // 차단 항목은 BEGIN/END 마커로 감싸 한 덩어리로 관리한다.
+    // 마커 1줄만 쓰면 sed가 그 1줄만 지워 도메인 줄이 /etc/hosts에 영구 잔존한다.
+    private let hostFileBegin = "### TetherLens SavingMode BEGIN ###"
+    private let hostFileEnd = "### TetherLens SavingMode END ###"
     private let blockedDomains = [
         "swscan.apple.com",
         "updates.apple.com",
@@ -13,6 +16,11 @@ final class SavingModeController: @unchecked Sendable {
 
     private init() {}
 
+    /// 기존 차단 블록을 제거하는 sed 명령 (멱등 — 잔여 블록이 있어도 1회 실행이면 정리된다)
+    private var removeHostBlockCommand: String {
+        "/usr/bin/sed -i '' '/\(hostFileBegin)/,\(hostFileEnd)/d' /etc/hosts"
+    }
+
     func activate(completion: @escaping @Sendable (Bool, String) -> Void) {
         DispatchQueue.global().async {
             let hostEntries = self.blockedDomains.map { "127.0.0.1\t\($0)" }.joined(separator: "\n")
@@ -20,8 +28,10 @@ final class SavingModeController: @unchecked Sendable {
             do shell script "
                 /usr/sbin/softwareupdate --schedule off 2>/dev/null
                 /usr/bin/tmutil disable 2>/dev/null
-                /bin/echo '\(self.hostFileMarker)' >> /etc/hosts
+                \(self.removeHostBlockCommand)
+                /bin/echo '\(self.hostFileBegin)' >> /etc/hosts
                 /bin/echo '\(hostEntries)' >> /etc/hosts
+                /bin/echo '\(self.hostFileEnd)' >> /etc/hosts
             " with administrator privileges
             """
 
@@ -61,7 +71,7 @@ final class SavingModeController: @unchecked Sendable {
             do shell script "
                 /usr/sbin/softwareupdate --schedule on 2>/dev/null
                 /usr/bin/tmutil enable 2>/dev/null
-                /usr/bin/sed -i '' '/\(self.hostFileMarker)/,/\(self.hostFileMarker)/d' /etc/hosts
+                /usr/bin/sed -i '' '/\(self.hostFileBegin)/,/\(self.hostFileEnd)/d' /etc/hosts
             " with administrator privileges
             """
 
@@ -98,7 +108,7 @@ final class SavingModeController: @unchecked Sendable {
     func isActive() -> Bool {
         let task = Process()
         task.launchPath = "/usr/bin/grep"
-        task.arguments = ["-q", hostFileMarker, "/etc/hosts"]
+        task.arguments = ["-q", hostFileBegin, "/etc/hosts"]
 
         do {
             try task.run()

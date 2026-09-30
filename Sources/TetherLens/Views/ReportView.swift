@@ -9,6 +9,8 @@ struct ReportView: View {
   @State private var showSource = false
   @State private var cachedMarkdown: String?
   @State private var cachedKey: String?
+  @State private var cachedSummary: ProfileManager.ReportSummary?
+  @State private var cachedSummaryKey: String?
 
   private let allProfilesId = UsageReportView.ReportAllProfilesId
 
@@ -18,8 +20,11 @@ struct ReportView: View {
     return f
   }()
 
+  /// 캐시 무효화 키 — 기간, 선택 프로필, **그리고 대상 프로필 목록**을 모두 담는다.
+  /// (프로필이 추가/삭제돼도 캐시가 남아 있으면 갱신 신호를 놓친다)
   private var cacheKey: String {
-    "\(selectedPeriod.days)|\(selectedProfileId?.uuidString ?? "all")"
+    let ids = effectiveProfiles.map(\.id.uuidString).joined(separator: ",")
+    return "\(selectedPeriod.days)|\(selectedProfileId?.uuidString ?? "all")|\(ids)"
   }
 
   private var effectiveProfiles: [Profile] {
@@ -38,8 +43,25 @@ struct ReportView: View {
     return "\(f.string(from: from)) ~ \(f.string(from: to))"
   }
 
+  /// DB 집계는 **프로필/기간이 바뀔 때만** 수행한다.
+  ///
+  /// 예전엔 계산 프로퍼티라 `renderedBody` 가 평가될 때마다
+  /// (프로필당 3쿼리 + 세션별 N+1) 를 새로 돌렸다 (T-250 #4).
+  /// 렌더/원문 토글이나 `copied` 변경 같은 가벼운 상태 변화만으로도 다시 조회됐다.
   private var summary: ProfileManager.ReportSummary {
+    if let c = cachedSummary, cachedSummaryKey == cacheKey { return c }
+    return fetchSummary()
+  }
+
+  private func fetchSummary() -> ProfileManager.ReportSummary {
     ProfileManager.shared.reportSummary(profileIds: effectiveProfiles.map(\.id), days: selectedPeriod.days)
+  }
+
+  /// 캐시 채움은 body 평가가 아니라 명시적 신호(등장/키 변경)에서만 한다.
+  /// body 안에서 `@State` 를 바꾸는 건 부작용이라 피한다.
+  private func refreshSummaryCache() {
+    cachedSummary = fetchSummary()
+    cachedSummaryKey = cacheKey
   }
 
   // MARK: - 마크다운
@@ -144,6 +166,8 @@ struct ReportView: View {
         }
       }
     }
+    .onAppear { refreshSummaryCache() }
+    .onChange(of: cacheKey) { _, _ in refreshSummaryCache() }
   }
 
   // MARK: - 렌더링 (v0.36.1)
@@ -179,7 +203,7 @@ struct ReportView: View {
             .font(TLFont.caption.bold())
             .foregroundColor(TLPalette.textSecondary)
             Divider().gridCellColumns(4)
-            ForEach(Array(entries.enumerated()), id: \.element.profileName) { idx, q in
+            ForEach(Array(entries.enumerated()), id: \.element.profileId) { idx, q in
               GridRow {
                 Text(q.profileName)
                 Text(q.used.formattedBytes).monospacedDigit()

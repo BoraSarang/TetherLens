@@ -62,6 +62,8 @@ enum TLFont {
     static let body        = Font.body
     static let headline    = Font.headline                             // 시트 제목
     static let speed       = Font.system(.title3, design: .monospaced) // 속도 값
+    /// 대시보드 KPI 대형 수치 (v0.39)
+    static let dashboardValue = Font.system(size: 18, weight: .semibold, design: .monospaced)
 }
 
 enum TLSpace {
@@ -97,6 +99,9 @@ enum TLSize {
     static let sheetWide:      CGFloat = 640   // 사용량 리포트
     static let aboutSheet:     CGFloat = 240   // 정보 시트
     static let floatingWindow: CGFloat = 300   // 플로팅 창 고정 가로 (RelayConsole 동일)
+    static let dashboardWindow: (w: CGFloat, h: CGFloat) = (900, 680) // 대시보드 (RelayConsole 콘솔 900×700 동일급)
+    /// 대시보드 카드 그리드 좌우 여백 (RelayConsole OPSpace.xl = 24)
+    static let dashboardInset: CGFloat = 20
 
     // 테이블 컬럼
     static let detailLabelWidth:  CGFloat = 96   // detailRow 라벨

@@ -17,8 +17,11 @@ struct CommandPaletteView: View {
     }
 
     private var allItems: [PaletteItem] {
-        // 순서 통일 (메뉴바 더보기/팝오버 … 동일 그리드): 창 → 표면 → 도구 → 시스템
+        // 순서 통일 (메뉴바 더보기/팝오버 … 동일 그리드): 대시보드 → 창 → 표면 → 도구 → 시스템
         var items: [PaletteItem] = [
+            PaletteItem(title: Localized.dashboard, icon: "gauge.with.dots.needle.67percent") {
+                openWindow(id: "dashboard")
+            },
             PaletteItem(title: Localized.usageReport, icon: "chart.bar.fill") {
                 openWindow(id: "usageReport")
             },

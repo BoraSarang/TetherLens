@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-struct Session: Identifiable, Codable, Equatable, FetchableRecord, PersistableRecord {
+struct Session: Identifiable, Codable, Equatable, FetchableRecord, PersistableRecord, Sendable {
     static let databaseTableName = "session"
 
     let id: UUID

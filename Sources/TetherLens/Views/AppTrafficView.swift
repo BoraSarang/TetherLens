@@ -201,11 +201,13 @@ struct AppTrafficView: View {
                 }
                 .buttonStyle(.plain)
                 .frame(width: 36, alignment: .center)
-                Text(formatByteRate(app.bytesIn))
+                // 구간 합계 → 초당률. `formatByteRate` 는 `ByteRateFormat` 의 복제본이었고
+                // 구간 길이를 무시해 설정값만큼 과대 표시됐다.
+                Text(ByteRateFormat.windowRateString(app.bytesIn, windowSeconds: windowSeconds))
                     .font(TLFont.mediumMono)
                     .foregroundColor(TLPalette.upload)
                     .frame(width: 64, alignment: .trailing)
-                Text(formatByteRate(app.bytesOut))
+                Text(ByteRateFormat.windowRateString(app.bytesOut, windowSeconds: windowSeconds))
                     .font(TLFont.mediumMono)
                     .foregroundColor(TLPalette.download)
                     .frame(width: 64, alignment: .trailing)
@@ -222,16 +224,6 @@ struct AppTrafficView: View {
         AppBlockManager.shared.setBlocked(name, blocked: !isBlocked)
     }
 
-    private func formatByteRate(_ bytesPerSecond: Int64) -> String {
-        let bps = Double(bytesPerSecond)
-        if bps >= 1_000_000_000 {
-            return String(format: "%.1f GB/s", bps / 1_000_000_000)
-        } else if bps >= 1_000_000 {
-            return String(format: "%.1f MB/s", bps / 1_000_000)
-        } else if bps >= 1_000 {
-            return String(format: "%.1f KB/s", bps / 1_000)
-        } else {
-            return String(format: "%.0f B/s", bps)
-        }
-    }
+    /// nettop 이 실제 관측한 구간(초) — 초당률 환산 기준
+    private var windowSeconds: Double { monitor.windowSeconds }
 }

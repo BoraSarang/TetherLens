@@ -37,6 +37,10 @@ struct SettingsView: View {
     @State private var selectedTab = 0
     @State private var updateFrequency: UpdateCheckFrequency
     @State private var presentUpdateSheet = false
+    /// 대시보드 카드 표시 상태 스냅샷 (v0.39).
+    /// `SettingsManager` 는 `@Published` 가 아니라서 이 `@State` 가 설정 화면의 단일 진실원처다.
+    @State private var enabledCards: Set<DashboardCard>
+    @State private var processListEnabled: Bool
     @ObservedObject private var updater = UpdaterManager.shared
 
     init() {
@@ -60,6 +64,8 @@ struct SettingsView: View {
         _floatingOpacity = State(initialValue: s.floatingOpacity)
         _autoRules = State(initialValue: AutomationManager.shared.rules)
         _updateFrequency = State(initialValue: UpdaterManager.shared.frequency)
+        _enabledCards = State(initialValue: Set(DashboardCard.ordered.filter { s.isCardEnabled($0) }))
+        _processListEnabled = State(initialValue: s.processListEnabled)
     }
 
     private var menuBarOptions: [(String, Double)] { Localized.menuBarIntervalOptions }
@@ -85,9 +91,12 @@ struct SettingsView: View {
             automationTab
                 .tabItem { Label(Localized.automationTitle, systemImage: "bolt") }
                 .tag(4)
+            dashboardTab
+                .tabItem { Label(Localized.dashboard, systemImage: "rectangle.3.group") }
+                .tag(5)
             updateTab
                 .tabItem { Label(Localized.updateTabTitle, systemImage: "arrow.down.circle") }
-                .tag(5)
+                .tag(6)
         }
         .sheet(isPresented: $presentUpdateSheet) {
             if let update = updater.availableUpdate {
@@ -433,6 +442,77 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    // MARK: - 대시보드 (v0.39)
+
+    /// 대시보드 카드 On/Off — `DashboardCard.ordered` 로 **표시 순서를 그대로 미러링**한다.
+    /// 순서를 여기서 따로 관리하면 대시보드와 설정이 어긋나므로 `DashboardLayout` 을 단일 진실원처로 삼는다.
+    private var dashboardTab: some View {
+        Form {
+            Section {
+                Toggle(Localized.keepProcessList, isOn: $processListEnabled)
+                    .onChange(of: processListEnabled) { _, newValue in
+                        SettingsManager.shared.processListEnabled = newValue
+                        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+                    }
+            } header: {
+                Text(Localized.processTraffic)
+            } footer: {
+                Text(Localized.keepProcessListHint)
+                    .font(.caption)
+                    .foregroundColor(TLPalette.copyHint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Section {
+                ForEach(DashboardCard.ordered) { card in
+                    Toggle(isOn: cardBinding(card)) {
+                        Label(card.title, systemImage: card.symbol)
+                    }
+                }
+            } header: {
+                Text(Localized.dashboardCards)
+            } footer: {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(Localized.dashboardCardsHint)
+                        .font(.caption)
+                        .foregroundColor(TLPalette.copyHint)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(Localized.showAllCards) { enableAllCards() }
+                        .buttonStyle(.plain)
+                        .font(.caption)
+                        .foregroundStyle(TLPalette.download)
+                        .disabled(isAllCardsEnabled)
+                }
+                .padding(.top, 4)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    /// 카드 토글 — UserDefaults 저장 + `settingsChanged` 로 이미 열린 대시보드에 즉시 반영한다.
+    /// (`DashboardView` 가 이 알림을 받아 `cardConfigVersion` 을 올려 레이아웃만 다시 계산)
+    private func cardBinding(_ card: DashboardCard) -> Binding<Bool> {
+        Binding(
+            get: { enabledCards.contains(card) },
+            set: { newValue in
+                if newValue { enabledCards.insert(card) } else { enabledCards.remove(card) }
+                SettingsManager.shared.setCardEnabled(card, newValue)
+                NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
+            }
+        )
+    }
+
+    private var isAllCardsEnabled: Bool { enabledCards.count == DashboardCard.ordered.count }
+
+    private func enableAllCards() {
+        enabledCards = Set(DashboardCard.ordered)
+        for card in DashboardCard.ordered {
+            SettingsManager.shared.setCardEnabled(card, true)
+        }
+        NotificationCenter.default.post(name: .init("settingsChanged"), object: nil)
     }
 
     // MARK: - 업데이트
