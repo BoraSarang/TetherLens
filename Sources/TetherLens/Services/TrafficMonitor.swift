@@ -68,9 +68,11 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     /// 소비자가 필요해질 때 호출 — 첫 참조가 생기면 실제 start()를 수행한다.
     func acquire(reason: Usage) {
         let wasActive = isAnyUsageActive
+        let wasVisible = hasVisibleProcessList
         usageRefs[reason] = true
         usageBalance += 1
         evaluateIfNeeded(wasActive: wasActive)
+        rescheduleIfVisibilityChanged(wasVisible: wasVisible)
         Task { @MainActor in
             DebugLogger.shared.action("Traffic", "acquire(\(reason)) → active=\(isAnyUsageActive) running=\(isRunning) balance=\(usageBalance)")
         }
@@ -79,9 +81,11 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     /// 소비자가 더 이상 보지 않을 때 호출 — 마지막 참조가 사라지면 실제 stop()을 수행한다.
     func release(reason: Usage) {
         let wasActive = isAnyUsageActive
+        let wasVisible = hasVisibleProcessList
         usageRefs[reason] = false
         usageBalance -= 1
         evaluateIfNeeded(wasActive: wasActive)
+        rescheduleIfVisibilityChanged(wasVisible: wasVisible)
         Task { @MainActor in
             DebugLogger.shared.action("Traffic", "release(\(reason)) → active=\(isAnyUsageActive) running=\(isRunning) balance=\(usageBalance)")
         }
@@ -131,6 +135,26 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         usageRefs.values.contains { $0 }
     }
 
+    /// 프로세스 리스트가 **눈에 보이는** 창(팝오버·플로팅·트래픽 시트)이 열려 있는가.
+    /// `.appBlock`(절약모드 감시)만으로는 해당 없다 — 백그라운드 작업이니까.
+    private var hasVisibleProcessList: Bool {
+        usageRefs[.popover] == true || usageRefs[.floating] == true || usageRefs[.sheet] == true
+    }
+
+    /// 실제 조회에 쓸 구간(초).
+    ///
+    /// - 창이 열려 있으면 `processListInterval`(기본 2초) — "지금 뭐가 쓰냐"를 실시간으로 본다
+    /// - 창이 없으면 설정값(기본 10초) — 통계 누적만 되면 되므로 배터리 우선
+    ///
+    /// 주기와 관측 구간은 항상 같다. 그래서 짧게 잡아도 DB 누락이 없다 —
+    /// 과거 버그(구간 1초 / 주기 10초)는 **둘이 어긋난** 것이지, 짧은 구간 자체가 문제가 아니었다.
+    var effectiveInterval: Double {
+        let base = hasVisibleProcessList
+            ? SettingsManager.shared.processListInterval
+            : SettingsManager.shared.trafficMonitorInterval
+        return max(base, 1)
+    }
+
     private func evaluateIfNeeded(wasActive: Bool) {
         let activeNow = isAnyUsageActive && !lowPowerOverride
         if activeNow, !wasActive, !isRunning {
@@ -140,6 +164,24 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             stopLocked()
             isRunning = false
         }
+    }
+
+    /// 창이 열려/닫히면 **즉시** 주기를 바꿔야 한다.
+    ///
+    /// 안 하면 팝오버를 연 직후에도 이전 10초 주기가 끝날 때까지 2초 주기가 적용되지 않아,
+    /// "실시간으로 고쳤는데 왜 안 바뀌지" 가 된다.
+    /// 주기와 관측 구간이 같아야 누적 통계가 정확하므로, 타이머를 새로 잡는다.
+    private func rescheduleIfVisibilityChanged(wasVisible: Bool) {
+        guard wasVisible != hasVisibleProcessList, isRunning else { return }
+        scheduleNextRefresh()
+        Task { @MainActor in
+            DebugLogger.shared.action("Traffic",
+                "프로세스 리스트 가시성 변경 → 구간 \(Self.effectiveIntervalLabel())초")
+        }
+    }
+
+    private static func effectiveIntervalLabel() -> String {
+        String(Int(TrafficMonitor.shared.effectiveInterval))
     }
 
     private func start() {
@@ -166,7 +208,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     /// (반복 타이머면 nettop 블로킹 동안 틱이 백로그되어 측정 간격이 어긋난다)
     private func scheduleNextRefresh() {
         timer?.invalidate()
-        let interval = max(SettingsManager.shared.trafficMonitorInterval, 1)
+        let interval = effectiveInterval
         let refreshTimer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
             self?.refresh()
             self?.scheduleNextRefresh()
@@ -336,7 +378,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         // 표시값과 app_traffic_log 총합이 실제 전송량의 약 1/10로 과소 계상되었다.
         // nettop은 샘플 1개당 1초가 걸리므로 samples == interval로 두면 전 구간을 커버한다.
         // (TrafficMonitor는 참조 카운팅으로 소비자가 보일 때만 돌므로 부하도 그 구간으로 제한된다)
-        let interval = max(SettingsManager.shared.trafficMonitorInterval, 1)
+        let interval = effectiveInterval
         let samples = max(2, min(Int(interval.rounded()), 30))
         let task = Process()
         task.launchPath = "/usr/bin/nettop"

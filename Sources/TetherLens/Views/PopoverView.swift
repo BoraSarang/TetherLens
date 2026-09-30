@@ -139,6 +139,16 @@ struct PopoverView: View {
                 headerView
                 statusRow
                 speedView
+                // 프로세스 리스트는 **고정 영역**에 둔다 — 스크롤 없이 항상 보인다.
+                // "대역폭이 왜 이렇게 나오지? → 누가 쓰지?" 의 답이 여기 있다.
+                // v0.39 에서 대시보드 통합 명목으로 사라졌으나, 핵심 시나리오가 이 창에 있다.
+                NetworkProcessList(
+                    apps: trafficMonitor.apps,
+                    windowSeconds: trafficMonitor.windowSeconds,
+                    limit: 3,
+                    showSystem: showSystemProcesses,
+                    onShowMore: { openWindow(id: "appTraffic") }
+                )
                 qosGaugeBody
             }
             .padding(TLSpace.inset)

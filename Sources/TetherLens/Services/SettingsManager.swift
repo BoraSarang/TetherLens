@@ -30,6 +30,8 @@ final class SettingsManager: @unchecked Sendable {
     static let defaultMenuBarRefreshInterval: Double = 3.0
     static let defaultCacheRefreshInterval: Double = 5.0
     static let defaultTrafficMonitorInterval: Double = 10.0
+    /// 창을 보고 있을 때의 프로세스 리스트 갱신 주기 (초)
+    static let defaultProcessListInterval: Double = 2.0
     static let defaultPingInterval: Double = 5.0
     static let defaultMenuBarFontSize: Double = 9.0
     static let defaultQuotaWarningThreshold: Double = 1.0
@@ -72,6 +74,18 @@ final class SettingsManager: @unchecked Sendable {
     var trafficMonitorInterval: Double {
         get { defaults.double(forKey: "trafficMonitorInterval") }
         set { defaults.set(newValue, forKey: "trafficMonitorInterval") }
+    }
+
+    /// 프로세스 리스트가 **보이는 창을 열고 있을 때** 쓰는 짧은 구간(초).
+    ///
+    /// "대역폭이 왜 이렇게 나오지? → 지금 누가 쓰지?" 는 그 창을 보고 있는 동안에만 의미가 있다.
+    /// 그때만 2초로 재고, 창을 닫으면 `trafficMonitorInterval`(=기본 10초)로 돌아간다.
+    var processListInterval: Double {
+        get {
+            let v = defaults.double(forKey: "processListInterval")
+            return v > 0 ? v : Self.defaultProcessListInterval
+        }
+        set { defaults.set(newValue, forKey: "processListInterval") }
     }
 
     var pingInterval: Double {

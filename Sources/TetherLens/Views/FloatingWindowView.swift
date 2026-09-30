@@ -131,9 +131,6 @@ struct FloatingWindowView: View {
     // MARK: - 네트워크 카드 (항상 표시 — 팝오버 차트 + 프로세스 Top3)
 
     private var networkCard: some View {
-        // sort/filter/share는 본문 1회만 — 행마다 재계산 방지 (v0.38.1)
-        let top3 = networkTop3
-        let share = Double(top3.reduce(Int64(0)) { $0 + $1.bytesIn + $1.bytesOut })
         return MetricCard(
             title: Localized.network,
             compact: true,
@@ -150,18 +147,14 @@ struct FloatingWindowView: View {
                 Rectangle()
                     .frame(height: 1)
                     .foregroundColor(TLPalette.separator)
-                processHeader
-                if top3.isEmpty {
-                    Text(Localized.trafficCollecting)
-                        .font(TLFont.caption2)
-                        .foregroundColor(TLPalette.textSecondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 2)
-                } else {
-                    ForEach(top3) { app in
-                        netRow(app, shareTotal: share)
-                    }
-                }
+                // 표시 규칙은 NetworkProcessList 한곳에만 둔다 (팝오버와 공유)
+                NetworkProcessList(
+                    apps: trafficMonitor.apps,
+                    windowSeconds: trafficMonitor.windowSeconds,
+                    limit: 3,
+                    showSystem: showSystem,
+                    onShowMore: { openWindow(id: "appTraffic") }
+                )
             }
         }
     }
@@ -220,37 +213,7 @@ struct FloatingWindowView: View {
         }
     }
 
-    private var processHeader: some View {
-        HStack(spacing: 4) {
-            Text(Localized.process)
-                .font(TLFont.smallBold)
-                .foregroundColor(TLPalette.textSecondary)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(Localized.upload)
-                .font(TLFont.smallBold)
-                .foregroundColor(TLPalette.upload)
-                .lineLimit(1)
-                .frame(minWidth: 56, alignment: .trailing)
-            Text(Localized.download)
-                .font(TLFont.smallBold)
-                .foregroundColor(TLPalette.download)
-                .lineLimit(1)
-                .frame(minWidth: 56, alignment: .trailing)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
     // MARK: - 데이터 소스
-
-    private var userApps: [TrafficMonitor.AppTraffic] {
-        if showSystem { return trafficMonitor.apps }
-        return trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }
-    }
-
-    private var networkTop3: [TrafficMonitor.AppTraffic] {
-        Array(userApps.sorted { ($0.bytesIn + $0.bytesOut) > ($1.bytesIn + $1.bytesOut) }.prefix(3))
-    }
 
     private var cpuShareTotal: Double {
         cpuTop3.reduce(0) { $0 + max($1.res.cpuPercent ?? 0, 0) }
@@ -273,50 +236,5 @@ struct FloatingWindowView: View {
         return trafficMonitor.allResources.filter { !SystemProcesses.set.contains($0.key) }
     }
 
-    // MARK: - 행
-
-    private func appIcon(_ name: String) -> some View {
-        Group {
-            if let nsImage = AppIconResolver.icon(forProcess: name) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .scaledToFit()
-            } else {
-                Image(systemName: "app")
-                    .foregroundColor(TLPalette.textSecondary)
-            }
-        }
-        .frame(width: 14, height: 14)
-    }
-
-    private func netRow(_ app: TrafficMonitor.AppTraffic, shareTotal: Double) -> some View {
-        let share = TLShare.ratio(Double(app.bytesIn + app.bytesOut), of: shareTotal)
-        return VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 4) {
-                appIcon(app.processName)
-                Text(app.processName)
-                    .font(TLFont.medium)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                // bytesIn/bytesOut 은 nettop 구간 **합계**다. 초당률로 표시하려면
-                // 실제 관측 구간으로 나눠야 한다 (기본 10초 설정이면 10배 과대였음).
-                Text(ByteRateFormat.windowRateString(app.bytesIn, windowSeconds: trafficMonitor.windowSeconds))
-                    .font(TLFont.mediumMono)
-                    .foregroundColor(TLPalette.upload)
-                    .lineLimit(1)
-                    .frame(minWidth: 56, alignment: .trailing)
-                Text(ByteRateFormat.windowRateString(app.bytesOut, windowSeconds: trafficMonitor.windowSeconds))
-                    .font(TLFont.mediumMono)
-                    .foregroundColor(TLPalette.download)
-                    .lineLimit(1)
-                    .frame(minWidth: 56, alignment: .trailing)
-            }
-            TLShareBar(ratio: share, color: TLPalette.download)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 1)
-        .contentShape(Rectangle())
-        .onTapGesture { openWindow(id: "appTraffic") }
-    }
+    // 프로세스 행은 `NetworkProcessList` 로 이동했다 (팝오버와 표시 규칙 공유)
 }

@@ -115,6 +115,35 @@ import Foundation
         #expect(SettingsManager(defaults: d).isCardEnabled(.insight) == false)
     }
 
+    // MARK: - 프로세스 리스트 실시간 구간 (v0.39)
+
+    /// 창을 보고 있을 때만 짧은 구간을 쓴다 — 기본값은 2초
+    @Test func 프로세스리스트_구간_기본값은_2초() {
+        let s = makeManager()
+        #expect(s.processListInterval == 2.0)
+        #expect(SettingsManager.defaultProcessListInterval == 2.0)
+    }
+
+    /// 배터리 보호: 창을 안 볼 때는 기존 10초 주기를 그대로 쓴다
+    @Test func 트래픽_기본주기는_10초로_유지된다() {
+        let s = makeManager()
+        #expect(s.trafficMonitorInterval == 10.0)
+        #expect(s.processListInterval < s.trafficMonitorInterval)
+    }
+
+    @Test func 프로세스리스트_구간_저장_조회() {
+        let s = makeManager()
+        s.processListInterval = 3
+        #expect(s.processListInterval == 3)
+    }
+
+    /// 0 을 넣으면 0 으로 나누게 되므로 기본값으로 되돌린다
+    @Test func 프로세스리스트_구간이_0이면_기본값으로_복원() {
+        let s = makeManager()
+        s.processListInterval = 0
+        #expect(s.processListInterval == SettingsManager.defaultProcessListInterval)
+    }
+
     @Test func resetPollingIntervals_기본값_복원() {
         let s = makeManager()
         s.menuBarRefreshInterval = 10
