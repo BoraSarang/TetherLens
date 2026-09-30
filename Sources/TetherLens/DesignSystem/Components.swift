@@ -87,6 +87,10 @@ struct MetricCard<Content: View>: View {
     var trailing: String? = nil
     var trailingFont: Font? = nil
     var backgroundOpacity: Double = 1
+    /// true면 카드가 Grid 행 전체 높이까지 늘어나 배경·테두리가 행 바닥에 맞춰진다.
+    /// RelayConsole `DroidCards.shell(fillsRow:)` 와 동일 — 높이가 다른 카드
+    /// (속도 차트 vs 연결품질)를 같은 행에 놓을 때 시각적으로 어긋남을 없앤다.
+    var fillsRow = false
     @ViewBuilder let content: Content
 
     private var radius: CGFloat { compact ? 8 : TLRound.medium }
@@ -111,10 +115,16 @@ struct MetricCard<Content: View>: View {
             }
             content
                 .frame(maxWidth: .infinity, alignment: .leading)
+            // 카드가 행 높이로 늘어나면 남는 공간이 content에 배분돼 제목이 가운데로 밀린다.
+            // 아래 Spacer가 그 공간을 받아 제목을 항상 카드 상단에 고정한다.
+            if fillsRow { Spacer(minLength: 0) }
         }
         .padding(compact
                  ? EdgeInsets(top: 6, leading: 10, bottom: 6, trailing: 10)
                  : EdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12))
+        // ⚠️ 프레임은 **배경보다 앞에서** 확장해야 한다. 뒤에 붙이면 뷰만 늘어나고
+        // 배경은 자연 높이 그대로라 행 높이 동기화가 되지 않는다(실측 확인).
+        .frame(maxHeight: fillsRow ? .infinity : nil)
         .background(
             TLPalette.cardBackground.opacity(bgAlpha),
             in: RoundedRectangle(cornerRadius: radius, style: .continuous)

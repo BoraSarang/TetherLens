@@ -6,10 +6,32 @@ struct TetherLensApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
+        registerShortcutsOnce()
+        return scenes
+    }
+
+    /// ⌘ 단축키는 LSUIElement 앱이라 `.commands`의 keyboardShortcut가 발화하지 않는다.
+    /// 실제 처리는 AppShortcuts(NSEvent 모니터)이며, `openWindow`가 필요한 항목만 여기서 등록한다.
+    private func registerShortcutsOnce() {
+        let open = openWindow
+        AppShortcuts.shared.registerDefaultsOnce {
+            AppShortcuts.shared.register("cmd+1") { open(id: "usageReport") }
+            AppShortcuts.shared.register("cmd+2") { open(id: "appTraffic") }
+            AppShortcuts.shared.register("cmd+3") { open(id: "notifications") }
+            AppShortcuts.shared.register("cmd+4") { open(id: "about") }
+            AppShortcuts.shared.register("cmd+k") { open(id: "commandPalette") }
+            AppShortcuts.shared.register("cmd+5") { open(id: "dashboard") }
+        }
+    }
+
+    @SceneBuilder
+    private var scenes: some Scene {
         Settings {
             SettingsWindow()
         }
         .commands {
+            // 주의: 아래 keyboardShortcut는 LSUIElement(.accessory) 정책에서는 발화하지 않는다.
+            // 실제로 동작하는 경로는 AppShortcuts(AppShortcuts.swift)다. 메뉴는 접근성/검색 용도로 유지한다.
             CommandGroup(after: .windowArrangement) {
                 Divider()
                 Button(Localized.usageReport) { openWindow(id: "usageReport") }
@@ -20,6 +42,8 @@ struct TetherLensApp: App {
                     .keyboardShortcut("3", modifiers: .command)
                 Button(Localized.about) { openWindow(id: "about") }
                     .keyboardShortcut("4", modifiers: .command)
+                Button(Localized.dashboard) { openWindow(id: "dashboard") }
+                    .keyboardShortcut("5", modifiers: .command)
             }
             CommandGroup(after: .sidebar) {
                 Divider()
@@ -68,6 +92,14 @@ struct TetherLensApp: App {
             AboutWindow()
         }
         .defaultSize(width: TLSize.aboutWindow.w, height: TLSize.aboutWindow.h)
+        .windowResizability(.contentSize)
+
+        // 대시보드 (v0.39) — 메뉴바 팝오버 '상세 보기'의 대체 통합 관제 화면
+        Window(Localized.dashboard, id: "dashboard") {
+            DashboardView()
+        }
+        .defaultSize(width: TLSize.dashboardWindow.w, height: TLSize.dashboardWindow.h)
+        .windowResizability(.contentMinSize)
     }
 }
 

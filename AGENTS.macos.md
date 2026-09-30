@@ -22,7 +22,7 @@
 ./build_and_run.sh debug macos     # 디스패처 → scripts/build-macos.sh
 ./build_and_run.sh release macos   # 릴리스 (strip + 코드 서명)
 ./scripts/build-macos.sh debug     # 실제 빌드 로직 (스킵 금지, 디스패처 경유 권장)
-./scripts/test.sh                  # 자동화 테스트 (32개 / 7스위트)
+./scripts/test.sh                  # 자동화 테스트 (183개 / 22스위트)
 ./scripts/package.sh               # 배포 패키징 (해당 시)
 ```
 
@@ -37,13 +37,17 @@
   - `CFBundleShortVersionString` / `CFBundleVersion` 동시 갱신
   - 예: v0.23.1 / build 24
 - `Resources/TetherLens.entitlements`, `Resources/TetherLens.icns`도 이 폴더에서 관리
-- 유지 항목: `SUFeedURL`, `SUPublicEDKey` (Sparkle), `CFBundleIconFile`, `LSUIElement`
+- 유지 항목: `CFBundleIconFile`, `LSUIElement`
+- `SUFeedURL`, `SUPublicEDKey` 는 **읽는 코드가 없는 죽은 키**다 (2026-09-27 확인).
+  자동 업데이트는 자체 `UpdaterManager`(GitHub Releases)로 구현되어 있다. 릴리즈 시점에 제거한다.
 
 ## 4. 테스트 표준
 
 - 위치: `Tests/TetherLensTests/` (Swift Testing)
-- 실행: `./scripts/test.sh` — 현재 32개 테스트 / 7개 스위트
-  (DataStore, ProfileManager, SavingModeManager, SettingsManager, SystemProcesses, HotspotDetector, Localized)
+- 실행: `./scripts/test.sh` — 현재 **183개 테스트 / 22개 스위트** (2026-09-27 실측)
+  (DataStore, ProfileManager, SavingModeManager, SettingsManager, SystemProcesses, HotspotDetector, Localized,
+  InsightEngine, MenuBarSignal, MetricsHistory, SystemLoadFormat, TLShare, GPUParse, ReachabilityPolicy,
+  SpeedTest, ProxyParse, TrafficParse, DashboardLayout, ConnectionGuardian, NotificationManager, UpdaterManager, SystemResourceMonitor)
 - 코드 수정 후 반드시 `swift build` + `./scripts/test.sh` 통과
 - GUI/네트워크 의존 항목(메뉴바, 핫스팟 실측, 절약모드 hosts 차단)은 수동 확인
   (`docs/tests/v0.21.0_macos.md` 체크리스트 참조)

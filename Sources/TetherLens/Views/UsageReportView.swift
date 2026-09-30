@@ -362,41 +362,19 @@ struct UsageReportView: View {
 
     // MARK: - Insights (v0.36)
 
-    /// 차트 탭에서만 계산. DB 마이그레이션 없이 ProfileManager 기존 조회로 조립한다.
+    /// 차트 탭에서만 계산 (v0.39 — 조립 로직은 `InsightProvider` 로 분리, 대시보드와 공용)
     private func refreshInsights() {
         guard viewMode == .chart else {
             insights = []
             return
         }
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        let todayKey = f.string(from: Date())
         let targets: [Profile]
         if selectedProfileId == allProfilesId {
             targets = profiles
         } else {
             targets = profiles.filter { $0.id == selectedProfileId }
         }
-        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date.distantPast
-        let pdata: [InsightInput.ProfileData] = targets.map { p in
-            let t = ProfileManager.shared.getTodayUsage(profileId: p.id)
-            let daily = ProfileManager.shared.getDailyUsage(profileId: p.id, days: 8)
-            let hourly = ProfileManager.shared.getHourlyUsage(profileId: p.id, days: 1)
-            let ipCount = Set(ProfileManager.shared.getIPLogs(profileId: p.id)
-                .filter { $0.firstSeenAt >= weekAgo }
-                .map(\.ipAddress)).count
-            return InsightInput.ProfileData(
-                id: p.id, name: p.name,
-                quotaBytes: p.quotaGB.map { Int64($0 * 1_000_000_000) },
-                todayUpload: t.upload, todayDownload: t.download,
-                dailyTotals: daily.map { (day: $0.id, total: $0.total) },
-                hourlyTotals: hourly.map { (hour: $0.hour, total: $0.total) },
-                recentDistinctIPs: ipCount)
-        }
-        let apps = ProfileManager.shared.getAppTrafficLogs(days: 1)
-            .map { (name: $0.processName, total: $0.uploadBytes + $0.downloadBytes) }
-        insights = InsightEngine.build(InsightInput(topApps: apps, profiles: pdata, todayKey: todayKey, now: Date()))
-        DebugLogger.shared.action("Stats", "[FEATURE] Insight \(insights.count)개 (\(insights.map(\.kind.rawValue).joined(separator: ",")))")
+        insights = InsightProvider.build(profiles: targets)
     }
 
     // MARK: - Previous Period

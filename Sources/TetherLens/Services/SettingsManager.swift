@@ -127,6 +127,20 @@ final class SettingsManager: @unchecked Sendable {
         set { defaults.set(newValue, forKey: "showMemGraph") }
     }
 
+    // MARK: - 대시보드 카드 토글 (v0.39)
+
+    /// 카드 표시 여부 — 기본 ON. 설정을 되돌리면 전부 ON.
+    /// (P3에서 설정 UI 추가 예정 — 지금은 키만 존재해 배선해 둔다)
+    func isCardEnabled(_ card: DashboardCard) -> Bool {
+        defaults.object(forKey: Self.cardKey(card)) as? Bool ?? true
+    }
+
+    func setCardEnabled(_ card: DashboardCard, _ enabled: Bool) {
+        defaults.set(enabled, forKey: Self.cardKey(card))
+    }
+
+    private static func cardKey(_ card: DashboardCard) -> String { "dashboard.card.\(card.rawValue)" }
+
     func resetPollingIntervals() {
         menuBarRefreshInterval = Self.defaultMenuBarRefreshInterval
         cacheRefreshInterval = Self.defaultCacheRefreshInterval

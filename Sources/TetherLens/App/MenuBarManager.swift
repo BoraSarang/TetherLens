@@ -65,6 +65,13 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
         // PingMonitor가 OS 레벨 연결 상태(NWPathMonitor)와 교차 검증하도록 주입 (v0.31)
         pingMonitor.hotspotDetector = hotspotDetector
 
+        // SwiftUI Window 씬(대시보드)이 이 인스턴스들을 참조할 수 있도록 노출 (v0.39)
+        AppServices.shared.register(
+            hotspotDetector: hotspotDetector,
+            pingMonitor: pingMonitor,
+            ipResolver: ipResolver
+        )
+
         setupMenuBar()
         setupPopover()
         setupLocationCallback()
@@ -297,6 +304,11 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
     private func showMoreMenu() {
         let menu = NSMenu()
         let lowPower = SavingModeManager.shared.isLowPowerMode
+        // 대시보드를 최상단에 둔다 — 팝오버 '상세 보기'의 대체 진입점이자 "한 번에 전부" 진입점
+        menu.addItem(moreMenuItem(Localized.dashboard) { [weak self] in
+            self?.openPopoverAndTrigger("dashboard")
+        })
+        menu.addItem(.separator())
         menu.addItem(moreMenuItem(Localized.usageReport) { [weak self] in
             self?.openPopoverAndTrigger("usageReport")
         })
@@ -396,13 +408,19 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
 
     func popoverDidClose(_ notification: Notification) {
         TrafficMonitor.shared.release(reason: .popover)
+        // 핀 고정 상태를 리셋하지 않으면 이후 메뉴바 클릭·⌘⇧P가 전부 무반응한다
+        // (togglePopover가 popoverPinned에서 조기 return → 앱 재시작 외 복구 불가)
+        if popoverPinned {
+            popoverPinned = false
+            popover.behavior = .transient
+        }
     }
 
     func startMonitoring() {
         guard !isMonitoring else { return }
         authorizeNotifications()
 
-        setupDebugPanelShortcut()
+        setupKeyboardShortcuts()
         DebugLogger.shared.system("App", "앱 시작됨")
 
         ipResolver.onIPChange = { [weak self] oldIP, newIP, geo in
@@ -996,7 +1014,15 @@ class MenuBarManager: NSObject, NSPopoverDelegate, @unchecked Sendable {
         UserDefaults.standard.set(dict, forKey: Self.notifiedThresholdsKey)
     }
 
-    private func setupDebugPanelShortcut() {
+    private func setupKeyboardShortcuts() {
+        // ⌘⇧F(플로팅) / ⌘⇧P(팝오버) — openWindow이 필요 없어 여기서 등록한다.
+        // ⌘1~⌘4, ⌘K는 App.swift가 `openWindow`를 캡처해 등록한다.
+        AppShortcuts.shared.register("cmd+shift+f") { FloatingWindowController.shared.toggle() }
+        AppShortcuts.shared.register("cmd+shift+p") {
+            NotificationCenter.default.post(name: .init("togglePopover"), object: nil)
+        }
+        AppShortcuts.shared.install()
+
         guard debugPanelMonitor == nil else { return }
         // LSUIElement 앱은 메뉴바가 없어 NSMenuItem 단축키가 안 먹음 → event monitor 사용
         debugPanelMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in

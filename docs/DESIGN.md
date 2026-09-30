@@ -1,9 +1,18 @@
 # TetherLens — Technical Design (기술 설계)
 
-- **버전**: v0.23.1 (build 24)
+- **버전**: v0.23.1 (build 24) → **⚠️ 본문은 v0.23.1 시점 기준 (2026-09-27 감사 확인)**
 - **플랫폼**: [macOS]
 - **작성일**: 2026-08-06
+- **정정일**: 2026-09-27 (v0.38.x 코드 대조 — §5 표시 필드, §10 Sparkle 정정)
 - **연계**: `docs/PRD.md`, `docs/plans/PLAN_v0.23.1_macos.md`, `AGENTS.macos.md`
+
+> **미갱신 경고 (2026-09-27)**: 본 문서는 v0.28~v0.38에 추가된 기능 절이 없다.
+> 아래가 실제 코드와 불일치한다 — §2 모듈표(파일 16개 누락, `Formatters.swift` 위치 오기),
+> §4 스키마(실제 v1~**v10**), §6 팝오버 폭(실제 `TLSize.popoverWidth` 360, 문서 280),
+> §7 `TLSpace.inset`(실제 20, 문서 16), §9 IP 갱신 주기(실제 60분, 문서 30분).
+> 누락 기능: 플로팅 창(FloatingWindowController) · 자동 재연결(ConnectionGuardian) ·
+> 인사이트(InsightEngine) · 시스템 자원(SystemResourceMonitor) · 컴포넌트 라이브러리(Components) ·
+> 커맨드 팔레트 · 속도 테스트 · 단축키 디스패처(AppShortcuts).
 
 ---
 
@@ -33,7 +42,8 @@
 
 | 폴더 | 역할 | 핵심 파일 |
 |------|------|-----------|
-| `App/` | 앱 수명주기, 메뉴바 상태 아이템, 팝오버 오케스트레이션 | `App.swift`, `AppDelegate.swift`, `MenuBarManager.swift`, `LocationManager.swift` |
+| `App/` | 앱 수명주기, 메뉴바 상태 아이템, 팝오버 오케스트레이션 | `App.swift`, `AppDelegate.swift`, `MenuBarManager.swift`, `LocationManager.swift`, `AppServices.swift` |
+| `Views/Dashboard*` | 대시보드 (v0.39) — 순서 정의·카드·본체 | `DashboardLayout.swift`(단일 진실원처), `DashboardCards.swift`, `DashboardView.swift` |
 | `Services/` | 도메인 로직, DB 접근, 설정, 절약모드 | `ProfileManager.swift`, `DataStore.swift`, `SettingsManager.swift`, `SavingModeManager.swift`, `TrafficMonitor.swift`, `AppBlockManager.swift` |
 | `Networking/` | 실시간 네트워크 수집 | `NetworkMonitor.swift` (+ PingMonitor, HotspotDetector, IPResolver) |
 | `Models/` | GRDB 레코드/도메인 모델 | `Profile`, `Session`, `UsageLog`, `IPLog`, `AppTrafficLog`, `AppNotification` |
@@ -86,20 +96,23 @@ DataStore (SQLite via GRDB)
   - 1열: ▲ 업로드 속도 / ▼ 다운로드 속도
   - 2열: 업로드/다운로드 속도 값 (고정 폭, 모노스페이스)
   - 3열: 할당량 컬럼 — 상단 사용량(오늘), 하단 잔여(오늘) / SSID 표시 모드 / 속도 전용 모드
-- **표시 필드 옵션 (v0.26.0)**: `SettingsManager` 토글 3종 추가 — `showBSSIDInMenuBar`(BSSID), `showLinkSpeedInMenuBar`(링크 속도 Mbps), `showDNSInMenuBar`(DNS 1차 서버). 표시 우선순위: SSID > BSSID > 링크속도 > 총량, 하단열에는 DNS > 잔여
+- **표시 필드 옵션**: ❌ **미구현 (2026-09-27 정정)**. 아래 3종 토글(`showBSSIDInMenuBar`/`showLinkSpeedInMenuBar`/`showDNSInMenuBar`)은 문서에만 존재했고 코드에는 없다. 대신 v0.31에서 3열을 "할당량 설정 여부에 따른 자동 전환"(`showTotalColumn`)으로 재설계했다. 실제 `SettingsManager` 토글은 `showTotalColumn`/`showLatency`/`showRSSI` 3종 + v0.37의 `showCPUGraph`/`showGPUGraph`/`showMemGraph`
 - **속성 캐싱 (v0.22.2)**: `cacheAttributesIfNeeded(fontSize:)` — fontSize 변경 시에만 폰트/문단스타일/속성/컬럼 폭 재생성, 매초 재생성 최소화
 - 게이지 색: `colorForRatio` — green(< greenThreshold) / orange / red 경계 (`SavingModeManager` 단일화)
 - 갱신 주기: `SettingsManager.menuBarRefreshInterval` (기본 2초)
 
-## 6. 팝오버 설계 (v0.23.0 재설계)
+## 6. 팝오버 설계 (v0.23.0 재설계 → v0.39 요약 고정)
 
-- **2단 레이어**: `popover_summary_mode`(@AppStorage, 기본 요약)
-  - 요약: 속도/SSID/할당량 QoS 게이지 + 하단 `▾/▴` 토글
-  - 상세: 배너(고정 상단) + 연결 정보/주소 정보/트래픽/프로필 등 접이식 섹션
+- **요약 고정 (v0.39)**: `상세 보기` 토글과 `popover_summary_mode` 파이프라인 **제거**.
+  상세 정보(연결 정보·주소 정보·앱 트래픽·시스템 리소스·프로필)는 전부 **대시보드(§14)** 로 이동했다.
+  팝오버는 "지금 상태를 1눈에"만 담당하고, "자세히"는 창을 연다
+- 구성: 헤더(아이콘·제목·부제·핀·벨) / 상태행(도트·게이트웨이·외부IP 칩) / 대형 속도 / QoS 게이지
+  / 사용 기록 차트 / 연결성 도트(고정) → 스크롤(인터페이스 섹션만, 92pt) → 하단 버튼
 - QoS 게이지: `QoSGauge(used: todayGB, total: quotaGB)` — 오늘 기준
 - QoS 미설정 시: `할당량 설정` 버튼 (프로필 있으면 편집, 없으면 프로필 관리)
-- 배너 상단 고정: 핑/할당량/복사 상태 (요약·상세 공통)
-- 폭: `TLSize.popoverWidth`(280)
+- 배너 상단 고정: 핑/할당량/복사 상태
+- 하단: **주 버튼 = 대시보드**, `…` 메뉴에 리포트·시스템 대시보드·알림·플로팅·진단·프로필
+- 폭: `TLSize.popoverWidth`(360)
 
 ## 7. 디자인 시스템 (v0.23.0)
 
@@ -136,8 +149,9 @@ DataStore (SQLite via GRDB)
 ## 10. 버전/배포
 
 - Info.plist 단일 원본: `Resources/Info.plist` (`build-macos.sh`가 번들 복사)
-- Sparkle(`SUFeedURL`/`SUPublicEDKey`) 유지 — 업데이트 채널 예정
-- 에러코드 체계(`E-MAC-*`) 및 `error_message_ko.json`: **미도입** (필요 시 AGENTS.macos.md 규칙에 따라 도입)
+- **자동 업데이트: 자체 구현** — `Services/UpdaterManager.swift`. GitHub API `/releases/latest` 우선, 403/429 rate limit 시 `/releases/latest` HTML 302 태그 조회 + `raw release-notes/{tag}.md` 폴백(`GitHubReleaseParser`)
+- ~~Sparkle~~ **미사용** — `Info.plist`의 `SUFeedURL`/`SUPublicEDKey`는 읽는 코드가 없는 죽은 키(2026-09-27 확인). 제거는 릴리즈 시점으로 보류
+- 에러코드(`E-MAC-*`)는 `SystemResourceMonitor`에서 실제 사용 중이나, `error_message_ko.json` 매핑 파일은 **미도입**
 
 ## 11. 네트워크 진단 센터 (v0.26.0)
 
@@ -166,3 +180,80 @@ DataStore (SQLite via GRDB)
 
 - `ProfileManager.exportData(profileId:)` → `(csv, json, markdown)` 3종 반환 (v0.26.0에서 md 추가)
 - `UsageReportView` 내보내기 메뉴: CSV / JSON / Markdown (NSSavePanel)
+
+---
+
+## 14. 대시보드 창 (v0.39)
+
+RelayConsole 콘솔 대시보드 패턴 이식. **메뉴바 팝오버 `상세 보기` 의 대체** — 상세 정보가 180pt
+ScrollView 에 들어 있던 구조를 900×680 창으로 분리했다.
+
+### 14.1 구성
+
+```
+DashboardStatusBar   프로필·SSID·RSSI·세션경과·마지막갱신  (고정)
+bannerStack          끊김 / 할당량 경고 (5초 자동 해제)  (조건부)
+kpiRow               오늘 사용량·업·다운·남은·오늘 세션   (전폭 5칸)
+cardGrid             HStack(alignment:.top) 2열 × 4행 + 전폭 1칸 = 9칸
+  rows[0]     = [.speed(①)  , .quality(②)]
+  rows[1]     = [.quota(③)  , .pattern(④)]
+  rows[2]     = [.cpu(⑤)    , .gpu(⑥)]
+  rows[3]     = [.memory(⑦) , .process(⑧)]
+  wideCards   = [.insight(⑨)]                          (목록형 → 전폭)
+footer               설정·진단·리포트·대시보드·종료        (고정)
+```
+
+### 14.2 순서의 단일 진실원처
+
+`Views/DashboardLayout.swift` — RelayConsole `DashboardLayout.swift` 와 동일 구조.
+`rows: [[DashboardCard]]` + `wideCards: [DashboardCard]`, `ordered` = 행 펼침 + 전폭.
+레이아웃 순서 변경은 이 파일 1개만 고치면 된다(뷰 코드 불필요).
+`SettingsManager.isCardEnabled(_:)` 로 카드별 토글 — **행 전체가 OFF 면 그 행이 사라진다**
+(RelayConsole `compactMap` 패턴). 설정 UI는 P3.
+
+### 14.3 갱신 주기 계층화 — 본체는 1초 틱에 참여하지 않는다
+
+감사에서 확인된 "팝오버 1Hz tick이 body 전체를 재렌더" 결함의 재발을 막기 위한 구조:
+
+| 주체 | 주기 | 근거 |
+|------|------|------|
+| `DashboardView` 본체 | — | **어떤 `@Published` 도 관찰하지 않는다** |
+| `DashboardStore` | 60초 | DB 집계 (프로필·오늘 사용량·할당량·오늘 세션) |
+| ① `DashboardSpeedCard` | 1초 | `@ObservedObject NetworkMonitor` (기존 단일 스냅샷) |
+| ⑤⑦⑧ CPU/RAM/프로세스 | 10초 | `TrafficMonitor.allResources` + `MetricsHistory` (refresh 편승) |
+| `DashboardClock` | 1초 | **격리된 서브뷰** — 세션경과·상대 시각만 |
+| ② `DashboardQualityCard` | 5초 | `PingMonitor` 비발행 값 → 자체 타이머 |
+| ⑦ `DashboardDetailCard` | 5초 | `HotspotDetector` 비발행 값 → 자체 타이머 |
+
+`DashboardStore` 는 창이 열려 있을 때만 폴링한다(`acquire`/`release` → `Timer` 60초, tolerance 5s).
+프로필 편집·할당량 변경은 `settingsChanged` 로 `refreshNow()` 를 즉시 호출한다.
+
+### 14.3.1 행 높이 동기화 (실측 검증 완료)
+
+`Grid`/`GridRow` 은 자식의 `maxHeight: .infinity` 를 **실제로 확장하지 않아**
+높이가 다른 카드가 같은 행에서 어긋났다(캡처로 확인). `HStack(alignment: .top)` 로 교체해 해결했다.
+
+`MetricCard.fillsRow` 는 두 조건을 모두 만족해야 한다:
+
+1. `.frame(maxHeight: .infinity)` 가 **배경보다 앞**에 있어야 한다.
+   뒤에 붙이면 뷰만 늘어나고 배경은 자연 높이 그대로다.
+2. `content` 뒤에 `Spacer(minLength: 0)` 가 있어야 한다.
+   없으면 남는 공간이 content 에 배분돼 **카드 제목이 가운데로 밀린다**.
+
+이 두 가지는 RelayConsole `DroidCards.shell(fillsRow:)` 의 `fillsRow` 분기와 동일하며,
+실측으로 재확인했다.
+
+### 14.4 표시 규칙
+
+- **값 없는 지표를 0으로 그리지 않는다** (RelayConsole 원칙 5) —
+  할당량 미설정 / 프로필 미등록 / 측정 실패(`nil`) 를 각각 구분해 `—` 로 표기
+- **마지막 갱신 시각을 헤더에 고정 표기** — 데이터가 오래됐음을 사용자가 인지
+- `DashboardView` 의 카드 가시성은 `@State cardConfigVersion` 신호로만 갱신 —
+  `@Published` 관찰을 추가하지 않는다(PLAN DoD 항목)
+- MAC 조회는 `DashboardDetailCard.mac` 의 길이 가드로 방어 —
+  `NetworkMonitor.macAddress` 의 7자 이상 인터페이스명 무한루프(T-250 미해결)를 5초 주기 호출이 재노출
+
+### 14.5 진입점
+
+⌘5 · 메뉴바 우클릭 최상단 · 팝오버 하단 주 버튼 · 커맨드 팔레트 최상단.
+**`usageReport`(⌘1)는 유지** — 리포트 표면은 대시보드로 대체하지 않는다.

@@ -50,10 +50,10 @@
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
-| 27 | Sparkle 자동 업데이트 | P0 | ✅ |
-| 28 | 코드 서명 + Notarization | P0 | ✅ (로컬 서명 완료, Notarization은 유료 계정 필요 시 추후) |
+| 27 | ~~Sparkle~~ 자동 업데이트 → **자체 `UpdaterManager`(GitHub Releases)로 대체** (2026-09-27 정정) | P0 | ✅ (구현체 교체) |
+| 28 | 코드 서명 + Notarization | P0 | ✅ (로컬 서명 완료, Notarization은 유료 계정 필요 시 추후 — CI는 ad-hoc 서명) |
 | 29 | GitHub Actions CI/CD | P0 | ✅ |
-| 30 | Buy Me a Coffee 후원 링크 | P1 | ✅ |
+| 30 | ~~Buy Me a Coffee~~ 후원 링크 | P1 | ❌ **제거됨** (v0.14에서 후원 버튼 삭제 — 2026-09-27 정정) |
 | 31 | 로그인 시 자동 실행 | P1 | ✅ |
 
 ## ⬜ Future (Backlog)
@@ -267,7 +267,7 @@
 |---|------|----------|--------|
 | 127 | 연결 진단 센터 패널: VPN/proxy · DNS 누수 · 커스텀 ping · traceroute · bufferbloat · Markdown 리포트 | P1 | ✅ |
 | 128 | SSID 자동화 트리거: AutomationRule/Manager + 프로필 전환 훅 + 절약 모드 연동 | P1 | ✅ |
-| 129 | 메뉴바 표시 필드 확장: BSSID/링크속도/DNS 옵션 + SettingsView 토글 | P2 | ✅ |
+| 129 | 메뉴바 표시 필드 확장: BSSID/링크속도/DNS 옵션 + SettingsView 토글 | P2 | ❌ **미구현 — v0.31에서 3열 자동 전환 설계로 대체, 재도입 불필요로 확정** (2026-09-27 정정) |
 | 130 | 사용 내역 CSV/Markdown export (UsageReportView Save) | P2 | ✅ |
 | 131 | 검증: 빌드/delta/a11y-dump + CHANGELOG + 커밋 | P1 | ✅ |
 
@@ -302,9 +302,9 @@
 
 | # | Task | Priority | Status |
 |---|------|----------|--------|
-| 142 | acquire/release를 NSPopoverDelegate(popoverDidShow/DidClose)로 이전 — MenuBarManager가 정확히 제어 | P1 | 🔄 |
-| 143 | PopoverView onAppear/onDisappear acquire/release 제거 (누수 원천 차단) | P1 | 🔄 |
-| 144 | nettop 샘플 윈도우 축소 (interval+1 → 고정 2) + acquire/release balance 로그 | P1 | 🔄 |
+| 142 | acquire/release를 NSPopoverDelegate(popoverDidShow/DidClose)로 이전 — MenuBarManager가 정확히 제어 | P1 | ✅ (2026-09-27 코드 확인: `MenuBarManager:12` NSPopoverDelegate 채택, `:393/:397` 구현) |
+| 143 | PopoverView onAppear/onDisappear acquire/release 제거 (누수 원천 차단) | P1 | ✅ (2026-09-27 코드 확인: `MenuBarManager`가 담당, PopoverView 주석 명시) |
+| 144 | nettop 샘플 윈도우 축소 (interval+1 → 고정 2) + acquire/release balance 로그 | P1 | ⚠️ **부분 되돌림 (2026-09-27)** — 고정 2는 유지했으나 원인이 "10초 주기 중 1초만 측정해 총합이 실제의 ~1/10로 과소 계상"으로 판명되어 `samples`를 재조회 주기에 맞춰 되돌림(bd TetherLens-4e6). acquire/release balance 로그는 미구현 |
 | 145 | 검증: 재시작→팝오버 여닫기→pgrep nettop 0 + 에너지 영향도 + CHANGELOG/세션 문서 | P1 | ✅ |
 
 ## ✅ v0.28.2 — 네트워크 API 호출 최적화 (IP/위치 갱신 절감) (2026-08-13)
@@ -518,3 +518,82 @@
 |---|------|----------|--------|
 | 234 | `TLSize.floatingWindow=300` 토큰 + SwiftUI 고정 폭 + fitToContent 가로 강제 + NSPanel 초기 폭 토큰 참조 | P1 | ✅ (build OK + test 132 통과, 실측 폭 300 확인) |
 | 235 | 문서 정리 (CHANGELOG [Unreleased] / PLAN 최신 / TODO / 세션 로그) + 커밋·PR·머지 | P1 | ✅ |
+
+## 🔔 2026-09-27 — 전체 코드·문서 감사 후 P0/P1 정합성 일괄 처리
+
+> 문서 5개(PRD/PLAN/DESIGN/TODO/CHANGELOG)와 소스 83파일(15,923줄)을 코드 대조 감사.
+> P0 2건 + P1 5건 코드 수정, 문서 정합 20건, 테스트 11개 추가.
+> bd: TetherLens-fif/4px/4e6/uwk/zvo/u23 (전부 closed)
+> 검증: `swift build` OK + `scripts/test.sh` **142개/21스위트 통과** (기존 131개/19스위트)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 236 | P0 절약모드 `/etc/hosts` 영구 오염 — BEGIN/END 블록 마커 + 멱등화 (bd fif) | P0 | ✅ (임시 파일로 완전 제거·멱등 실증) |
+| 237 | P0 프록시 진단 100% 무효 — `scutil --proxy` 따옴표 조건 제거 + `parseProxyOutput` 분리 (bd 4px) | P0 | ✅ (+회귀 테스트 4개) |
+| 238 | P1 앱별 트래픽 10배 과소 — nettop 샘플 수를 재조회 주기에 맞춤 + 전 블록 합산 (bd 4e6) | P1 | ✅ (+테스트 7개) |
+| 239 | P1 프로세스명 공백 손실 — `OpenCode Helper.56898` → `OpenCode`로 잘리던 파서 수정 | P1 | ✅ |
+| 240 | P1 핀 고정 후 팝오버 재오픈 불가 — `popoverDidClose`에서 핀 리셋 (bd uwk) | P1 | ✅ |
+| 241 | P1 진단 센터 "닫기" 무동작 — Raw NSWindow라 `dismiss`가 no-op → `onClose` 위임 (bd uwk) | P1 | ✅ |
+| 242 | P1 DB 복구 이중 실패 시 in-memory 폴백 마이그레이션 누락 (bd u23) | P1 | ✅ |
+| 243 | P1 메뉴바 단축키 8개 동작 불가 — `AppShortcuts`(NSEvent 모니터) 신규 도입 (bd zvo) | P1 | ✅ (build OK, GUI 확인 필요) |
+| 244 | 문서 정정: FR-24·Sparkle 미구현 확정 (PRD/CHANGELOG/DESIGN/TODO/COMPETITOR 5곳) | P1 | ✅ |
+| 245 | 문서 정정: FR-20(발열 없음·임계값 100/250ms)·FR-21(미구현)·PRD §7 스택 3건 | P1 | ✅ |
+| 246 | 문서 정정: 테스트 수 32/7 → 142/21 (AGENTS.local·AGENTS.macos), stale T-142/143/144, CHANGELOG `[Unreleased]` 중복 1건 | P1 | ✅ |
+| 247 | 문서 정정: COMPETITOR_ANALYSIS §0 정정표(12개 항목), DESIGN 헤더 미갱신 경고 | P1 | ✅ |
+| 248 | 검증: `swift build` + `scripts/test.sh` 142개 통과 | P1 | ✅ |
+
+### 남은 항목 (다음 세션)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 249 | GUI 육안 검증 — ⌘1~⌘4·⌘⇧F·⌘⇧P·⌘K 동작, 진단 창 닫기, 핀 고정 후 재오픈, 절약모드 ON→OFF 후 `/etc/hosts` 정합 (bd u23/uwk/zvo/fif 관련) | P0 | ⬜ 수동 필요 |
+| 250 | 아래 11건 중간 강도 버그 (P2) — `ReportView` ForEach 중복 ID, `NetworkMonitor.macAddress` `continue` 무한루프, `PingMonitor` 게이트웨이 RTT 폴백·교대 판정, `TrafficMonitor` 종료 시 `queue.sync` 8초 블로킹, 리포트 N+1 쿼리 3건, `HeatmapGridView` hover O(168×N), `IPResolver` GeoIP country 필드 | P2 | ⬜ |
+| 251 | `Info.plist` 죽은 키 `SUFeedURL`/`SUPublicEDKey` 제거 (릴리즈 시점) | P2 | ⬜ 사용자 승인 필요 |
+| 252 | DESIGN.md v0.28~v0.38 절 추가(16개 파일 누락분) + PLAN.md 버전표 v0.28~v0.38 보충 | P2 | ⬜ |
+| 253 | 경고 25건 정리 — `AutomationManager` 비-Sendable 캡처, `MovementTimelineView` 결정론적 ID, `init(cString:)` 4건, `try?` 무효 3건, 미사용 변수 4건 | P2 | ⬜ |
+| 254 | `error_message_ko.json` 도입 (E-MAC-* 매핑) / `docs/api/`·`docs/screenshots/macos/` 생성 여부 결정 | P2 | ⬜ |
+
+## 🔔 2026-09-27 — v0.39 대시보드 창 (P0+P1) · 팝오버 상세보기 통합
+
+> RelayConsole 콘솔 대시보드 패턴 이식. `docs/plans/PLAN_v0.39.0_dashboard_macos.md`
+> bd: TetherLens-d1a (P0), TetherLens-d2b (P1)
+> 검증: `swift build` OK(신규 경고 0) + `scripts/test.sh` **183개/22스위트 통과** (기존 142개/21스위트)
+> GUI: `build-macos.sh debug` → 8칸 렌더 확인, 스크린샷 `docs/images/dashboard/dashboard-8cells.png`
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 255 | PLAN 작성 — 레이아웃·성능 설계·DoD | P0 | ✅ |
+| 256 | `DashboardLayout` — 카드 enum + `rows`/`wideCards`/`ordered` (순서 단일 진실원처) | P0 | ✅ |
+| 257 | `DashboardStore` — 60초 DB 집계 단일 스냅샷 + acquire/release | P0 | ✅ |
+| 258 | `AppServices` 레지스트리 — Window 씬에서 MenuBarManager 소유 인스턴스 접근 | P0 | ✅ |
+| 259 | `DashboardStatusBar` + `DashboardClock`(1초 타이머 격리) + KPI 5종 | P0 | ✅ |
+| 260 | ① 실시간 속도 카드 (차트 + 큰 숫자 + Top3 앱 점유바) | P0 | ✅ |
+| 261 | ② 연결 품질 (RTT·지터·20회 도트·링크/채널/PHY + 정상응답/경고/자동화 칩) | P1 | ✅ |
+| 262 | ③ 할당량 & 예측 (QoSGauge + 오늘 + 자정 예측 + 8일 평균 대비) | P1 | ✅ |
+| 263 | ④ 오늘 사용 패턴 (24시 구간 막대 + 최근 8일 스파크) | P1 | ✅ |
+| 264 | ⑤ CPU / ⑥ GPU / ⑦ RAM — 개별 셀로 분리 (기존 `SystemMetricsCards` 3-in-1 해체) | P1 | ✅ |
+| 264b | ⑧ 프로세스 리스트 (CPU·MEM·NET 랭킹 12행, 스크롤, 더보기) | P1 | ✅ |
+| 264c | 8칸(4행×2열) 구성 확정 — `DashboardLayout` enum 8개 + `rows` 4행 | P1 | ✅ |
+| 264d | GUI 검증 3건 수정 — ① `Grid`→`HStack`(행높이 확장 안 됨) ② `MetricCard.fillsRow` 프레임 위치(배경 뒤→앞) + content 뒤 `Spacer` ③ ① Top3 구간합계→초당 환산 | P1 | ✅ |
+| 264e | ③ 8일 평균 대비 배율 + 최근 8일 합계/일평균 — 빈 여백을 실제 데이터로 채움 | P1 | ✅ |
+| 265 | 배너 스택 (끊김 / 할당량 경고 5초 자동 해제) | P1 | ✅ |
+| 266 | 진입점 4곳 — ⌘5 / 우클릭 / 팝오버 주 버튼 / 커맨드 팔레트 | P1 | ✅ |
+| 267 | Window 씬 등록 + `TLSize.dashboardWindow`/`dashboardInset`/`TLFont.dashboardValue` 토큰 | P1 | ✅ |
+| 268 | **팝오버 `상세 보기` 토글 제거** — 요약 고정, 스크롤 180→92pt | P1 | ✅ |
+| 269 | 팝오버 죽은 코드 제거 — `detailSections`·5섹션·7헬퍼 369행 (1,543→1,145줄) | P1 | ✅ |
+| 270 | `DashboardLayoutTests` **29개** (순서 정의·8칸/4행 검증·포맷·스냅샷·시간대 버킷·SSID 추출·MAC 가드) | P1 | ✅ (테스트가 오류 가정 2건을 잡아 수정 — 코드 결함 아님) |
+| 271 | 검증: `swift build` + `scripts/test.sh` 163개 통과 | P1 | ✅ |
+
+### 남은 (P2/P3 — 다음 세션)
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 272 | ⑤ 눈여겨볼 점 카드 — 인사이트 6종 상시화 (`InsightEngine`를 차트 탭 조건에서 분리, `DashboardStore`로 이동) | P2 | ⬜ |
+| 273 | ⑥ 오늘 사용 패턴 — 24시 바 + 8일 스파크 + 세션 요약 + 시간대 Top3 앱 | P2 | ⬜ |
+| 274 | 카드 On/Off 설정 UI (`SettingsManager.isCardEnabled` 키는 배선 완료, 토글 UI만 없음) | P3 | ⬜ |
+| 275 | GUI 육안 검증 — ⌘5 / 8칸 렌더 / 행 높이 정합 / KPI / ②③ 데이터 — **완료** (스크린샷 `docs/images/dashboard/dashboard-8cells.png`) | P0 | ✅ |
+| 276 | ② 연결 품질 카드 하단 여백 정리 (정보량 대비 빈 공간) | P3 | ⬜ 장식 금지 원칙상 값 있는 정보만 추가 |
+| 277 | ⑨ 눈여겨볼 점 카드(전폭) + `InsightProvider`/`InsightPresenter` 분리 + 인사이트 상시화 | P2 | ✅ |
+| 277b | **기존 버그 수정: 심야 소모 비율 100% 초과(186% 관측)** — `getHourlyUsage(days:1)` 의 `now-1day` 기준이 분자에 어제 야간을 섞고, 분모 `getTodayUsage` 는 오늘 자정 이후라 기간 불일치. `getHourlyUsageToday` 추가 + `nightDrainShare` 100% 클램프 + 회귀 4개 | P1 | ✅ |
+| 278 | 카드 On/Off 설정 UI (`SettingsManager.isCardEnabled` 키는 배선·동작 확인 완료, 토글 UI만 없음) | P3 | ⬜ |
+| 279 | v0.38.3 부수 개선: nettop `samples == interval` 로 넓혀 첫 앱 트래픽 데이터가 창 열림 후 ~10초 소요 — 스켈레톤/로딩 표기 검토 | P2 | ⬜ |

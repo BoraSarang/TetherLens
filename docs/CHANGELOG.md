@@ -1,6 +1,127 @@
 # Changelog
 
-## [Unreleased] — 2026-09-24 — 플로팅 창 가로 확장
+## [Unreleased] — 2026-09-27 — v0.39 대시보드 창 (P0+P1) · 팝오버 상세보기 통합
+
+> RelayConsole 콘솔 대시보드 패턴(`DashboardLayout`/`DroidDashboardView`)을 TetherLens에 이식.
+> 메뉴바 팝오버의 `상세 보기` 토글로 열던 정보를 **대시보드 창 1개로 통합**한다.
+> 상세: `docs/plans/PLAN_v0.39.0_dashboard_macos.md` · bd TetherLens-d1a/d2b
+
+### Added
+- **대시보드 창 (신규 Window `dashboard`)** `[macOS]` — 900×680(최소 760×560).
+  상태바(프로필·SSID·RSSI·세션경과·마지막갱신) → 배너(끊김/할당량) → KPI 5종(오늘 사용량·업·다운·남은·오늘 세션)
+  → **카드 8칸(4행×2열)** → 고정 푸터.
+  CPU·GPU·RAM 은 개별 셀로 분리하고 프로세스 리스트로 8칸을 채웠다
+- **`DashboardLayout`** `[macOS]` — 카드 순서·행 구성의 **단일 진실원처**(`rows: [[DashboardCard]]` + `wideCards`).
+  RelayConsole `Views/DashboardLayout.swift` 와 동일 구조. 순서 변경 시 이 파일 1개만 수정.
+  8카드(`speed`/`quality`/`quota`/`pattern`/`cpu`/`gpu`/`memory`/`process`) 4행×2열
+- **`DashboardStore`** `[macOS]` — 60초 주기 DB 집계 단일 스냅샷. 창이 열려 있을 때만 폴링(`acquire`/`release`).
+  `@Published` 는 **불변 복사 후 1회만 대입**(중간 상태 관측 방지)
+- **`AppServices`** `[macOS]` — `MenuBarManager` 소유 인스턴스(`HotspotDetector`·`PingMonitor`·`IPResolver`)의 참조 레지스트리.
+  SwiftUI `Window` 씬은 생성 지점에서 주입받을 수 없어 필요
+- **`FlowRow`** `[macOS]` — `Layout` 프로토콜 기반 자동 줄바꿈 칩 행 (연결 상세 카드)
+- **진입점 4곳** — ⌘5, 메뉴바 우클릭 최상단, 팝오버 주 버튼(기존 `사용량 리포트` 자리), 커맨드 팔레트 최상단
+- **테스트 29개 추가** — `DashboardLayoutTests`(순서 정의·포맷·스냅샷·시간대 버킷·SSID 추출·MAC 가드). 총 **171개/22스위트** (기존 142개/21스위트)
+- **카드 4종 추가** — `DashboardCpuCard`(load·게이지·코어바·스파크·Top3) · `DashboardGpuCard`(게이지·스파크, 미지원 시 "미지원" 표기) · `DashboardMemoryCard`(used/total·압력색 게이지·스파크·Top3) · `DashboardProcessCard`(CPU·MEM·NET 랭킹 12행, 스크롤, 더보기)
+- **`DashboardPatternCard`** — 24시 구간별 막대(데이터 없는 구간은 0으로 그리지 않음) + 최근 8일 스파크 + 합계/일평균
+- **`MetricCard.fillsRow`** — 행 높이 동기화용 플래그 (RelayConsole `DroidCards.shell(fillsRow:)` 이식)
+- **설정 키** — `TLSize.dashboardWindow` / `TLSize.dashboardInset` / `TLFont.dashboardValue` / `SettingsManager.isCardEnabled(_:)`
+- **로컬라이제이션 8종** — `dashboard`·`relativeSeconds(_:)`·`projectedTomorrow(_:)`·`remainingLabel`·`todayUsage`·`expensivePath`·`constrainedPath`·`automation`·`linkSpeedLabel`
+
+### Changed
+- **팝오버 `상세 보기` 토글 제거** `[macOS]` — 토글 버튼과 `summaryMode` 파이프라인 제거, 요약 모드로 고정.
+  하단 주 버튼을 `사용량 리포트` → **`대시보드`** 로 변경, 리포트는 `…` 메뉴로 이동
+- **팝오버 스크롤 영역 축소** — 180pt → 92pt. `상세 보기`가 사라져 `interfaceSection`만 남아 고정 높이 과다였음
+- **팝오버 죽은 코드 제거** `[macOS]` — `detailSections`·`connectionInfoView`·`connectionAddressView`·`appTrafficPreview`·`resourceSection`·`profileSection`·`collapsibleSectionDivider` + 7헬퍼 + `@AppStorage` 5개 = **369행 제거 (1,543 → 1,145줄)**
+- **창 표면 6 → 7개** — 리포트(`usageReport`)는 **유지**. 대시보드는 신규로 추가하고 ⌘1은 리포트에 남김
+
+### 설계 (RelayConsole 이식 — 감사로 확인된 이 앱의 리스크를 반복하지 않음)
+- **`DashboardView` 는 어떤 `@Published` 도 관찰하지 않는다** — 카드가 자기 데이터만 관찰.
+  1초 갱신이 필요한 값(세션 경과·상대 시각)은 `DashboardClock` 서브뷰로 격리해
+  감사에서 확인된 "팝오버 1Hz tick이 body 전체를 재렌더" 결함을 재발하지 않게 함
+- **`HStack(alignment: .top)` + `MetricCard.fillsRow`** — 행 높이 동기화.
+  `Grid`/`GridRow` 은 자식의 `maxHeight: .infinity` 를 확장하지 않아 **실측 실패**했다.
+  프레임은 **배경보다 앞에서** 확장해야 실제 높이가 되고, content 뒤 `Spacer` 가 남는 공간을 받아
+  제목이 상단에 고정된다
+- **행 전체 OFF 면 그 행이 사라진다** — RelayConsole `compactMap` 패턴. 전부 OFF 시 카드형 빈 상태
+- **값 없는 지표는 0으로 그리지 않는다** — 할당량 미설정·측정 실패·프로필 미등록을 각각 구분해 `—` 로 표기
+- **MAC 조회 길이 가드** — `NetworkMonitor.macAddress(forInterface:)` 의 7자 이상 인터페이스명 무한루프
+  (T-250 미해결)를 대시보드가 5초마다 호출하므로 `DashboardDetailCard.mac` 에서 방어
+
+### Fixed
+- 테스트 중 발견한 오류 가정 2건 수정 — 카드 집합 assertion이 `wideCards` 를 누락,
+  `todayUsedGB` 를 KB 로 가정. 코드 결함이 아니라 테스트 결함이었다
+
+> 스크린샷: `docs/images/dashboard/dashboard-8cells.png`
+
+#### 셀 구성 (8칸 · 4행×2열)
+
+| 행 | 좌 | 우 |
+|---|---|---|
+| 1 | 실시간 속도 (차트 + Top3 앱) | 연결 품질 (RTT·지터·도트·링크/채널/PHY·정상응답) |
+| 2 | 할당량 · 예측 (게이지 + 8일 평균 대비) | 오늘 사용 패턴 (24시 바 + 8일 스파크) |
+| 3 | CPU (load·게이지·코어바·스파크·Top3) | GPU (게이지 + 스파크) |
+| 4 | RAM (used/total·게이지·스파크·Top3) | 프로세스 (CPU·MEM·NET 랭킹, 스크롤) |
+
+#### GUI 검증에서 발견·수정한 3건
+
+1. **행 높이 동기화 실패** — SwiftUI `Grid`/`GridRow` 은 자식의 `maxHeight: .infinity` 를
+   실제로 확장하지 않아 높이가 다른 카드가 같은 행에서 어긋났다. **`HStack(alignment: .top)` 로 교체**해 해결.
+   (PLAN/RelayConsole 이식이 `Grid` 였던 근거를 실측이 뒤집었다)
+2. **`MetricCard` `fillsRow` 프레임 위치 버그** — 프레임을 배경 **뒤에** 붙여 뷰만 늘어나고
+   배경은 자연 높이 그대로였다. **배경 앞으로 이동**해 해결. 추가로 content 뒤 `Spacer` 를 두어
+   남는 공간이 content 에 배분돼 **카드 제목이 가운데로 밀리던** 문제도 해결
+3. **① 카드 Top3 값이 구간 합계로 표시** — `AppTraffic` 값은 측정 구간(≈interval 초)의 합계인데
+   "실시간 속도" 카드이므로 초당 값으로 환산하도록 수정 (`5.0MB` → `5.0MB/s`)
+
+#### ⑨ 눈여겨볼 점 (전폭 · P2)
+
+- **인사이트 상시화** — `InsightProvider`(신규)로 조립 로직을 분리해 대시보드·리포트가 공유.
+  `UsageReportView.refreshInsights` 의 인라인 중복을 제거했고(DRY),
+  대시보드에서는 `DashboardStore` 가 60초 주기로 계산하므로 **리포트 차트 탭에 들어가도 않아도** 보인다.
+- **`InsightPresenter`**(신규) — 아이콘·색·히어로·제목·본문 표시 규칙을 한곳에 모음.
+  `InsightSectionView` 가 위임하므로 종류 추가 시 한 곳만 고치면 된다.
+- 2열 `LazyVGrid` 배치 — 최대 6종이 세로로 길어지지 않게.
+
+#### GUI 검증에서 발견한 기존 버그 1건 (v0.38 이전부터 존재)
+
+- **심야 소모 비율이 100% 초과 표시 (186% 관측)** — `InsightEngine.nightDrainShare` 의
+  분자 `getHourlyUsage(days: 1)` 은 `now - 1day` 기준이라 **어제 야간이 섞이는 반면**,
+  분모 `getTodayUsage` 는 **오늘 자정 이후**다. 분자/분모 기간이 어긋나 비율이 100% 를 넘었다.
+  `ProfileManager.getHourlyUsageToday`(신규, 오늘 자정 이후 한정)로 교체하고
+  `nightDrainShare` 에 방어적 클램프를 추가했다. 대시보드 24시 막대도 같은 버그를 쓰고 있어 함께 수정.
+  회귀 테스트 4개 추가.
+
+> **다음 세션(P3)**: 카드 On/Off 설정 UI(`SettingsManager.isCardEnabled` 키는 배선 완료).
+
+---
+
+## [Unreleased — Part 2] — 2026-09-27 — 코드 감사 정합성 일괄 처리 (P0 2건 + P1 5건 + 문서 정정)
+
+> 같은 날 수행한 별개 작업. v0.39 대시보드와 독립적이며 순서는 무관하다.
+
+### Fixed
+- **절약모드 `/etc/hosts` 영구 오염** `[macOS]` (bd TetherLens-fif) — `SavingModeController.activate()`가 마커 1줄 + 도메인 4줄을 append하는데 `deactivate()`의 `sed '/marker/,/marker/d'`는 **마커 1줄만** 삭제해 `127.0.0.1 swscan.apple.com` 등이 잔존했다. `isActive()`는 마커 부재로 `false`를 반환하므로 **UI는 "저전력 모드 꺼짐"으로 표시되지만 macOS 소프트웨어 업데이트·iTunes 서버는 계속 차단**되었고 수동 편집 없이는 복구 불가였다. `### TetherLens SavingMode BEGIN/END ###` 블록 마커로 전환하고 `activate()`에도 선행 제거를 넣어 멱등화. 임시 파일로 완전 제거 + 잔여 블록 2개 정리까지 실증 확인
+- **프록시 진단 100% 무효** `[macOS]` (bd TetherLens-4px) — `NetworkDiagnostics.proxyCheck()`가 `line.contains("\"")` 로 줄을 거르는데 실제 `scutil --proxy` 출력은 따옴표가 0개인 `HTTPEnable : 1` 형식이라 **모든 줄이 탈락**하고 항상 `status: .ok` "시스템 프록시 비활성"을 반환했다. FR-19/FR-22의 보안 검사가 사실상 동작하지 않던 상태. 키-값 파싱(`nonisolated static parseProxyOutput`)으로 분리해 정정하고, 비활성(`Enable:0`) 프로토콜의 잔여 서버는 보고하지 않도록 개선. 회귀 테스트 4개 추가
+- **앱별 트래픽 약 10배 과소 계상** `[macOS]` (bd TetherLens-4e6) — `nettop -l 2`(1초 측정)를 기본 10초 재조회 주기에 그대로 써서 **전체 구간의 약 1/10만 측정**하고 있었다. `samples`를 재조회 주기에 맞춰 상한 30으로 설정하고, 워치독 타임아웃을 비례 확장. `parse()`는 마지막 블록만 반환해 이전 구간을 버리던 것을 **전 블록 합산**으로 변경(`-d` 델타 모드 첫 블록은 0인 기준점)
+- **프로세스명 공백 손실** `[macOS]` — `parse()`가 `parts[1]`만 프로세스명으로 써서 `OpenCode Helper.56898` 같은 이름이 `OpenCode`로 잘렸다. 시간 컬럼과 마지막 2개 바이트 컬럼 사이를 이름으로 묶고 끝의 PID만 제거하도록 수정. 업로드/다운로드 슬롯 대응(UI가 `bytesIn`을 업로드 색상으로 표시)은 유지
+- **핀 고정 후 팝오버 재오픈 불가** `[macOS]` (bd TetherLens-uwk) — `popoverPinned`가 `togglePin()`에서만 바뀌고 `popoverDidClose`가 리셋하지 않아, 핀 고정 후 ESC로 닫으면 메뉴바 클릭·⌘⇧P·더보기 메뉴가 **전부 무반응**(재시작 외 복구 불가)했다. `popoverDidClose`에서 핀 해제 + `.transient` 복원
+- **진단 센터 "닫기" 버튼 무동작** `[macOS]` (bd TetherLens-uwk) — `DiagnosticsView`는 `.sheet`/`.popover`가 아닌 Raw `NSWindow`+`NSHostingController`에 호스팅되어 `@Environment(\.dismiss)`가 no-op이었다. `onClose` 콜백으로 `DiagnosticsWindowController.hide()`에 위임
+- **DB 복구 이중 실패 시 데이터 조용한 소실** `[macOS]` (bd TetherLens-u23) — 최후 폴백 in-memory `DatabaseQueue()`에 `migrator.migrate()`를 호출하지 않아 **테이블이 0개**인 DB로 넘어가고, `try?`가 모든 쿼리를 삼켜 "앱은 정상인데 모든 데이터가 0"인 상태가 됐다. 폴백에도 마이그레이션 강제 적용
+- **메뉴바 단축키 8개 전부 동작 불가** `[macOS]` (bd TetherLens-zvo) — LSUIElement(액세서리) 앱은 `NSApp.mainMenu`가 없어 `.commands`의 `keyboardShortcut`가 발화하지 않는다(기존 ⌘⇧D만 event 모니터로 우회했고 7개는 죽은 상태). `AppShortcuts`(신규, `NSEvent` 로컬 모니터 + `MainActor.assumeIsolated`) 도입으로 ⌘1~⌘4·⌘⇧F·⌘⇧P·⌘K 활성화. 미등록 키는 이벤트를 통과시켜 ⌘Q·⌘W 등 시스템 단축키를 보존
+
+### Added
+- **테스트 11개 추가** `[macOS]` — `ProxyParseTests`(4), `TrafficParseTests`(7). 총 **142개/21스위트** (기존 131개/19스위트)
+
+### Documentation
+- **구현되지 않은 기능의 "✅" 기재 정정** — `PRD.md` FR-24(메뉴바 BSSID/링크속도/DNS 토글)와 Sparkle 자동 업데이트가 5개 문서에서 완료로 기재돼 있으나 **코드에 없었음**. FR-24는 v0.31의 3열 자동 전환 설계로 대체·재도입 불필요로 확정, Sparkle는 자체 `UpdaterManager`로 대체 확정. FR-20(발열 감지 없음/임계값 100·250ms)/FR-21(미구현)도 함께 정정
+- `PRD.md` §7 기술 스택 정정 — NEFilterDataProvider(보류), Sparkle 2(미사용), Buy Me a Coffee(제거됨)
+- `DESIGN.md` §5 표시 필드 옵션·§10 Sparkle 정정, 헤더에 v0.28~v0.38 미갱신 경고 명시(§2/§4/§6/§7/§9 불일치 목록)
+- `TODO.md` T-129(미구현 확정)·T-27(대체)·T-30(제거됨) 정정, stale 🔄이던 T-142/143을 코드 확인 후 ✅로, T-144는 본 세션에서 부분 되돌린缘由 명시
+- `AGENTS.local.md` / `AGENTS.macos.md` 테스트 수 32개/7스위트 → 142개/21스위트, Sparkle 유지 항목 정정
+- `COMPETITOR_ANALYSIS.md` §0 정정표 추가 — 리서치 원문은 보존하고 12개 항목의 실제 반영 여부를 명시
+
+> **참고**: 과거 릴리즈 섽션의 기재는 이력 보존을 위해 수정하지 않았다.
+> FR-24·Sparkle 관련 오류 기재는 `PRD.md`/`DESIGN.md`/`TODO.md`/`COMPETITOR_ANALYSIS.md` 정정만으로 교정한다.
 
 ### Changed
 - **플로팅 창 가로 300pt 고정** `[macOS]` (bd TetherLens-8z6) — `minWidth: 240`만 있어 콘텐츠 fitting 시 약 240pt로 좁아지던 문제. `TLSize.floatingWindow = 300` 토큰 신설(RelayConsole 플로팅과 동일), SwiftUI 고정 폭 + `fitToContent()`가 가로도 강제하도록 수정. NSPanel 초기 크기도 동일 토큰 참조
@@ -147,7 +268,11 @@
 ### Performance
 - 추가 wakeup 0개 — `TrafficMonitor.refresh()` 직렬 queue 안에서 1회 조회, 저전력/슬립 가드는 기존 `acquire/release` 상속. 실측: 332프로세스 수집 수 ms, sysCPU +0.2% 수준
 
-## [Unreleased] — 팝오버 재설계 (Osaurus 패턴 반영, 네이티브 유지)
+## [버전 미기재] — 팝오버 재설계 (Osaurus 패턴 반영, 네이티브 유지)
+
+> 2026-09-27 감사 발견: 이 섹션은 v0.32.0과 v0.31.0 사이에 위치하나 버전이 `[Unreleased]`로
+> 남아 있어 현행 Unreleased와 충돌한다. 어느 릴리즈에 편입됐는지 확정하지 않은 상태이므로
+> 임의로 Version을 붙이지 않고 「버전 미기재」로 표시한다. (배포 노트에 영향)
 
 ### Changed
 - **팝오버 헤더** — 앱 아이콘 20→28px(continuous 라운드) + 2행 명패(프로필명/SSID·RSSI 부제, 프로필명=SSID 시 유형 표시로 중복 회피). 핀·알림 유지, 상태 도트 제거

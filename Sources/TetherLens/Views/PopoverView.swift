@@ -34,15 +34,10 @@ struct PopoverView: View {
     @State private var quotaAlertMessage: String?
     @State private var pingAlert: PingAlert?
     @State private var copiedIPMessage: String?
-    @AppStorage("popover_expanded_connection_info") private var expandedConnectionInfo = false
-    @AppStorage("popover_expanded_address_info") private var expandedAddressInfo = false
-    @AppStorage("popover_show_app_traffic") private var showAppTraffic = true
-    @AppStorage("popoverShowResources") private var showResources = true
     @AppStorage("showCPUGraph") private var showCPUGraph = false
     @AppStorage("showGPUGraph") private var showGPUGraph = false
     @AppStorage("showMemGraph") private var showMemGraph = true
     @AppStorage("appTraffic_show_system") private var showSystemProcesses = false
-    @AppStorage("popover_summary_mode") private var summaryMode = true
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
 
@@ -150,17 +145,12 @@ struct PopoverView: View {
             ScrollView {
                 VStack(spacing: TLSpace.xl) {
                     interfaceSection
-                    // 간략 보기에는 프로세스·리소스 섹션 없음 (v0.32.1) — 상세 보기에서만 표시
-                    if !summaryMode {
-                        detailSections
-                    }
                 }
                 .padding(.horizontal, TLSpace.inset)
                 .padding(.bottom, TLSpace.sm)
             }
-            // NSPopover 자동 사이징에서는 maxHeight가 무시되고 찌그러지므로 고정 높이 사용
-            // 간략/상세 동일 높이 — 모드 전환 시 팝오버 크기 변경(출렁임) 방지. 상세는 내부 스크롤
-            .frame(height: 180)
+            // v0.39 — 상세 보기 토글 제거(대시보드로 통합). 스크롤 영역은 인터페이스 섹션만 남는다.
+            .frame(height: 92)
             Divider()
             bottomButtons
                 .padding(.horizontal, TLSpace.inset)
@@ -202,9 +192,6 @@ struct PopoverView: View {
         .animation(.easeOut(duration: 0.2), value: quotaAlertMessage)
         .animation(.easeOut(duration: 0.2), value: pingAlert)
         .animation(.easeOut(duration: 0.2), value: copiedIPMessage)
-        .animation(.easeOut(duration: 0.2), value: summaryMode)
-        .animation(.easeOut(duration: 0.2), value: expandedConnectionInfo)
-        .animation(.easeOut(duration: 0.2), value: expandedAddressInfo)
     }
 
     @ViewBuilder
@@ -289,21 +276,6 @@ struct PopoverView: View {
     }
 
     @ViewBuilder
-    private var detailSections: some View {
-        collapsibleSectionDivider(Localized.connectionInfo, isExpanded: $expandedConnectionInfo)
-        connectionInfoView
-        collapsibleSectionDivider(Localized.addressInfo, isExpanded: $expandedAddressInfo)
-        connectionAddressView
-        if showAppTraffic, !visibleAppTraffic.isEmpty {
-            trafficSectionDivider
-            appTrafficPreview
-        }
-        if showResources, !trafficMonitor.allResources.isEmpty {
-            resourceSection
-        }
-        sectionDivider(Localized.profile)
-        profileSection
-    }
 
     private var headerView: some View {
         HStack {
@@ -593,89 +565,7 @@ struct PopoverView: View {
         }
     }
 
-    private var connectionInfoView: some View {
-        VStack(alignment: .leading, spacing: TLSpace.sm) {
-            detailRow(label: Localized.type, value: connectionTypeString)
-            if let dur = sessionDurationString {
-                detailRow(label: Localized.session, value: dur)
-            }
-            if let ssid = ssidString {
-                let rssiSuffix: String = {
-                    guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
-                    return " (\(r)dBm)"
-                }()
-                detailRow(label: Localized.network, value: "\(ssid)\(rssiSuffix)", copyValue: ssid)
-            } else if usesWiFi {
-                let rssiSuffix: String = {
-                    guard let r = hotspotDetector.currentConnection?.rssi else { return "" }
-                    return " (\(r)dBm)"
-                }()
-                detailRow(label: Localized.network, value: "\(Localized.unknown)\(rssiSuffix)")
-            }
-            if let bssid = bssidString {
-                detailRow(label: Localized.bssid, value: bssid, copyValue: bssid)
-            }
-            if expandedConnectionInfo {
-                if let phy = hotspotDetector.currentConnection?.phyMode {
-                    detailRow(label: Localized.standard, value: phy)
-                }
-                if let ch = hotspotDetector.currentConnection?.channel,
-                   let band = hotspotDetector.currentConnection?.channelBand {
-                    let width = hotspotDetector.currentConnection?.channelWidth ?? 0
-                    detailRow(label: Localized.channel, value: width > 0 ? "\(ch) (\(band), \(width)MHz)" : "\(ch) (\(band))")
-                }
-                if let speed = hotspotDetector.currentConnection?.linkSpeed {
-                    detailRow(label: Localized.speed, value: String(format: "%.0f Mbps", speed))
-                }
-            }
-        }
-    }
 
-    private var connectionAddressView: some View {
-        VStack(alignment: .leading, spacing: TLSpace.sm) {
-            if expandedAddressInfo {
-                if let gw = hotspotDetector.currentConnection?.gatewayIP {
-                    detailRow(label: Localized.gateway, value: gw, copyValue: gw)
-                }
-            }
-            if let ip = hotspotDetector.currentConnection?.localIP {
-                detailRow(label: Localized.localIP, value: ip, copyValue: ip)
-            }
-            if let extIP = ipResolver.externalIP {
-                let country = ipResolver.geoInfo.map { " (\(flag(from: $0.countryCode)))" } ?? ""
-                detailRow(label: Localized.externalIP, value: "\(extIP)\(country)", copyValue: extIP)
-            }
-            if currentProfileId != nil {
-                HStack {
-                    Spacer()
-                    Button(Localized.ipHistory) { showIPHistory = true }
-                        .buttonStyle(.plain)
-                        .font(TLFont.small)
-                        .foregroundColor(TLPalette.accent)
-                }
-            }
-            if expandedAddressInfo {
-                if let dns = hotspotDetector.currentConnection?.dnsServers, !dns.isEmpty {
-                    HStack(spacing: TLSpace.xs) {
-                        detailRow(label: Localized.dns, value: dns.joined(separator: ", "))
-                        Image(systemName: "chevron.right")
-                            .font(TLFont.badge)
-                            .foregroundColor(TLPalette.textSecondary.opacity(0.5))
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture { showDNSPicker = true }
-                    .onHover { inside in
-                        if inside { NSCursor.pointingHand.push() }
-                        else { NSCursor.pop() }
-                    }
-                }
-            }
-            detailRow(label: Localized.ping, value: pingString)
-            if usesWiFi && ssidString == nil {
-                locationWarningView
-            }
-        }
-    }
 
     private var connectionTypeString: String {
         guard let conn = hotspotDetector.currentConnection else { return "-" }
@@ -713,65 +603,6 @@ struct PopoverView: View {
         }
         return String(format: "%02d:%02d", minutes, seconds)
     }
-
-    private var locationWarningView: some View {
-        HStack(alignment: .top, spacing: TLSpace.xs) {
-            Image(systemName: "location.slash")
-                .font(TLFont.caption2)
-                .foregroundColor(TLPalette.upload)
-                .padding(.top, 2)
-            if !LocationManager.systemLocationServicesEnabled {
-                Text(Localized.locationServiceOff)
-                    .font(TLFont.small)
-                    .foregroundColor(TLPalette.upload)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: TLSpace.xs)
-                Button(Localized.openSettings) {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(TLPalette.upload)
-            } else if locationManager.authorizationStatus == .denied || locationManager.authorizationStatus == .restricted {
-                Text(Localized.locationAppDenied)
-                    .font(TLFont.small)
-                    .foregroundColor(TLPalette.upload)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: TLSpace.xs)
-                Button(Localized.openSettings) {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(TLPalette.upload)
-            } else if !locationManager.isAuthorized {
-                Text(Localized.locationNeeded)
-                    .font(TLFont.small)
-                    .foregroundColor(TLPalette.upload)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: TLSpace.xs)
-                Button(Localized.requestPermission) {
-                    locationManager.requestAuthorization()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(TLPalette.upload)
-            } else {
-                Text(Localized.locationProvisioning)
-                    .font(TLFont.small)
-                    .foregroundColor(TLPalette.upload)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: TLSpace.xs)
-                Button(Localized.openSettings) {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .tint(TLPalette.upload)
-            }
-        }
-    }
-
     @ViewBuilder
     private var qosGaugeBody: some View {
         let ssid = hotspotDetector.currentConnection?.ssid
@@ -808,140 +639,9 @@ struct PopoverView: View {
         }
     }
 
-    private var trafficSectionDivider: some View {
-        HStack(spacing: TLSpace.sm) {
-            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
-            Text(Localized.appTraffic)
-                .font(TLFont.caption2)
-                .foregroundColor(TLPalette.textSecondary)
-                .fixedSize()
-            Image(systemName: "chevron.right")
-                .font(TLFont.badge)
-                .foregroundColor(TLPalette.textSecondary.opacity(0.5))
-            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { openWindow(id: "appTraffic") }
-        .onHover { inside in
-            if inside { NSCursor.pointingHand.push() }
-            else { NSCursor.pop() }
-        }
-    }
-
-    private var visibleAppTraffic: [TrafficMonitor.AppTraffic] {
-        if showSystemProcesses { return trafficMonitor.apps }
-        return trafficMonitor.apps.filter { !SystemProcesses.set.contains($0.processName) }
-    }
-
-    private var appTrafficPreview: some View {
-        let top3 = Array(visibleAppTraffic.prefix(3))
-        let shareTotal = Double(visibleAppTraffic.reduce(Int64(0)) { $0 + $1.bytesIn + $1.bytesOut })
-        return VStack(spacing: TLSpace.xs) {
-            HStack(spacing: 0) {
-                Text(Localized.process)
-                    .font(TLFont.smallBold)
-                    .foregroundColor(TLPalette.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text(Localized.upload)
-                    .font(TLFont.smallBold)
-                    .foregroundColor(TLPalette.upload)
-                    .frame(width: TLSize.trafficUploadCol, alignment: .trailing)
-                Text(Localized.download)
-                    .font(TLFont.smallBold)
-                    .foregroundColor(TLPalette.download)
-                    .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-            }
-            ForEach(top3) { app in
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 4) {
-                        procIcon(app.processName)
-                        Text(app.processName)
-                            .font(TLFont.medium)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(formatByteRate(app.bytesIn))
-                            .font(TLFont.mediumMono)
-                            .foregroundColor(TLPalette.upload)
-                            .frame(width: TLSize.trafficUploadCol, alignment: .trailing)
-                        Text(formatByteRate(app.bytesOut))
-                            .font(TLFont.mediumMono)
-                            .foregroundColor(TLPalette.download)
-                            .frame(width: TLSize.trafficDownloadCol, alignment: .trailing)
-                    }
-                    TLShareBar(
-                        ratio: TLShare.ratio(Double(app.bytesIn + app.bytesOut), of: shareTotal),
-                        color: TLPalette.download
-                    )
-                }
-            }
-            Button(Localized.showMore) { openWindow(id: "appTraffic") }
-                .buttonStyle(.plain)
-                .font(TLFont.caption)
-                .foregroundColor(TLPalette.download)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture { openWindow(id: "appTraffic") }
-    }
-
-    private var profileSection: some View {
-        let currentSSID = hotspotDetector.currentConnection?.ssid
-        let currentProfile = currentSSID.flatMap { ProfileManager.shared.getProfile(ssid: $0) }
-        return VStack(spacing: TLSpace.sm) {
-            if let profile = currentProfile {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: TLSpace.xs) {
-                            Text(profile.name).font(TLFont.body)
-                            if profile.isHotspot {
-                                Text("(\(Localized.hotspot))").font(TLFont.body).foregroundColor(TLPalette.upload)
-                            }
-                        }
-                        Text(profile.ssid).font(TLFont.caption).foregroundColor(TLPalette.textSecondary)
-                        miniUsageStats(profile: profile)
-                    }
-                    Spacer()
-                    VStack(spacing: TLSpace.xs) {
-                        Button(Localized.statistics) {
-                            openWindow(id: "usageReport")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        Button(Localized.edit) {
-                            editingProfile = profile
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-                }
-            }
-        }
-    }
 
     /// 프로필 미니 통계 — 오늘 사용량 + 할당량 % (T-117)
     @ViewBuilder
-    private func miniUsageStats(profile: Profile) -> some View {
-        let today = ProfileManager.shared.getTodayUsage(profileId: profile.id)
-        let usedGB = Double(today.upload + today.download) / 1_000_000_000
-        let quotaGB = profile.quotaGB
-        if let quotaGB = quotaGB, quotaGB > 0 {
-            let pct = min(Int(usedGB * 100 / quotaGB), 999)
-            HStack(spacing: TLSpace.xs) {
-                ProgressView(value: min(usedGB / quotaGB, 1.0))
-                    .frame(width: 70)
-                    .scaleEffect(x: 1, y: 0.5, anchor: .center)
-                Text("\(String(format: "%.2f", usedGB))GB / \(String(format: "%.1f", quotaGB))GB (\(pct)%)")
-                    .font(TLFont.caption2)
-                    .foregroundColor(pct >= 90 ? TLPalette.danger : TLPalette.textSecondary)
-            }
-        } else {
-            Text("\(Localized.today) \(Int64(today.upload + today.download).formattedBytes)")
-                .font(TLFont.caption2)
-                .foregroundColor(TLPalette.textSecondary)
-        }
-    }
-
     private var profileManagerSheet: some View {
         VStack(spacing: TLSpace.xl) {
             Text(Localized.profileManagement)
@@ -1169,97 +869,16 @@ struct PopoverView: View {
         guard let name = hotspotDetector.currentConnection?.interfaceName else { return nil }
         return networkMonitor.macAddress(forInterface: name)
     }
-
-    /// 독립 리소스 섹션 — 네트워크 순위와 무관한 CPU Top3 + 메모리 Top3 (v0.32).
-    /// 같은 수집 스냅샷을 다시 정렬만 하므로 추가 폴링 없음. sort/filter은 본문 1회 (v0.38.2).
-    private var resourceSection: some View {
-        let resources = filteredResources(trafficMonitor.allResources)
-        let cpu3 = cpuTop3(from: resources)
-        let mem3 = memTop3(from: resources)
-        return VStack(alignment: .leading, spacing: TLSpace.xs) {
-            HStack(spacing: TLSpace.sm) {
-                Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
-                Text(Localized.systemResources)
-                    .font(TLFont.caption2)
-                    .foregroundColor(TLPalette.textSecondary)
-                    .fixedSize()
-                Image(systemName: "chevron.right")
-                    .font(TLFont.badge)
-                    .foregroundColor(TLPalette.textSecondary.opacity(0.5))
-                Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture { openWindow(id: "appTraffic") }
-            if showCPUGraph || showGPUGraph || showMemGraph {
-                SystemMetricsCards(
-                    detail: .standard,
-                    cpuTop: cpu3,
-                    memTop: mem3,
-                    onShowProcesses: { openWindow(id: "appTraffic") }
-                )
-                .padding(.bottom, TLSpace.xs)
-            }
-            if resources.isEmpty {
-                Text(Localized.trafficCollecting)
-                    .font(TLFont.caption2)
-                    .foregroundColor(TLPalette.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-        }
-    }
-
-    /// 전체 프로세스 기준 CPU Top3 — 네트워크 무관. 시스템 표시 토글과 연동.
-    private func cpuTop3(from resources: [String: ProcessResource]) -> [(name: String, res: ProcessResource)] {
-        SystemResourceMonitor.topResources(resources, limit: 3) { $0.cpuPercent ?? -1 }
-    }
-
-    /// 전체 프로세스 기준 메모리 Top3 — 네트워크 무관. 시스템 표시 토글과 연동.
-    private func memTop3(from resources: [String: ProcessResource]) -> [(name: String, res: ProcessResource)] {
-        SystemResourceMonitor.topResources(resources, limit: 3) { Double($0.rssBytes) }
-    }
-
-    private func filteredResources(_ all: [String: ProcessResource]) -> [String: ProcessResource] {
-        if showSystemProcesses { return all }
-        return all.filter { !SystemProcesses.set.contains($0.key) }
-    }
-
-    private func procIcon(_ name: String) -> some View {
-        Group {
-            if let nsImage = AppIconResolver.icon(forProcess: name) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .scaledToFit()
-            } else {
-                Image(systemName: "app")
-                    .foregroundColor(TLPalette.textSecondary)
-            }
-        }
-        .frame(width: 16, height: 16)
-    }
-
     private var bottomButtons: some View {
         HStack(spacing: TLSpace.md) {
-            Button(Localized.usageReport) { openWindow(id: "usageReport") }
+            // v0.39 — 주 버튼을 '대시보드'로 상향. 상세 보기 토글은 제거되었다(대시보드로 통합).
+            Button(Localized.dashboard) { openWindow(id: "dashboard") }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-                .help(Localized.usageReport)
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.15)) { summaryMode.toggle() }
-            } label: {
-                HStack(spacing: TLSpace.xs) {
-                    Image(systemName: summaryMode ? "chevron.down" : "chevron.up")
-                        .font(TLFont.caption)
-                    Text(summaryMode ? Localized.detailView : Localized.summaryView)
-                        .font(TLFont.caption)
-                }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .help(summaryMode ? Localized.detailView : Localized.summaryView)
+                .help(Localized.dashboard)
 
             Menu {
-                // 사용량 리포트는 좌측 주 버튼과 중복 → 제거. 순서는 메뉴바 더보기/팔레트와 동일 (P1)
+                Button(Localized.usageReport) { openWindow(id: "usageReport") }
                 Button(Localized.appTrafficButton) { openWindow(id: "appTraffic") }
                 Button(Localized.notificationList) { openWindow(id: "notifications") }
                 Button(FloatingWindowController.shared.isVisible ? Localized.floatingWindowHide : Localized.floatingWindowShow) {
@@ -1338,24 +957,6 @@ struct PopoverView: View {
         }
     }
 
-    private func collapsibleSectionDivider(_ title: String, isExpanded: Binding<Bool>) -> some View {
-        HStack(spacing: TLSpace.sm) {
-            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
-            Image(systemName: isExpanded.wrappedValue ? "chevron.down" : "chevron.right")
-                .font(TLFont.badge)
-                .foregroundColor(TLPalette.textSecondary)
-            Text(title).font(TLFont.caption2).foregroundColor(TLPalette.textSecondary).fixedSize()
-            Rectangle().frame(height: 1).foregroundColor(TLPalette.separator)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeOut(duration: 0.2)) { isExpanded.wrappedValue.toggle() }
-        }
-        .onHover { inside in
-            if inside { NSCursor.pointingHand.push() }
-            else { NSCursor.pop() }
-        }
-    }
 
     private var dnsPresetPicker: some View {
         VStack(spacing: TLSpace.xl) {

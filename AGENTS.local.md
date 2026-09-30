@@ -101,7 +101,7 @@ rm -rf directory        # NOT: rm -r directory
 - 빌드/실행: `./build_and_run.sh debug macos` (v1.6 디스패처)
 - **앱 실행 요청 처리 (사용자 규칙, v0.27.0 확정)**: "앱 실행/재실행" 요청은 항상 `./scripts/build-macos.sh debug`로 **최신 코드 빌드 → 번들(~/Applications/TetherLens.app) 재설치 → 실행**까지 수행한다. 기존 실행 중인 앱이 있어도 스크립트가 종료 후 재빌드하므로 바로 실행. (번들 재설치 없이 `open`만 하면 이전 바이너리라 미반영 — 금지)
 - 실제 빌드 로직: `scripts/build-macos.sh`
-- 테스트: `./scripts/test.sh` — `Tests/TetherLensTests/` (Swift Testing, 32개/7스위트, v0.22 도입)
+- 테스트: `./scripts/test.sh` — `Tests/TetherLensTests/` (Swift Testing, **183개/22스위트** — v0.22 도입, 2026-09-27 실측 기준)
 
 ## 9. Git 브랜치 네이밍 (v1.6)
 

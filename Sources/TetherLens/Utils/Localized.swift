@@ -542,6 +542,31 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
   static func firstSeen(_ date: String) -> String { value(kr: "첫 발견: \(date)", en: "First seen: \(date)") }
   static func lastSeen(_ date: String) -> String { value(kr: "마지막: \(date)", en: "Last seen: \(date)") }
 
+  // MARK: - v0.39 대시보드
+
+  /// 상대 시각 (초) — 상태바 "갱신 N초 전"
+  static func relativeSeconds(_ sec: Int) -> String {
+    switch sec {
+    case ..<1: return value(kr: "방금", en: "just now")
+    case 1..<60: return value(kr: "\(sec)초 전", en: "\(sec)s ago")
+    case 60..<3600: return value(kr: "\(sec / 60)분 전", en: "\(sec / 60)m ago")
+    default: return value(kr: "\(sec / 3600)시간 전", en: "\(sec / 3600)h ago")
+    }
+  }
+
+  /// 할당량 소진 예측 — 오늘 자정까지 현재 속도 기준
+  static func projectedTomorrow(_ percent: Int) -> String {
+    value(kr: "내일 자정 \(percent)% 예상", en: "\(percent)% by tomorrow")
+  }
+
+  static var dashboard: String { value(kr: "대시보드", en: "Dashboard") }
+  static var remainingLabel: String { value(kr: "남은", en: "Remaining") }
+  static var todayUsage: String { value(kr: "오늘 사용량", en: "Today") }
+  static var expensivePath: String { value(kr: "고가 경로", en: "Metered") }
+  static var constrainedPath: String { value(kr: "저대역폭", en: "Low Data") }
+  static var automation: String { value(kr: "자동화", en: "Automation") }
+  static var linkSpeedLabel: String { value(kr: "링크", en: "Link") }
+
   static func value(kr: String, en: String) -> String {
     isKorean ? kr : en
   }
