@@ -456,6 +456,9 @@ static var savingMode: String { value(kr: "절약 모드", en: "Saving Mode") }
     (value(kr: "30초", en: "30s"), 30),
   ]
   static let trafficIntervalOptions: [(String, Double)] = [
+    // 2초는 프로세스 리스트 체감 실시간성 최대화. 단 nettop 이 2초 주기로 **상시 실행**하므로
+    // 기본값(10초)은 그대로 두고 선택지로만 둔다 (배터리 부담).
+    (value(kr: "2초", en: "2s"), 2),
     (value(kr: "3초", en: "3s"), 3),
     (value(kr: "5초", en: "5s"), 5),
     (value(kr: "10초", en: "10s"), 10),

@@ -27,6 +27,12 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         var apps: [AppTraffic] = []
         var systemLoad: SystemLoad?
         var allResources: [String: ProcessResource] = [:]
+        /// 마지막 nettop 이 **실제로** 관측한 구간(초).
+        ///
+        /// `AppTraffic.bytesIn/bytesOut` 은 이 구간 전체의 합계이므로, 초당률로
+        /// 표시하려면 이 값으로 나눠야 한다. 설정값(`trafficMonitorInterval`)이 아니라
+        /// 실제 경과 시간을 쓰야 워치독이 nettop 을 일찍 끊었을 때도 배율이 어긋나지 않는다.
+        var windowSeconds: Double = SettingsManager.defaultTrafficMonitorInterval
     }
 
     @Published private(set) var snapshot = Snapshot()
@@ -36,6 +42,8 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
     var systemLoad: SystemLoad? { snapshot.systemLoad }
     /// 전체 프로세스 리소스 스냅샷 — 네트워크 무관 CPU/RAM 랭킹용 (v0.32.4).
     var allResources: [String: ProcessResource] { snapshot.allResources }
+    /// `apps` 의 bytesIn/bytesOut 을 초당률로 환산할 때 나눌 구간(초).
+    var windowSeconds: Double { max(snapshot.windowSeconds, 1) }
 
     private var timer: Timer?
     private var saveTimer: Timer?
@@ -261,8 +269,8 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             self.isRefreshing = true
             defer { self.isRefreshing = false }
 
-            let output = self.runNettop()
-            let result = Self.parse(output)
+            let run = self.runNettop()
+            let result = Self.parse(run.output)
             // CPU/MEM은 같은 주기에 편승해 1회만 조회한다 (추가 wakeup 없음, v0.32).
             let resources = SystemResourceMonitor.shared.fetchResources()
 
@@ -308,6 +316,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
                 next.apps = apps
                 next.systemLoad = resources.system
                 next.allResources = resources.perName
+                next.windowSeconds = run.windowSeconds
                 self?.snapshot = next // 단일 objectWillChange (v0.38.1)
                 // v0.37 — 시스템 CPU/GPU/MEM 스파크라인 히스토리 (refresh 편승, 추가 타이머 없음)
                 MetricsHistory.shared.push(system: resources.system)
@@ -315,7 +324,13 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
         }
     }
 
-    private func runNettop() -> String {
+    /// nettop 실행 결과 — 출력 + **실제 관측 구간(초)**
+    private struct NettopRun {
+        let output: String
+        let windowSeconds: Double
+    }
+
+    private func runNettop() -> NettopRun {
         // 측정 윈도우는 재조회 주기와 맞춰야 누적값이 정확하다.
         // 이전엔 `-l 2`(1초) 고정이라 기본 10초 주기 중 1초만 측정해
         // 표시값과 app_traffic_log 총합이 실제 전송량의 약 1/10로 과소 계상되었다.
@@ -335,7 +350,7 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
             Task { @MainActor in
                 DebugLogger.shared.error("Traffic", "nettop 실행 실패: \(error.localizedDescription)")
             }
-            return ""
+            return NettopRun(output: "", windowSeconds: Double(samples))
         }
         activeTask = task  // 종료 시 terminate() 로 큐 점해를 빨리 끝내기 위함
         DispatchQueue.global().asyncAfter(deadline: .now() + Double(samples + 5)) { [weak task] in
@@ -343,10 +358,14 @@ final class TrafficMonitor: ObservableObject, @unchecked Sendable {
                 task?.terminate()
             }
         }
+        let startedAt = Date()
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
         activeTask = nil
-        return String(data: data, encoding: .utf8) ?? ""
+        // 워치독이 nettop 을 일찍 끊으면 실제 구간이 samples 보다 짧다.
+        // 초당률 배율이 어긋나지 않도록 **실제 경과 시간**을 그대로 넘긴다.
+        let elapsed = max(Date().timeIntervalSince(startedAt), 0.1)
+        return NettopRun(output: String(data: data, encoding: .utf8) ?? "", windowSeconds: elapsed)
     }
 
     /// nettop 출력의 모든 델타 블록을 합산한다.

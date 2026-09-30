@@ -299,12 +299,14 @@ struct FloatingWindowView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(ByteRateFormat.string(app.bytesIn))
+                // bytesIn/bytesOut 은 nettop 구간 **합계**다. 초당률로 표시하려면
+                // 실제 관측 구간으로 나눠야 한다 (기본 10초 설정이면 10배 과대였음).
+                Text(ByteRateFormat.windowRateString(app.bytesIn, windowSeconds: trafficMonitor.windowSeconds))
                     .font(TLFont.mediumMono)
                     .foregroundColor(TLPalette.upload)
                     .lineLimit(1)
                     .frame(minWidth: 56, alignment: .trailing)
-                Text(ByteRateFormat.string(app.bytesOut))
+                Text(ByteRateFormat.windowRateString(app.bytesOut, windowSeconds: trafficMonitor.windowSeconds))
                     .font(TLFont.mediumMono)
                     .foregroundColor(TLPalette.download)
                     .lineLimit(1)

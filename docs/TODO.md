@@ -632,3 +632,16 @@
 
 > 부수: `DailyUsage`/`MonthlyUsage`/`HourlyUsage`/`DailySessionSummary`/`MonthlySessionSummary`/`Session`/`Profile`/`InsightItem`/`InsightKind` 에 `Sendable` 추가 (T-289 의 백그라운드 이동 전제)
 > 신규: `scripts/tlbuild.sh` — swift build 출력에서 컴파일러 커맨드라인을 걷어낸 압축 출력 스크립트
+
+## 🔔 2026-09-30 — 프로세스 리스트 초당률 표기 + 라벨 중복 (T-2ds)
+
+> bd: TetherLens-2ds · 검증: `swift build` OK + `scripts/test.sh` **205개/24스위트 통과**
+
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| 296 | 플로팅 창 프로세스 리스트 초당률 오류 — `bytesIn/bytesOut`(구간 합계)을 초당 포맷터에 직접 전달, 기본 10배 과대 | P2 | ✅ |
+| 297 | 앱 트래픽 창 동일 오류 + 중복 포맷터(`formatByteRate`) 제거 → `ByteRateFormat` 통합 | P2 | ✅ |
+| 298 | 배율 기준을 설정값 → **실제 관측 구간**으로 (`TrafficMonitor.windowSeconds`) — 워치독이 nettop 을 일찍 끊어도 배율 유지 | P2 | ✅ |
+| 299 | 차트 범례 중복 제거 — `TLNetworkSpeedChart.showsLegend`(기본 false). 플로팅·팝오버·대시보드 ① 3곳 모두 히어로와 값 중복 | P2 | ✅ |
+| 300 | 트래픽 갱신 **2초 선택지** 추가 (기본값 10초 유지 — nettop 상시 실행 배터리 부담) | P3 | ✅ |
+| 301 | `WindowRateTests` 8개 (배율·경계·반올림·단위) | P2 | ✅ |

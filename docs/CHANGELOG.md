@@ -1,5 +1,45 @@
 # Changelog
 
+## [Unreleased — Part 5] — 2026-09-30 — 프로세스 리스트 초당률 표기 오류 + 업/다운 라벨 중복 제거
+
+> bd: TetherLens-2ds · 검증: `swift build` OK + `scripts/test.sh` **205개/24스위트 통과** (기존 197개/23스위트)
+
+### Fixed
+
+- **프로세스 리스트가 구간 합계를 초당률로 표기** `[macOS]` — 플로팅 창과 앱 트래픽 창이
+  `AppTraffic.bytesIn/bytesOut`(nettop **구간 전체 합계**)을 초당 포맷터에 그대로 넣어
+  구간 길이만큼 과대 표시했다. 기본 10초 설정이면 **10배**.
+  플로팅 창에서 "실시간 속도 2 KB/s" 인데 프로세스 리스트 합계가 22 MB/s 로 보이던 현상
+- **배율을 설정값이 아니라 실제 경과 시간으로 계산** — 워치독이 nettop 을 일찍 끊으면 실제
+  관측 구간이 설정값보다 짧다. `runNettop` 이 실제 경과 시간을 스냅샷에 실어
+  모든 화면이 같은 값을 쓴다 (`TrafficMonitor.windowSeconds`)
+- **차트 범례 중복** — 플로팅 창·팝오버·대시보드 ① 카드가 모두
+  "히어로(큰 숫자 + 색 점 + 라벨) → 차트" 구조인데, 차트 안에
+  **같은 라벨과 같은 값을 한 번 더** 그리고 있었다. `TLNetworkSpeedChart.showsLegend`
+  (기본 `false`)로 히어로가 있을 때 숨긴다
+
+### Changed
+
+- **트래픽 갱신 2초 선택지 추가** — 프로세스 리스트 체감 실시간성 최대화.
+  기본값은 10초 유지 — 2초로 내리면 nettop 이 상시 실행되어 배터리 부담이 있다
+- **`AppTrafficView` 의 중복 포맷터 제거** — `formatByteRate` 는 `ByteRateFormat` 의 복제본이었고
+  구간 길이를 무시했다. `ByteRateFormat.windowRate(windowSeconds:)` 로 통합
+- **`TLNetworkSpeedChart` 기본값 변경** — 범례 표시를 기본 `false` 로 두어
+  새 호출 지점에서 중복이 다시 생기지 않게 한다
+
+### Added
+
+- **`ByteRateFormat.windowRate(_:windowSeconds:)` / `windowRateString(_:windowSeconds:)`** —
+  구간 합계 → 초당률 변환의 단일 진실원처. 대시보드가 이미 쓰던 패턴을 승격
+- **`TrafficMonitor.windowSeconds`** — 마지막 nettop 이 실제 관측한 구간
+- **`WindowRateTests` 8개** — 배율·구간 길이별 배율·0/음수 구간 방어·반올림·단위 경계.
+  총 **205개/24스위트**
+
+> GUI 육안 검증은 사용자 확인 예정 ([HARD] 사용자 공존 — 창 활성화 없이 빌드·설치만 수행)
+
+---
+
+
 ## [Unreleased — Part 4] — 2026-09-30 — P2 버그 11건 일괄 해결 (T-250)
 
 > bd: TetherLens-axc · docs/TODO.md T-250, T-285~295
